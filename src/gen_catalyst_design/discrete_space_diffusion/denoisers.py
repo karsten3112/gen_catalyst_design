@@ -1,16 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.transforms import BaseTransform
-from torch_geometric.data import Batch
-from conditioning import ConditioningEmbedder
-from schedulers import DiscreteTimeScheduler
+from .conditioning import ConditioningEmbedder
+from .schedulers import DiscreteTimeScheduler
 from torch.distributions import Categorical
 from torch_geometric.nn import MessagePassing
 from torch_geometric.loader import DataLoader
 from torch_geometric.data import Data
 from ase.atoms import Atoms
-from Dataset import GraphDataset
 from ase_ml_models.pyg import get_edges_list_from_connectivity
 
 # -------------------------------------------------------------------------------------

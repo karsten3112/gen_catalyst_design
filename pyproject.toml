@@ -1,32 +1,31 @@
 [build-system]
-requires = ["setuptools>=65", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "gen_catalyst_design"
 version = "0.1.0"
-description = "Diffusion-model-based catalyst design utilities"
+description = "Diffusion models for catalyst design"
 readme = "README.md"
 requires-python = ">=3.9"
+license = { text = "GPL-3.0-or-later" }
 
-# Optional metadata
 authors = [
-    { name = "Karsten Walz Jensen", email = "karsten.walz.jensen@gmail.com" }
+  { name = "Karsten Walz Jensen", email = "karsten.walz.jensen@gmail.com" }
 ]
 
-license = { file = "LICENSE" }
-
-# Your runtime dependencies
 dependencies = [
-    "numpy",
-    "torch",
-    "torch-geometric",
-    "networkx",
+  "numpy",
+  "torch",
+  "networkx",
 ]
 
-
-[tool.setuptools]
-package-dir = {"" = "src"}
+[project.urls]
+Homepage = "https://github.com/karsten3112/gen_catalyst_design.git"
+Repository = "https://github.com/karsten3112/gen_catalyst_design.git"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}

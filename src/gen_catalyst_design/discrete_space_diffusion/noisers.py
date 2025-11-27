@@ -1,6 +1,6 @@
 import torch
 from torch.distributions import Categorical
-from schedulers import DiscreteTimeScheduler
+from .schedulers import DiscreteTimeScheduler
 import torch.nn.functional as F
 import torch.nn as nn
 

@@ -1,14 +1,9 @@
-from diffusion_model.diffusion import DiffusionModel
-
-
+from gen_catalyst_design.discrete_space_diffusion import DiffusionModel
 
 def main():
     print("hej")
+    DiffusionModel()
 
-
-
-def train_diffusion_model():
-    
 
 
 if __name__ == "__main__":
