@@ -5,21 +5,19 @@ from distutils.util import strtobool
 import numpy as np
 import argparse
 import os
-import sys
 import time
 import torch
 import random
 import yaml
-sys.path.insert(0, "../")
-from gen_catalyst_toolkit.db import Database
-from gen_catalyst_toolkit.reaction_rate_calculation import (
+from gen_catalyst_design.db import Database
+from .reaction_rate_calculation import (
     get_calculator, 
     get_features_bulk_and_gas, 
     get_atoms_from_template_db, 
     reaction_rate_of_RDS_from_symbols
 )
-from gen_catalyst_toolkit.reaction_rates import ReactionMechanism
-from gen_catalyst_toolkit.optimizers import RandomSearch, BayesianOptimizer
+from gen_catalyst_design.reaction_rates import ReactionMechanism
+from gen_catalyst_design.utilities.plain_optimizers import RandomSearch, BayesianOptimizer
 
 # -------------------------------------------------------------------------------------
 # ARGUMENTS

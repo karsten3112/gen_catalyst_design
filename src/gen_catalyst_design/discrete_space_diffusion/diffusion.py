@@ -20,7 +20,9 @@ class DiffusionModel(LightningModule):
             denoiser:DiscreteSpaceDenoiser=None,
             drop_prob:float=0.2,
             random_seed:int=42,
-            loss_fn:callable=nn.CrossEntropyLoss()
+            loss_fn:callable=nn.CrossEntropyLoss(),
+            lr:float=1e-4,
+            weight_decay:float=1e-4,
         ):
         super().__init__()
         self.element_pool = element_pool
@@ -30,6 +32,8 @@ class DiffusionModel(LightningModule):
         self.random_seed = random_seed
         self.drop_prob = drop_prob
         self.loss_fn = loss_fn
+        self.lr = lr
+        self.weight_decay = weight_decay
         if self.noiser is not None:
             if self.noiser.accumulated_q_matrices is None:
                 self.noiser.pre_compute_accum_q_matrices(scheduler=self.scheduler)
@@ -152,8 +156,19 @@ class DiffusionModel(LightningModule):
         return result_list
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=5e-4, weight_decay=1e-4)
-        return optimizer
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        scheduler = {
+            'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer,
+                mode='min',
+                factor=0.1, #Reducing factor
+                patience=10 #Patience for scheduler
+            ),
+            'monitor': 'val_loss', #monitor the validation loss
+            'interval': 'epoch',    #monitor at epoch level
+            'frequency': 1              #with frequency 1
+        }
+        return {"optimizer":optimizer, "lr_scheduler":scheduler}
 
     @property
     def const_state_dict(self):
@@ -161,6 +176,8 @@ class DiffusionModel(LightningModule):
             "element_pool":self.element_pool,
             "random_seed":self.random_seed,
             "drop_prob":self.drop_prob,
+            "lr":self.lr,
+            "weight_decay":self.weight_decay
         }
         modules = {"scheduler_info":self.scheduler, "denoiser_info":self.denoiser, "noiser_info":self.noiser}
         for module_type in modules:
@@ -226,6 +243,8 @@ class DiffusionModel(LightningModule):
         self.element_pool = cfg.pop("element_pool")
         self.random_seed = cfg.pop("random_seed")
         self.drop_prob = cfg.pop("drop_prob")
+        self.weight_decay = cfg.pop("weight_decay")
+        self.lr = cfg.pop("lr")
         self.scheduler = self.get_scheduler_from_checkpoint(scheduler_params=cfg.pop("scheduler_info"))
         self.noiser = self.get_noiser_from_checkpoint(noiser_params=cfg.pop("noiser_info"), element_pool=self.element_pool)
         self.denoiser = self.get_denoiser_from_checkpoint(denoiser_params=cfg.pop("denoiser_info"), element_pool=self.element_pool)
