@@ -6,7 +6,6 @@ import torch
 # EMBEDDING CONDITIONS BASE-CLASS
 # -------------------------------------------------------------------------------------
 
-
 class ConditioningEmbedder(nn.Module):
     def __init__(self, cond_dim:int=1, embedding_dim:int=28):
         super().__init__()
