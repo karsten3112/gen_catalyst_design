@@ -1,0 +1,10 @@
+-rnd_seed=0 -m_index=100 -n_batches=1 -batch_size=100 -out=results/miller_index_100/n_100 -opt=bayesian_opt -model=WWL-GPR -time=True 
+-rnd_seed=0 -m_index=100 -n_batches=1 -batch_size=200 -out=results/miller_index_100/n_200 -opt=bayesian_opt -model=WWL-GPR -time=True 
+-rnd_seed=0 -m_index=100 -n_batches=1 -batch_size=300 -out=results/miller_index_100/n_300 -opt=bayesian_opt -model=WWL-GPR -time=True 
+-rnd_seed=0 -m_index=100 -n_batches=1 -batch_size=400 -out=results/miller_index_100/n_400 -opt=bayesian_opt -model=WWL-GPR -time=True 
+-rnd_seed=0 -m_index=100 -n_batches=1 -batch_size=500 -out=results/miller_index_100/n_500 -opt=bayesian_opt -model=WWL-GPR -time=True 
+-rnd_seed=0 -m_index=100 -n_batches=1 -batch_size=600 -out=results/miller_index_100/n_600 -opt=bayesian_opt -model=WWL-GPR -time=True 
+-rnd_seed=0 -m_index=100 -n_batches=1 -batch_size=700 -out=results/miller_index_100/n_700 -opt=bayesian_opt -model=WWL-GPR -time=True 
+-rnd_seed=0 -m_index=100 -n_batches=1 -batch_size=800 -out=results/miller_index_100/n_800 -opt=bayesian_opt -model=WWL-GPR -time=True 
+-rnd_seed=0 -m_index=100 -n_batches=1 -batch_size=900 -out=results/miller_index_100/n_900 -opt=bayesian_opt -model=WWL-GPR -time=True 
+-rnd_seed=0 -m_index=100 -n_batches=1 -batch_size=10000 -out=results/miller_index_100/n_10000 -opt=bayesian_opt -model=WWL-GPR -time=True 

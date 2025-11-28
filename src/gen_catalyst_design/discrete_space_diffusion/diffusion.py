@@ -1,7 +1,7 @@
 from .schedulers import DiscreteTimeScheduler, ExponentialScheduler, CosineScheduler, LinearScheduler
 from .noisers import DiscreteSpaceNoiser, UniformTransitionsNoiser, AbsorbingStateNoiser
 from .denoisers import DiscreteSpaceDenoiser, DiscreteGNNDenoiser
-from .conditioning import ConditioningEmbedder, RateEmbedder, ClassLabelEmbedder
+from .conditioning import ConditioningEmbedder, RateEmbedder, ClassLabelEmbedder, RateClassEmbedder
 from ase.atoms import Atoms
 from torch.utils.data import DataLoader
 import torch
@@ -224,7 +224,8 @@ class DiffusionModel(LightningModule):
     def get_condition_embedder_from_checkpoint(self, cond_embedder_params):
         implemented_embedders = {
             "RateEmbedder":RateEmbedder, 
-            "ClassLabelEmbedder":ClassLabelEmbedder
+            "ClassLabelEmbedder":ClassLabelEmbedder,
+            "RateClassEmbedder":RateClassEmbedder
         }
         embedder_type = cond_embedder_params.pop("embedding_type")
         if embedder_type in implemented_embedders:

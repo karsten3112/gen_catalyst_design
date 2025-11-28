@@ -1,0 +1,11 @@
+batch_size: 200
+batches: 1
+drop_time: 7.152557373046875e-07
+eval_time_per_batch:
+- 1396.3835713863373
+logging_time:
+- 0.05642056465148926
+param_load: 0.034173011779785156
+template_db_load: 0.16244864463806152
+total_time: 1403.6306793689728
+training_time: 6.993921518325806

@@ -6,6 +6,8 @@ from gen_catalyst_design.discrete_space_diffusion import (
     DiffusionModel,
 )
 
+from gen_catalyst_design.db import Database, load_data_from_db
+
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.trainer import Trainer
@@ -13,6 +15,7 @@ from distutils.util import strtobool
 import argparse
 import torch
 
+from ase.atoms import Atoms
 from .reaction_rate_calculation import (
     get_calculator, 
     get_features_bulk_and_gas, 
@@ -140,7 +143,11 @@ def main():
         "n_hidden_message_layers":1,
         "message_dim":8,
     }
-    denoiser = setup_denoiser(denoiser_type=denoiser_type, denoiser_params=denoiser_params, condition_embedder=condition_embedder)
+    denoiser = setup_denoiser(
+        denoiser_type=denoiser_type, 
+        denoiser_params=denoiser_params, 
+        condition_embedder=condition_embedder
+    )
 
     #Construct the diffusion model
     diff_model = DiffusionModel(
@@ -158,7 +165,6 @@ def main():
     )
 
     #Setup the trainer for doing the training
-    
     trainer = setup_trainer(
         logger=logger,
     )
@@ -169,9 +175,21 @@ def main():
          pth_header=f"databases/templates/{miller_index}"
     )
 
-    train_loader, val_loader = setup_dataloaders()
+    database = Database.establish_connection(
+        filename=parsed_args.data_file,
+        miller_index=miller_index,
+        pth_header=None
+    )
+
+    data_dicts = load_data_from_db(database=database)
+
+    train_loader, val_loader = setup_dataloaders(
+        data_dicts=data_dicts,
+        template_atoms=template_atoms_list[0],
+        cond_embedders=[condition_embedder]
+    )
+
     #Train the diffusion model
-    
     trainer.fit(
         model=diff_model, 
         train_dataloaders=train_loader,
@@ -262,7 +280,12 @@ def setup_trainer(logger:WandbLogger, patience:int=10, gradient_clip_val:float=2
 # SETUP DATALOADERS
 # -------------------------------------------------------------------------------------
 
-def setup_dataloaders():
+def setup_dataloaders(
+        data_dicts:list, 
+        template_atoms:Atoms,
+        val_split:float=0.10,
+        cond_embedders:list=[]
+    ):
     pass
     
 

@@ -1,0 +1,51 @@
+Traceback (most recent call last):
+  File "/home/kwalz/speciale_files/gen_catalyst_toolkit/db.py", line 337, in write_data_to_tables
+    self.cursor.execute("COMMIT")
+sqlite3.OperationalError: disk I/O error
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/kwalz/speciale_files/databases/random_search/../run_optimization.py", line 281, in <module>
+    main()
+  File "/home/kwalz/speciale_files/databases/random_search/../run_optimization.py", line 213, in main
+    results = optimizer.run_optimization(
+  File "/home/kwalz/speciale_files/gen_catalyst_toolkit/optimizers.py", line 69, in run_optimization
+    self.database.write_data_to_tables(data_dicts=data_batch, append=True)
+  File "/home/kwalz/speciale_files/gen_catalyst_toolkit/db.py", line 339, in write_data_to_tables
+    self.cursor.execute("ROLLBACK")
+sqlite3.OperationalError: cannot rollback - no transaction is active
+Traceback (most recent call last):
+  File "/home/kwalz/speciale_files/gen_catalyst_toolkit/db.py", line 337, in write_data_to_tables
+    self.cursor.execute("COMMIT")
+sqlite3.OperationalError: disk I/O error
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/kwalz/speciale_files/databases/random_search/../run_optimization.py", line 281, in <module>
+    main()
+  File "/home/kwalz/speciale_files/databases/random_search/../run_optimization.py", line 213, in main
+    results = optimizer.run_optimization(
+  File "/home/kwalz/speciale_files/gen_catalyst_toolkit/optimizers.py", line 69, in run_optimization
+    self.database.write_data_to_tables(data_dicts=data_batch, append=True)
+  File "/home/kwalz/speciale_files/gen_catalyst_toolkit/db.py", line 339, in write_data_to_tables
+    self.cursor.execute("ROLLBACK")
+sqlite3.OperationalError: cannot rollback - no transaction is active
+Traceback (most recent call last):
+  File "/home/kwalz/speciale_files/gen_catalyst_toolkit/db.py", line 337, in write_data_to_tables
+    self.cursor.execute("COMMIT")
+sqlite3.OperationalError: disk I/O error
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/kwalz/speciale_files/databases/random_search/../run_optimization.py", line 281, in <module>
+    main()
+  File "/home/kwalz/speciale_files/databases/random_search/../run_optimization.py", line 213, in main
+    results = optimizer.run_optimization(
+  File "/home/kwalz/speciale_files/gen_catalyst_toolkit/optimizers.py", line 69, in run_optimization
+    self.database.write_data_to_tables(data_dicts=data_batch, append=True)
+  File "/home/kwalz/speciale_files/gen_catalyst_toolkit/db.py", line 339, in write_data_to_tables
+    self.cursor.execute("ROLLBACK")
+sqlite3.OperationalError: cannot rollback - no transaction is active
