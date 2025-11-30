@@ -1,8 +1,39 @@
-import torch
+from gen_catalyst_design.utils import embed_elements_as_onehot
+from torch_geometric.data import Dataset, InMemoryDataset, Data
+from ase_ml_models.pyg import get_edges_list_from_connectivity
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
-from torch_geometric.data import Dataset, InMemoryDataset
+from ase.atoms import Atoms
+from ase.atom import Atom
+import torch
 
+
+class Graph(Data):
+    def __init__(
+            self,
+            x = None, 
+            edge_index = None, 
+            edge_attr = None, 
+            y = None, 
+            pos = None
+        ):
+        super().__init__(x, edge_index, edge_attr, y, pos)
+    
+    def to_elems(self, element_pool:list):
+        indices = torch.argmax(self.x, dim=-1)
+        return [element_pool[index] for index in indices]
+
+    def to_atoms(self, element_pool:list):
+        elements = self.to_elems(element_pool=element_pool)
+        updated_elements = ["O" if elem == "(X)" else elem for elem in elements]
+        atom_list = []
+        for element, position in zip(updated_elements, self.pos):
+            atom = Atom(symbol=element, position=position.numpy())
+            atom_list.append(atom)
+        return Atoms(atom_list)    
+
+    def update_x_from_elements(self, elements:list):
+        x = embed_elements_as_onehot(elements=elements, element_pool=self.element_pool)
+        self.x = x
 
 
 class GraphDataset(Dataset):
@@ -15,46 +46,9 @@ class GraphDataset(Dataset):
 
     def get(self, idx):
         return self.graph_list[idx]
-    
+
     def update_representation(self, new_repr, unique_batch_indices):
         for graph, new_x in zip(self[unique_batch_indices], new_repr):
             graph.x = new_x
 
-
-
-class OneHotDataset(Dataset):
-    def __init__(self, xs:torch.tensor=None, conds:torch.tensor=None):
-        super().__init__()
-        self.xs = xs
-        self.conds = conds
-
-    def __getitem__(self, index):
-        return (self.xs[index], self.conds[index])
-    
-    def __len__(self):
-        return len(self.xs)
-
-    def get_xs_from_atoms_list(self, atoms_list:list, element_pool:list):
-       xs = [self.get_x_from_elems(elems_list=atoms.get_chemical_symbols(), element_pool=element_pool) for atoms in atoms_list]
-       return torch.stack(xs)
-    
-    def get_x_from_elems(self, elems_list:list, element_pool:list):
-        mapping_dict = {elem:i for i, elem in enumerate(element_pool)}
-        x = torch.stack([F.one_hot(torch.tensor(mapping_dict[elem]), num_classes=len(element_pool)) for elem in elems_list])
-        return x
-    
-    def get_conditional_vect(self, data_dict:dict, conditionals:list):
-        for conditional in conditionals:
-            pass
-
-    def get_xs_conds_from_data_dicts(self, data_dicts:list, element_pool:list, conditionals:torch.tensor=None):
-        xs = []
-        conds = []
-        for data_dict in data_dicts:
-            x = self.get_x_from_elems(elems_list=data_dict["elements"], element_pool=element_pool)
-            xs.append(x)
-        return torch.stack(xs), conditionals
-    
-    def add_data_from_data_dicts(self, data_dicts:list, element_pool:list, conditionals:list=None):
-        self.xs, self.conds = self.get_xs_conds_from_data_dicts(data_dicts=data_dicts, element_pool=element_pool, conditionals=conditionals)
         

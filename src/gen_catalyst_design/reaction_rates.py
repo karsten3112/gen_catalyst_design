@@ -1,12 +1,10 @@
-from gen_catalyst_toolkit.calculators import Calculator
+from .calculators import Calculator
 from mikimoto.thermodynamics import ThermoNASA7
 from mikimoto.microkinetics import Species
 from mikimoto import units
 import numpy as np
 import yaml
 import os
-import warnings
-warnings.filterwarnings("error")
 
 class ReactionMechanism:
     def __init__(

@@ -137,10 +137,11 @@ def reaction_rate_of_RDS_from_symbols(
 # GET FEATURES
 # -------------------------------------------------------------------------------------
 
-def get_features_bulk_and_gas(bulk_filename:str="features_bulk.yaml", 
-                                  gas_filename:str="features_gas.yaml", 
-                                  pth_header:str=None
-                                  ) -> tuple:
+def get_features_bulk_and_gas(
+        bulk_filename:str="features_bulk.yaml", 
+        gas_filename:str="features_gas.yaml", 
+        pth_header:str=None
+        ) -> tuple:
         """
         Get features for bulk and gas phase.
         """

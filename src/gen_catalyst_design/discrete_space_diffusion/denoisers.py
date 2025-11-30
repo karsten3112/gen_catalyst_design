@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .conditioning import ConditioningEmbedder
 from .schedulers import DiscreteTimeScheduler
+from .Dataset import GraphDataset
 from torch.distributions import Categorical
 from torch_geometric.nn import MessagePassing
 from torch_geometric.loader import DataLoader

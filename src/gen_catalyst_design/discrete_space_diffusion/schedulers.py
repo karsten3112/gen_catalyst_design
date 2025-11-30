@@ -11,16 +11,16 @@ class DiscreteTimeScheduler(nn.Module):
             self, 
             t_init:int=1, 
             t_final:int=1000, 
-            beta_max:torch.tensor=torch.tensor(1.0),
-            beta_min:torch.tensor=torch.tensor(1e-3),
+            beta_max:float=1.0,
+            beta_min:float=1e-3,
         ):
         super().__init__()
         if t_init < 1:
             raise Exception(f"initial time stamp t_init, cannot be less than 1; given was:{t_init}")
         self.t_init = t_init
         self.t_final = t_final
-        self.beta_max = beta_max
-        self.beta_min = beta_min
+        self.beta_max = torch.tensor(beta_max)
+        self.beta_min = torch.tensor(beta_min)
         self.device = None
 
     @property
@@ -28,8 +28,8 @@ class DiscreteTimeScheduler(nn.Module):
         state_dict = {
             "t_init":self.t_init,
             "t_final":self.t_final,
-            "beta_max":self.beta_max,
-            "beta_min":self.beta_min
+            "beta_max":self.beta_max.item(),
+            "beta_min":self.beta_min.item()
         }
         return state_dict
 
@@ -49,7 +49,7 @@ class DiscreteTimeScheduler(nn.Module):
 
 
 class LinearScheduler(DiscreteTimeScheduler):
-    def __init__(self, t_init = 1, t_final = 1000, beta_max = torch.tensor(1), beta_min = torch.tensor(1e-3)):
+    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001):
         super().__init__(t_init, t_final, beta_max, beta_min)
 
     @property
@@ -68,9 +68,9 @@ class LinearScheduler(DiscreteTimeScheduler):
 
 
 class CosineScheduler(DiscreteTimeScheduler):
-    def __init__(self, t_init = 1, t_final = 1000, beta_max = torch.tensor(1), beta_min = torch.tensor(1e-3), reg:torch.tensor=torch.tensor(1e-3)):
+    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, reg:float=1e-3):
         super().__init__(t_init, t_final, beta_max, beta_min)
-        self.reg = reg
+        self.reg = torch.tensor(reg)
     
     @property
     def const_state_dict(self):
@@ -94,7 +94,7 @@ class CosineScheduler(DiscreteTimeScheduler):
 
 
 class ExponentialScheduler(DiscreteTimeScheduler):
-    def __init__(self, t_init = 1, t_final = 1000, beta_max = torch.tensor(1), beta_min = torch.tensor(1e-3)):
+    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001):
         super().__init__(t_init, t_final, beta_max, beta_min)
 
     @property

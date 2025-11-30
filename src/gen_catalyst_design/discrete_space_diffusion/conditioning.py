@@ -94,6 +94,7 @@ class RateClassEmbedder(ClassLabelEmbedder):
     def get_embedded_condition(self, condition):
         embedded_rate = F.softmax(self.rate_embedder(condition))
         rate_class = torch.argmax(embedded_rate)
+        print(rate_class)
         return super().get_embedded_condition(rate_class)
     
     @property
