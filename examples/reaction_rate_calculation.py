@@ -11,10 +11,10 @@ import os
 import sys
 sys.path.insert(0, "../")
 from catalyst_opt_tools.utilities import update_atoms_list, preprocess_features
-from gen_catalyst_toolkit.calculators import GraphCalculator, GCNNCalculator
-from gen_catalyst_toolkit.reaction_rates import ReactionMechanism
+from gen_catalyst_design.calculators import GraphCalculator, GCNNCalculator
+from gen_catalyst_design.reaction_rates import ReactionMechanism
 from ase_ml_models.databases import get_atoms_list_from_db
-from gen_catalyst_toolkit.db import Database
+from gen_catalyst_design.db import Database
 from ase.db import connect
 import torch
 from ase.io import read, write

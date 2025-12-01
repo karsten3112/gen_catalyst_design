@@ -4,13 +4,14 @@ from gen_catalyst_design.discrete_space_diffusion import (
 )
 from gen_catalyst_design.reaction_rates import ReactionMechanism
 from ase_ml_models.pyg import get_edges_list_from_connectivity
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, Callback
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.trainer import Trainer
 from torch_geometric.loader import DataLoader
 from catalyst_opt_tools.utilities import preprocess_features, update_atoms_list
 import yaml
 import torch
+import wandb
 import torch.nn.functional as F
 from ase.atoms import Atoms
 import random
@@ -78,13 +79,76 @@ def setup_condition_embedder(condition_type:str, condition_params:dict={}) -> Co
 # SETUP TRAINER
 # -------------------------------------------------------------------------------------
 
-def setup_trainer(
-        logger:WandbLogger, 
+class DumpCheckpointDataCallback(Callback):
+    def __init__(self, dict_key="hyper_params", filename="checkpoint_data.yaml"):
+        self.dict_key = dict_key
+        self.filename = filename
+
+    def on_train_end(self, trainer, pl_module):
+        # Find the best / last checkpoint PL saved
+        ckpt_path = trainer.checkpoint_callback.best_model_path
+        if ckpt_path == "":
+            ckpt_path = trainer.checkpoint_callback.last_model_path
+
+        if ckpt_path == "":
+            print("No checkpoint found to extract custom data.")
+            return
+
+        ckpt = torch.load(ckpt_path, map_location="cpu")
+
+        # Extract the dictionary you stored earlier
+        if self.dict_key not in ckpt:
+            print(f"Key '{self.dict_key}' not found in checkpoint.")
+            return
+
+        data = ckpt[self.dict_key]
+
+        # Write YAML
+        run_dir = trainer.logger.experiment.dir
+        out_path = os.path.join(run_dir, self.filename)
+
+        with open(out_path, "w") as f:
+            yaml.dump(data, f, sort_keys=False)
+
+        # Upload to W&B
+        wandb.save(out_path)
+
+
+def setup_trainer_and_logger(
+        model_name:str=None,
         patience:int=10, 
         gradient_clip_val:float=2.0,
-        trainer_kwargs:dict={}
+        checkpoint_dir:str="checkpoints",
+        trainer_kwargs:dict={},
+        logger_kwargs:dict={}
     ) -> Trainer:
+
+
+    if model_name is None:
+        model_name = "models"
+        if not os.path.exists("models"):
+            os.makedirs("models")
+    else:
+        if not os.path.exists(model_name):
+            os.makedirs(model_name)
+    
+    existing_models = os.listdir(model_name)
+    run_id = len(existing_models) + 1
+    run_name = f"model_{run_id:03d}"
+
+    out_dir = os.path.join(model_name, run_name)
+
+    os.makedirs(out_dir)
+
+    logger = WandbLogger(
+        project=model_name,
+        name=run_name,
+        save_dir=out_dir,
+        **logger_kwargs
+    )
+
     checkpoint_callback = ModelCheckpoint(
+        dirpath=os.path.join(out_dir, checkpoint_dir),
         monitor="val_loss",
         mode="min",
         save_top_k=1,      # keep best model
@@ -97,9 +161,16 @@ def setup_trainer(
         patience=patience,
         min_delta=0.0,
     )
+
+    hyper_params_log = DumpCheckpointDataCallback(
+        dict_key="diffusion_parameters",
+        filename="model_parameters.yaml"
+    )
+
     trainer = Trainer(
         logger=logger,
-        callbacks=[checkpoint_callback, early_stopping],
+        default_root_dir=out_dir,
+        callbacks=[checkpoint_callback, early_stopping, hyper_params_log],
         gradient_clip_val=gradient_clip_val,
         **trainer_kwargs
     )

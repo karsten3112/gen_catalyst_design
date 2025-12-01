@@ -66,17 +66,17 @@ class DiffusionModel(LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss = self.calculate_loss(batch=batch, batch_idx=batch_idx)
-        self.log("train_loss", loss, on_epoch=True)
+        self.log("train_loss", loss, on_epoch=True, batch_size=batch.batch_size)
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss = self.calculate_loss(batch=batch, batch_idx=batch_idx)
-        self.log("val_loss", loss, on_epoch=True)
+        self.log("val_loss", loss, on_epoch=True, batch_size=batch.batch_size)
         return loss
 
     def test_step(self, batch, batch_idx):
         loss = self.calculate_loss(batch=batch, batch_idx=batch_idx)
-        self.log("test_loss", loss, on_epoch=True)
+        self.log("test_loss", loss, on_epoch=True, batch_size=batch.batch_size)
         return loss
     
     def get_elem_from_one_hot(self, one_hot_vector:torch.tensor):
