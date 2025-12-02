@@ -1,85 +1,78 @@
+def embed_elements_as_onehot(elements:list, element_pool:list):
+    mapping_dict = {element:i for i, element in enumerate(element_pool)}
+    return torch.stack([get_onehot(element=element, mapping_dict=mapping_dict) for element in elements])
 
-def get_features_bulk_and_gas(
-        bulk_filename:str="features_bulk.yaml", 
-        gas_filename:str="features_gas.yaml", 
-        pth_header:str=None
-        ) -> tuple:
-        """
-        Get features for bulk and gas phase.
-        """
-        if pth_header is not None:
-            bulk_filename = os.path.join(pth_header, bulk_filename)
-            gas_filename = os.path.join(pth_header, gas_filename)
-        # Read features from yaml files.
-        with open(bulk_filename, "r") as fileobj:
-            features_bulk = yaml.safe_load(fileobj)
+def embed_cluster_as_onehots(atoms:Atoms, element_pool:list):
+    elements = atoms.get_chemical_symbols()
+    return embed_elements_as_onehot(elements=elements, element_pool=element_pool)
 
-        with open(gas_filename, "r") as fileobj:
-            features_gas = yaml.safe_load(fileobj)
-        # Preprocess features.
-        features_bulk = preprocess_features(features_dict=features_bulk)
-        features_gas = preprocess_features(features_dict=features_gas)
-        # Return parameters.
-        return features_bulk, features_gas
+def get_onehot(element:str, mapping_dict:dict):
+    onehot = F.one_hot(torch.tensor(mapping_dict[element]), len(mapping_dict))
+    return onehot
 
-def get_calculator(model, miller_index):
-    from gen_catalyst_design.calculators import GCNNCalculator, GraphCalculator
-    if model == "WWL-GPR":
-        calculator = GraphCalculator(
-             miller_index=miller_index,
-             kernel="GPR"
-        )
-        train_kwargs = {}
-    elif model == "GCNN":
-        calculator = GCNNCalculator(
-            miller_index=miller_index
-        )
-        network_hyperparams = {"hidden_dim":128,
-            "n_conv_layers": 4,
-            "n_lin_layers": 2,
-            "conv_type": "ARMAConv",
-            "dropout":0.0,
-            "activation": torch.nn.functional.relu,
-            #"use_batch_norm":False,
-            #"use_residual":False
-        }
-        train_kwargs = {
-                    "early_stop":True,
-                    "num_epochs":500,
-                    "lr": 1e-4,
-                    "batch_size": 16,
-                    "target": "E_form",
-                    "val_split": 0.1,
-                    "early_stopping_patience": 100,
-                    "early_stopping_delta": 1e-4,
-                    "weight_decay":0.0,
-                    "hyperparams":network_hyperparams
-        }
-    else:
-         raise Exception(f"calculator of type: {model} has not been implemented yet")
-    return calculator, train_kwargs
-
-
-def reaction_rate_of_RDS_from_symbols(
-    reaction_mechanism:ReactionMechanism,
-    symbols: list,
-    template_atoms_list: list,
-    features_bulk: dict,
-    features_gas: dict,
-    n_atoms_surf: int,
-):
-    """
-    Get reaction rate of the RDS from the surface symbols.
-    """
-    # Update elements and features of atoms for predictions.
-    update_atoms_list(
-        atoms_list=template_atoms_list,
-        features_bulk=features_bulk,
-        features_gas=features_gas,
-        symbols=symbols,
-        n_atoms_surf=n_atoms_surf,
+def get_graph_from_datadict(datadict:dict, template_atoms:Atoms, element_pool:list, condition_key:str=None):
+    from gen_catalyst_design.discrete_space_diffusion import Graph
+    edges_list = get_edges_list_from_connectivity(template_atoms.info["connectivity"])
+    edge_index = torch.tensor(edges_list, dtype=torch.long).reshape(2,-1)
+    graph = Graph(
+        x=embed_elements_as_onehot(elements=datadict["elements"], element_pool=element_pool),
+        edge_index=edge_index,
+        pos=torch.tensor(template_atoms.positions)
     )
-    # Predict formation energies with a calculator.
-    # Calculate reaction rate from reaction mechanism.
-    score_dict = reaction_mechanism(atoms_list=template_atoms_list)
-    return score_dict
+    if condition_key is not None:
+        if condition_key in datadict:
+            graph.y = datadict[condition_key]
+        else:
+            raise Exception(f"condition key {condition_key} is not available in datadict, having: {datadict.keys()}")
+    return graph
+
+def get_dataset_from_datadicts(datadicts:list, template_atoms:Atoms, element_pool:list, condition_key:str=None):
+    from gen_catalyst_design.discrete_space_diffusion import GraphDataset
+    graph_list = [
+        get_graph_from_datadict(
+            datadict=datadict, 
+            template_atoms=template_atoms, 
+            element_pool=element_pool, 
+            condition_key=condition_key
+        )
+        for datadict in datadicts
+    ]
+    return GraphDataset(graph_list=graph_list)
+
+
+def get_dataloaders_from_datadicts(
+        data_dicts:list, 
+        element_pool:list,
+        template_atoms:Atoms,
+        batch_size:int=42,
+        condition_key:str="class", 
+        train_val_split:float=0.1,
+        loader_kwargs:dict={} 
+    ):
+    random.shuffle(data_dicts)
+    split_index = int((1-train_val_split)*len(data_dicts))
+    train_dataset = get_dataset_from_datadicts(
+        datadicts=data_dicts[:split_index],
+        template_atoms=template_atoms,
+        element_pool=element_pool,
+        condition_key=condition_key
+    )
+    val_dataset = get_dataset_from_datadicts(
+        datadicts=data_dicts[split_index:],
+        template_atoms=template_atoms,
+        element_pool=element_pool,
+        condition_key=condition_key
+    )
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True,
+        **loader_kwargs
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        **loader_kwargs
+    )
+    return train_loader, val_loader
