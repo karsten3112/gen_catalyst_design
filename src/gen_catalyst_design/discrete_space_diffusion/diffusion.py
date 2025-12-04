@@ -1,9 +1,8 @@
 from .schedulers import DiscreteTimeScheduler, ExponentialScheduler, CosineScheduler, LinearScheduler
 from .noisers import DiscreteSpaceNoiser, UniformTransitionsNoiser, AbsorbingStateNoiser
 from .denoisers import DiscreteSpaceDenoiser, DiscreteGNNDenoiser
-from .conditioning import ConditioningEmbedder, RateEmbedder, ClassLabelEmbedder, RateClassEmbedder
+from .conditioning import RateEmbedder, ClassLabelEmbedder, RateClassEmbedder
 from ase.atoms import Atoms
-from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -38,11 +37,67 @@ class DiffusionModel(LightningModule):
             if self.noiser.accumulated_q_matrices is None:
                 self.noiser.pre_compute_accum_q_matrices(scheduler=self.scheduler)
 
+        self.use_x0_reparam = True
 
     def on_fit_start(self):
         device = self.device
         self.noiser.set_device(device=device)
         self.scheduler.set_device(device=device)
+    
+    def perform_x0_reparam(self, denoise_probs, x_t, batch, time):
+        x0s = [F.one_hot(torch.tensor(i), num_classes=len(self.element_pool))*torch.ones(size=(len(x_t), 1)) for i in range(len(self.element_pool))]
+        q_revs_tot = torch.stack([self.noiser.get_reverse_transition_probabilities(
+            x0_batch=x0*1.0,
+            x_t_batch=x_t*1.0, 
+            time_batch=time[batch.batch], 
+            scheduler=self.scheduler
+        ) for x0 in x0s
+        ])
+        reverse_probs = denoise_probs[None, :, :] * q_revs_tot
+        return reverse_probs
+
+    def get_reconstruction_term_loss(self, batch, drop_condition):
+        pass
+
+    def get_reverse_transition_probabilities(self, x_t, batch, time, drop_condition):
+        denoise_logits = self.denoiser.forward(
+            x_t=x_t*1.0, 
+            batch=batch, 
+            time=time, 
+            scheduler=self.scheduler, 
+            drop_condition=drop_condition
+        )
+        nn_probs = F.softmax(denoise_logits, dim=-1)
+        if self.use_x0_reparam:
+            denoise_probs = self.perform_x0_reparam(
+                denoise_probs=nn_probs,
+                x_t=x_t*1.0,
+                batch=batch,
+                time=time
+            )
+            return denoise_probs, nn_probs
+        else:
+            return nn_probs, None
+
+    def get_denoise_matching_term_loss(self, batch, drop_condition):
+        time = self.scheduler.sample_time(n_samples=batch.batch_size)
+        x_t = self.noiser.noise_x0_xt(x0_batch=batch.x*1.0, time_batch=time[batch.batch])
+        
+        denoise_logits = self.denoiser.forward(
+            x_t=x_t*1.0, 
+            batch=batch, 
+            time=time, 
+            scheduler=self.scheduler, 
+            drop_condition=drop_condition
+        )
+
+        q_revs = self.noiser.get_reverse_transition_probabilities(
+            x0_batch=batch.x*1.0,
+            x_t_batch=x_t*1.0, 
+            time_batch=time[batch.batch], 
+            scheduler=self.scheduler
+        )
+    
 
     def calculate_loss(self, batch, batch_idx):
         time = self.scheduler.sample_time(n_samples=batch.batch_size)
@@ -55,13 +110,24 @@ class DiffusionModel(LightningModule):
             scheduler=self.scheduler, 
             drop_condition=drop_condition
         )
+
         q_revs = self.noiser.get_reverse_transition_probabilities(
             x0_batch=batch.x*1.0,
             x_t_batch=x_t*1.0, 
             time_batch=time[batch.batch], 
             scheduler=self.scheduler
         )
-        loss = self.loss_fn(denoise_logits, q_revs)
+
+        if self.use_x0_reparam:
+            denoise_probs = self.perform_x0_reparam(
+                denoise_logits=denoise_logits,
+                x_t=x_t*1.0,
+                batch=batch,
+                time=time
+            )
+            loss = None
+        else:
+            loss = self.loss_fn(denoise_logits, q_revs)
         return loss
 
     def training_step(self, batch, batch_idx):

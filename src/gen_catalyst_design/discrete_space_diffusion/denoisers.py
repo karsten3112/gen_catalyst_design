@@ -8,7 +8,6 @@ from torch.distributions import Categorical
 from torch_geometric.nn import MessagePassing
 from torch_geometric.loader import DataLoader
 from torch_geometric.data import Data
-from ase.atoms import Atoms
 from ase_ml_models.pyg import get_edges_list_from_connectivity
 
 # -------------------------------------------------------------------------------------
@@ -152,7 +151,7 @@ class SingleMessageLayer(MessagePassing):
     def forward(self, x_t, edge_index, conds_embedded, time_embedded):
         aggregated_messages = self.propagate(edge_index=edge_index, x=x_t)
         #we let the time embedding work on the global aggregation
-        x_t= self.phi_network(torch.hstack([x_t, aggregated_messages, time_embedded]))
+        x_t = self.phi_network(torch.hstack([x_t, aggregated_messages, time_embedded]))
         #We shift the final representation using gamma, and beta MLP's
         gamma, beta = self.gamma_net(conds_embedded), self.beta_net(conds_embedded)
         return gamma*x_t + beta
@@ -193,6 +192,7 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
         self.message_passing_layers = nn.ModuleList([input_layer] + hidden_layers + [output_layer])
         self.hidden_dim_rep = hidden_dim_rep
         self.n_hidden_layers = n_hidden_layers
+        self.message_dim = message_dim
     
     def forward(self, x_t, batch, time, scheduler:DiscreteTimeScheduler, drop_condition:bool):
         edge_index, conds, batch_indices = batch.edge_index, batch.y, batch.batch
@@ -231,6 +231,7 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
         state_dict = super().const_state_dict
         denoiser_info = {
             "denoiser_type":"DiscreteGNNDenoiser",
+            "message_dim":self.message_dim,
             #"layers_info":[message_layer.const_state_dict for message_layer in self.message_passing_layers],
             "n_hidden_layers":self.n_hidden_layers,
             "hidden_dim_rep":self.hidden_dim_rep

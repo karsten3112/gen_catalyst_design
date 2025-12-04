@@ -1,0 +1,1 @@
+{"_wandb":{"runtime":70},"trainer/global_step":2540,"_runtime":70,"_timestamp":1.764849129880196e+09,"_step":511,"train_loss_epoch":0.013882827945053577,"train_loss_step":0.012646895833313465,"val_loss":0.013493118807673454,"epoch":230}

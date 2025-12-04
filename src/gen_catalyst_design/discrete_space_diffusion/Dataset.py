@@ -1,11 +1,11 @@
-from gen_catalyst_design.utils import embed_elements_as_onehot
-from torch_geometric.data import Dataset, InMemoryDataset, Data
+from torch_geometric.data import Dataset, Data
+from torch_geometric.loader import DataLoader
 from ase_ml_models.pyg import get_edges_list_from_connectivity
 import torch.nn.functional as F
 from ase.atoms import Atoms
 from ase.atom import Atom
 import torch
-
+import random
 
 class Graph(Data):
     def __init__(
@@ -51,4 +51,168 @@ class GraphDataset(Dataset):
         for graph, new_x in zip(self[unique_batch_indices], new_repr):
             graph.x = new_x
 
-        
+
+def embed_elements_as_onehot(elements:list, element_pool:list):
+    mapping_dict = {element:i for i, element in enumerate(element_pool)}
+    return torch.stack([get_onehot(element=element, mapping_dict=mapping_dict) for element in elements])
+
+
+def embed_cluster_as_onehots(atoms:Atoms, element_pool:list):
+    elements = atoms.get_chemical_symbols()
+    return embed_elements_as_onehot(elements=elements, element_pool=element_pool)
+
+
+def get_onehot(element:str, mapping_dict:dict):
+    onehot = F.one_hot(torch.tensor(mapping_dict[element]), len(mapping_dict))
+    return onehot
+
+def get_graph_from_atoms(
+        atoms:Atoms,
+        element_pool:list,
+        condition_key:str=None,
+    ):
+    edges_list = get_edges_list_from_connectivity(atoms.info["connectivity"])
+    edge_index = torch.tensor(edges_list, dtype=torch.long).reshape(2,-1)
+    elements = atoms.get_chemical_symbols()
+    graph = Graph(
+        x=embed_elements_as_onehot(elements=elements, element_pool=element_pool),
+        edge_index=edge_index,
+        pos=torch.tensor(atoms.positions)
+    )
+    if condition_key is not None:
+        if condition_key in atoms.info:
+            graph.y = atoms.info[condition_key]
+        else:
+            raise Exception(f"condition key {condition_key} is not available in datadict, having: {atoms.info.keys()}")
+    return graph
+
+def get_graph_from_datadict(
+        datadict:dict, 
+        template_atoms:Atoms, 
+        element_pool:list, 
+        condition_key:str=None
+    ):
+    template_atoms.symbols = datadict["elements"]
+    graph = get_graph_from_atoms(
+        atoms=template_atoms,
+        element_pool=element_pool,
+        condition_key=None
+    )
+    if condition_key is not None:
+        if condition_key in datadict:
+            graph.y = datadict[condition_key]
+        else:
+            raise Exception(f"condition key {condition_key} is not available in datadict, having: {datadict.keys()}") 
+    return graph
+
+def get_dataset_from_datadicts(
+        datadicts:list, 
+        template_atoms:Atoms, 
+        element_pool:list, 
+        condition_key:str=None
+    ):
+    graph_list = [
+        get_graph_from_datadict(
+            datadict=datadict, 
+            template_atoms=template_atoms, 
+            element_pool=element_pool, 
+            condition_key=condition_key
+        )
+        for datadict in datadicts
+    ]
+    return GraphDataset(graph_list=graph_list)
+
+
+def get_dataset_from_atoms_list(
+        atoms_list:list,
+        element_pool:list,
+        condition_key:str=None
+    ):
+    graph_list = [
+        get_graph_from_atoms(
+            atoms=atoms, 
+            element_pool=element_pool, 
+            condition_key=condition_key
+        )
+        for atoms in atoms_list
+    ]
+    return GraphDataset(graph_list=graph_list)
+
+
+def get_dataloaders_from_datadicts(
+        data_dicts:list, 
+        element_pool:list,
+        template_atoms:Atoms,
+        batch_size:int=42,
+        condition_key:str="class", 
+        train_val_split:float=0.1,
+        do_initial_shuffling:bool=True,
+        loader_kwargs:dict={} 
+    ):
+    if do_initial_shuffling:
+        random.shuffle(data_dicts)
+    split_index = int((1-train_val_split)*len(data_dicts))
+    train_dataset = get_dataset_from_datadicts(
+        datadicts=data_dicts[:split_index],
+        template_atoms=template_atoms,
+        element_pool=element_pool,
+        condition_key=condition_key
+    )
+    val_dataset = get_dataset_from_datadicts(
+        datadicts=data_dicts[split_index:],
+        template_atoms=template_atoms,
+        element_pool=element_pool,
+        condition_key=condition_key
+    )
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True,
+        **loader_kwargs
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        **loader_kwargs
+    )
+    return train_loader, val_loader
+
+def get_dataloaders_from_atoms_list(
+        atoms_list:list, 
+        element_pool:list,
+        batch_size:int=42,
+        condition_key:str="class", 
+        train_val_split:float=0.1,
+        do_initial_shuffling:bool=True,
+        random_seed:int=42,
+        loader_kwargs:dict={} 
+    ):
+    if do_initial_shuffling:
+        random.seed(random_seed)
+        random.shuffle(atoms_list)
+    split_index = int((1-train_val_split)*len(atoms_list))
+    train_dataset = get_dataset_from_atoms_list(
+        atoms_list=atoms_list[:split_index],
+        element_pool=element_pool,
+        condition_key=condition_key
+    )
+    val_dataset = get_dataset_from_atoms_list(
+        atoms_list=atoms_list[split_index:],
+        element_pool=element_pool,
+        condition_key=condition_key
+    )
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True,
+        **loader_kwargs
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        **loader_kwargs
+    )
+    return train_loader, val_loader
+
