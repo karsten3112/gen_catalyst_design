@@ -1,0 +1,27 @@
+element_pool:
+- (X)
+- Rh
+- Cu
+- Au
+- Pd
+random_seed: 42
+drop_prob: 0.1
+lr: 0.0001
+weight_decay: 0.0001
+scheduler_info:
+  t_init: 1
+  t_final: 1000
+  beta_max: 0.10000000149011612
+  beta_min: 9.999999747378752e-05
+  scheduler_type: CosineScheduler
+denoiser_info:
+  condition_info:
+    embedding_dim: 8
+    num_labels: 12
+    embedding_type: ClassLabelEmbedder
+  denoiser_type: DiscreteGNNDenoiser
+  message_dim: 8
+  n_hidden_layers: 1
+  hidden_dim_rep: 8
+noiser_info:
+  noiser_type: AbsorbingStateNoiser

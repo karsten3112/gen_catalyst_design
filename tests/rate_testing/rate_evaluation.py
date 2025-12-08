@@ -46,16 +46,16 @@ def main():
     )
     
     models = [
-        "model_002"
+        "model_003"
     ]
 
     for opt_method in opt_methods:
         file_dir = os.path.join("samples", opt_method)
         #models = os.listdir(file_dir)
         for model in models:
-            class_divisions = os.listdir(os.path.join(file_dir, model))
+            class_divisions = ["class_7"]#os.listdir(os.path.join(file_dir, model))
             for i, cls in enumerate(class_divisions):
-                samples_files = os.listdir(os.path.join(file_dir, model, cls))
+                samples_files = ["g_0.8_scale.traj"]#os.listdir(os.path.join(file_dir, model, cls))
                 for sample_file in samples_files:
                     filename = os.path.join(file_dir, model, cls, sample_file)
                     atoms_list = read(filename=filename, index=load_indices)

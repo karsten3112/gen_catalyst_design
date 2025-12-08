@@ -24,15 +24,15 @@ def main():
 
     conditions = {
         "random_search":[0, 2, 4, 6],
-        "GeneticAlgorithm":[1, 4, 7, 10]
+        "GeneticAlgorithm":[7]#[1, 4, 7, 10]
     }
 
 
-    guidance_scales = [0.6, 0.8, 1.0, 1.2, 2.0]
+    guidance_scales = [0.8] #0.6, 1.0, 1.2, 2.0]
     n_samples = 200
 
     models = [
-        "model_002"
+        "model_003"
     ]
 
     for opt_method in opt_methods:

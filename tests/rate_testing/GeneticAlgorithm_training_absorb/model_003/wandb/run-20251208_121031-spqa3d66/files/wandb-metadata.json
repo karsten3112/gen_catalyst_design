@@ -1,0 +1,36 @@
+{
+  "os": "macOS-15.6.1-arm64-arm-64bit",
+  "python": "CPython 3.10.19",
+  "startedAt": "2025-12-08T11:10:31.437163Z",
+  "program": "/Users/karsten/Desktop/speciale/gen_catalyst_design/tests/rate_testing/test_training.py",
+  "codePath": "tests/rate_testing/test_training.py",
+  "codePathLocal": "test_training.py",
+  "git": {
+    "remote": "https://github.com/karsten3112/gen_catalyst_design.git",
+    "commit": "3a6b83a8ab4052b8c555a8068a0a9f01c9ac254c"
+  },
+  "email": "karsten.walz.jensen@gmail.com",
+  "root": "GeneticAlgorithm_training_absorb/model_003",
+  "host": "macbook-pro-tilhrende-karsten.local.au-access.client.au.dk",
+  "executable": "/opt/anaconda3/envs/cat_opt/bin/python",
+  "cpu_count": 10,
+  "cpu_count_logical": 10,
+  "disk": {
+    "/": {
+      "total": "494384795648",
+      "used": "151115083776"
+    }
+  },
+  "memory": {
+    "total": "17179869184"
+  },
+  "apple": {
+    "name": "Apple M4",
+    "ecpuCores": 6,
+    "pcpuCores": 4,
+    "gpuCores": 10,
+    "memoryGb": 16,
+    "ramTotalBytes": "17179869184"
+  },
+  "writerId": "vvxy2lod07s9ukifuvvmq0wf9qslqsei"
+}

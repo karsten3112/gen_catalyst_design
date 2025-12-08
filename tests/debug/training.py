@@ -24,7 +24,9 @@ def main():
     torch.cuda.manual_seed_all(random_seed)
     
     use_absorbing_state = True
-    mask_classes = True
+    mask_classes = False #REMEMBER TO SET THIS PARAMETER
+    if mask_classes:
+        print("CLASSES WILL BE MASKED DURING TRAINING; SO MODEL BECOMES UNCONDITIONAL")
     element_pool = ["Au","Cu","Pd","Rh","Ni","Ga"]
     if use_absorbing_state:
         element_pool = ["(X)"] + element_pool

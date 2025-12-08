@@ -4,9 +4,15 @@ from gen_catalyst_design.discrete_space_diffusion import (
     DiscreteGNNDenoiser, CosineScheduler, ExponentialScheduler,
     AbsorbingStateNoiser, UniformTransitionsNoiser
 )
+from gen_catalyst_design.utils import (
+    setup_trainer_and_logger
+)
+
+from gen_catalyst_design.discrete_space_diffusion.Dataset import (
+    get_dataloaders_from_datadicts
+)
 import wandb
 from ase_ml_models.databases import get_atoms_list_from_db
-from gen_catalyst_design.utils import get_dataloaders_from_datadicts, setup_trainer_and_logger
 from pytorch_lightning.loggers import WandbLogger
 from torch_geometric.loader import DataLoader
 import matplotlib.pyplot as plt
@@ -106,7 +112,7 @@ def main():
             scheduler=scheduler,
             noiser=noiser,
             denoiser=denoiser,
-            drop_prob=0.20
+            drop_prob=0.10
         )
         diff_models[opt_method] = diff_model
 

@@ -30,8 +30,8 @@ def main():
     hist, edges = np.histogram(rates_training, bins=bins)
     hist_norm_training = hist/np.sum(hist)
 
-    samples_dir = "model_001/rate_evals"
-    classes_for_plot = [1]
+    samples_dir = "model_003/rate_evals"
+    classes_for_plot = [7]
     y_lim = 0.3
     for cls in classes_for_plot:
         fig, axs = plt.subplots(5,1, figsize=(8,12), sharex=True, layout="constrained")

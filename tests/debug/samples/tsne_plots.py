@@ -38,7 +38,7 @@ def main():
     #    indices = class_indices_dict[cls]
     #    ax.scatter(training_set_dim_reduced[indices][:,0], training_set_dim_reduced[indices][:,1], c=f"C{cls}")
 
-    model = "model_001"
+    model = "model_004"
     guidance_scales = [0.8]
     
     denoised_trajes = {}

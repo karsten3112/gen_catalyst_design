@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule
 from ase.atoms import Atoms
+from torch.distributions import Categorical
 
 
 class DiffusionModel(LightningModule):
@@ -36,7 +37,8 @@ class DiffusionModel(LightningModule):
                 self.noiser.pre_compute_accum_q_matrices(scheduler=self.scheduler)
 
         self.cross_entropy_logits = nn.CrossEntropyLoss()
-        self.use_x0_reparam = True
+        #set to false for now as it does not work currently
+        self.use_x0_reparam = False
         self.auxillary_weight = None
 
     def on_fit_start(self):
@@ -44,6 +46,7 @@ class DiffusionModel(LightningModule):
         self.noiser.set_device(device=device)
         self.scheduler.set_device(device=device)
     
+    #Does not work currently
     def perform_x0_reparam(self, denoise_probs, x_t, batch, time):
         x0s = [F.one_hot(torch.tensor(i), num_classes=len(self.element_pool))*torch.ones(size=(len(x_t), 1)) for i in range(len(self.element_pool))]
         print(x_t[0])
@@ -54,29 +57,29 @@ class DiffusionModel(LightningModule):
             scheduler=self.scheduler
         ) for x0 in x0s
         ])
-        print(q_revs_tot[1][0])
-        print(time[0])
         result_probs = torch.zeros_like(x_t)
         for ii in range(len(self.element_pool)):
             for x0_rev in q_revs_tot:
                 result_probs[:,ii] += x0_rev[:,ii]*denoise_probs[:,ii]
-        #print(result_probs)
-            
-
-        #reverse_logits = torch.logsumexp(denoise_probs[None, :, :] * q_revs_tot, dim=0)
-        #print(reverse_logits)
         return result_probs
 
+    
+    def get_reverse_transition_probabilities(self, x_t, batch, time, guidance_scale):
+        logits = [
+           self.denoiser.get_logits(
+               x_t=x_t,
+               batch=batch,
+               time=time,
+               scheduler=self.scheduler,
+               drop_cond=drop_condition
+           )
+           for drop_condition in [False, True]
+        ]
+        
+        #Use classifier free guidance in log-space
+        guided_logits = guidance_scale*logits[0] + (1.0-guidance_scale)*logits[1]
 
-    def get_reverse_transition_probabilities(self, x_t, batch, time, drop_condition):
-        denoise_logits = self.denoiser.forward(
-            x_t=x_t*1.0, 
-            batch=batch, 
-            time=time, 
-            scheduler=self.scheduler, 
-            drop_condition=drop_condition
-        )
-        nn_probs = F.softmax(denoise_logits, dim=-1)
+        nn_probs = F.softmax(guided_logits, dim=-1)
         if self.use_x0_reparam:
             denoise_probs = self.perform_x0_reparam(
                 denoise_probs=nn_probs,
@@ -84,14 +87,13 @@ class DiffusionModel(LightningModule):
                 batch=batch,
                 time=time
             )
-            return denoise_probs, nn_probs
+            return denoise_probs
         else:
-            return nn_probs, None
+            return nn_probs
 
     def calc_cross_entropy_from_probs(self, p, q):
         return (p*torch.log(q)).sum(dim=-1)
 
-    
     def get_auxillary_term_loss(self, logits, x_t, batch, time):
         return 0.0
 
@@ -115,11 +117,9 @@ class DiffusionModel(LightningModule):
                 time=time
             )
 
-            #print(reverse_probs)
             return self.cross_entropy_logits(reverse_probs, q_revs)
         else:
             return self.cross_entropy_logits(logits, q_revs)
-
 
     def get_reconstruction_term_loss(self, logits, x_1, batch):
         #get the known forward noising probabilites for going from x0 -> x1
@@ -143,13 +143,13 @@ class DiffusionModel(LightningModule):
         else:
             return self.cross_entropy_logits(logits, q_forward)
     
-#Need to weigh the individual terms correctly such that it fits with timesteps.
     def calculate_loss(self, batch, batch_idx):
         loss = 0.0
         #Determining whether conditioning should be dropped
         drop_condition = True if torch.rand(1) <= self.drop_prob else False
         #Sampling timesteps uniformly across all batches from t=2 -> T_final
-        time = self.scheduler.sample_time(n_samples=batch.batch_size, t_span=(2,self.scheduler.t_final))
+        t_span = (2, self.scheduler.t_final)
+        time = self.scheduler.sample_time(n_samples=batch.batch_size, t_span=t_span)
         #Noising the batch up to sampled timestep
         x_t = self.noiser.noise_x0_xt(x0_batch=batch.x*1.0, time_batch=time[batch.batch])
         #Lets the denoiser predict the logits of the reverse process of the noising
@@ -161,7 +161,8 @@ class DiffusionModel(LightningModule):
             drop_cond=drop_condition   
         )
         #Calculating the denoise matching term from the loss and adding it to the total loss
-        loss+=self.get_denoise_matching_term_loss(
+        #Weighing the term here as the sum by multiplying by (Tfinal - 2)
+        loss+=(t_span[1]-t_span[0])*self.get_denoise_matching_term_loss(
             logits=logits,
             x_t=x_t,
             batch=batch,
@@ -174,20 +175,20 @@ class DiffusionModel(LightningModule):
         )
 
         #Letting the model predict the logits for this noising
-        #recon_logits = self.denoiser.get_logits(
-        #    x_t=x_1*1.0,
-        #    batch=batch,
-        #    time=time,
-        #    scheduler=self.scheduler,
-        #    drop_cond=drop_condition   
-        #)
+        recon_logits = self.denoiser.get_logits(
+            x_t=x_1*1.0,
+            batch=batch,
+            time=time,
+            scheduler=self.scheduler,
+            drop_cond=drop_condition   
+        )
 
         #Calculating the reconstruction term and adding it to the total loss
-        #loss+=self.get_reconstruction_term_loss(
-        #    logits=recon_logits,
-        #    x_1=x_1,
-        #    batch=batch
-        #)
+        loss+=self.get_reconstruction_term_loss(
+            logits=recon_logits,
+            x_1=x_1,
+            batch=batch
+        )
         
         #If desired add the auxillary term as described in the D3PM paper
         if self.auxillary_weight is not None:
@@ -242,9 +243,8 @@ class DiffusionModel(LightningModule):
             else:
                 denoised_xs_batched = []
             
-            denoised_batch_list = self.denoiser.denoise_batch(
+            denoised_batch_list = self.denoise_batch(
                 batch=batch, 
-                scheduler=self.scheduler, 
                 guidance_scale=guidance_scale, 
                 timesteps=timesteps,
                 log_all_timesteps=log_all_timesteps
@@ -262,6 +262,45 @@ class DiffusionModel(LightningModule):
             samples+=result_list
         return samples
     
+    def denoise_batch(self, batch, guidance_scale, timesteps, log_all_timesteps):
+        batch_list = []
+        if timesteps is None:
+            timesteps = torch.arange(self.scheduler.t_init, self.scheduler.t_final, 1).flip(dims=(0,))
+        for timestep in timesteps:
+            xs_denoised = self.single_denoise_step(
+                batch=batch, 
+                time=timestep, 
+                guidance_scale=guidance_scale
+            )
+            if log_all_timesteps:
+                batch_list.append(xs_denoised)
+            else:
+                batch_list = [xs_denoised]
+        return batch_list
+
+    def get_distribution(self, probabilites:torch.tensor) -> Categorical:
+        return Categorical(probs=probabilites)
+
+    def sample_onehot_vectors(self, probabilities:torch.tensor):
+        distribution = self.get_distribution(probabilites=probabilities)
+        samples = distribution.sample()
+        onehots = F.one_hot(samples, num_classes=len(self.element_pool))
+        return onehots
+
+    def single_denoise_step(self, batch, time, guidance_scale:float=2.0):
+        ts = time*torch.ones(size=(batch.batch_size,))
+        probs = self.get_reverse_transition_probabilities(
+            x_t=batch.x*1.0,
+            batch=batch, 
+            time=ts, 
+            guidance_scale=guidance_scale
+        )
+        if time == self.scheduler.t_init and self.denoiser.absorbing_state:
+            probs[:,self.denoiser.absorbing_state_index] = 0.0
+        xs_denoised = self.sample_onehot_vectors(probabilities=probs)
+        batch.x = xs_denoised
+        return xs_denoised
+
     def convert_sample_dict_to_atoms(self, sample_dict, template_atoms):
         atoms = template_atoms.copy()
         updated_elements = ["O" if elem == "(X)" else elem for elem in sample_dict["elements"]]
