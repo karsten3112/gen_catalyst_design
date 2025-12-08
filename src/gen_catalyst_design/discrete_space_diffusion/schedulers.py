@@ -39,8 +39,11 @@ class DiscreteTimeScheduler(nn.Module):
     def __call__(self, t:torch.tensor):
         raise Exception("Must be implemented by sub-class")
     
-    def sample_time(self, n_samples:int):
-        return torch.randint(low=self.t_init, high=self.t_final, size=(n_samples,), device=self.device)
+    def sample_time(self, n_samples:int, t_span:tuple=None):
+        if t_span is not None:
+            return torch.randint(low=t_span[0], high=t_span[1], size=(n_samples,), device=self.device)
+        else:
+            return torch.randint(low=self.t_init, high=self.t_final, size=(n_samples,), device=self.device)
 
 
 # -------------------------------------------------------------------------------------

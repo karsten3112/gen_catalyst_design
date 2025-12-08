@@ -47,10 +47,10 @@ class DiscreteSpaceDenoiser(nn.Module):
         return torch.hstack([cos, sin])
     
     def get_probabilities_from_logits(self, logits):
-        probabilities = F.softmax(logits, dim=-1)
-        return probabilities
+        probabilities = F.log_softmax(logits, dim=-1) 
+        return torch.exp(probabilities)
     
-    def get_transition_probabilities(self, batch, time, scheduler:DiscreteTimeScheduler, guidance_scale:float=2.0, **kwargs):
+    def get_guided_logits(self, batch, time, scheduler:DiscreteTimeScheduler, guidance_scale:float=2.0, **kwargs):
         logits = [
             self.forward(
             x_t=batch.x*1.0, 
@@ -60,11 +60,18 @@ class DiscreteSpaceDenoiser(nn.Module):
             drop_condition=drop_cond) for drop_cond in [True, False]
         ]
         logits_guided = logits[0] + guidance_scale*(logits[1] - logits[0])
-        probs = self.get_probabilities_from_logits(logits=logits_guided)
-        if self.absorbing_state:
-            mask_indices = time[batch.batch] == scheduler.t_init
-            probs[mask_indices, self.absorbing_state_index] = 0.0 #Enforcing zero probabilities for initial timestep/final for denoising at absorbing state
-        return probs
+        return logits_guided
+    
+    def get_logits(self, x_t, batch, time, scheduler:DiscreteTimeScheduler, drop_cond:bool):
+        logits = self.forward(
+            x_t=x_t, 
+            batch=batch, 
+            time=time, 
+            scheduler=scheduler, 
+            drop_condition=drop_cond
+        )
+        return logits
+        
 
     def denoise_batch(self, batch, scheduler:DiscreteTimeScheduler, guidance_scale:float=2.0, timesteps:torch.tensor=None, log_all_timesteps:bool=False):
         batch_list = []

@@ -19,7 +19,6 @@ class DiffusionModel(LightningModule):
             denoiser:DiscreteSpaceDenoiser=None,
             drop_prob:float=0.2,
             random_seed:int=42,
-            loss_fn:callable=nn.CrossEntropyLoss(),
             lr:float=1e-4,
             weight_decay:float=1e-4,
         ):
@@ -30,14 +29,15 @@ class DiffusionModel(LightningModule):
         self.denoiser = denoiser
         self.random_seed = random_seed
         self.drop_prob = drop_prob
-        self.loss_fn = loss_fn
         self.lr = lr
         self.weight_decay = weight_decay
         if self.noiser is not None:
             if self.noiser.accumulated_q_matrices is None:
                 self.noiser.pre_compute_accum_q_matrices(scheduler=self.scheduler)
 
+        self.cross_entropy_logits = nn.CrossEntropyLoss()
         self.use_x0_reparam = True
+        self.auxillary_weight = None
 
     def on_fit_start(self):
         device = self.device
@@ -46,6 +46,7 @@ class DiffusionModel(LightningModule):
     
     def perform_x0_reparam(self, denoise_probs, x_t, batch, time):
         x0s = [F.one_hot(torch.tensor(i), num_classes=len(self.element_pool))*torch.ones(size=(len(x_t), 1)) for i in range(len(self.element_pool))]
+        print(x_t[0])
         q_revs_tot = torch.stack([self.noiser.get_reverse_transition_probabilities(
             x0_batch=x0*1.0,
             x_t_batch=x_t*1.0, 
@@ -53,11 +54,19 @@ class DiffusionModel(LightningModule):
             scheduler=self.scheduler
         ) for x0 in x0s
         ])
-        reverse_probs = denoise_probs[None, :, :] * q_revs_tot
-        return reverse_probs
+        print(q_revs_tot[1][0])
+        print(time[0])
+        result_probs = torch.zeros_like(x_t)
+        for ii in range(len(self.element_pool)):
+            for x0_rev in q_revs_tot:
+                result_probs[:,ii] += x0_rev[:,ii]*denoise_probs[:,ii]
+        #print(result_probs)
+            
 
-    def get_reconstruction_term_loss(self, batch, drop_condition):
-        pass
+        #reverse_logits = torch.logsumexp(denoise_probs[None, :, :] * q_revs_tot, dim=0)
+        #print(reverse_logits)
+        return result_probs
+
 
     def get_reverse_transition_probabilities(self, x_t, batch, time, drop_condition):
         denoise_logits = self.denoiser.forward(
@@ -79,55 +88,111 @@ class DiffusionModel(LightningModule):
         else:
             return nn_probs, None
 
-    def get_denoise_matching_term_loss(self, batch, drop_condition):
-        time = self.scheduler.sample_time(n_samples=batch.batch_size)
-        x_t = self.noiser.noise_x0_xt(x0_batch=batch.x*1.0, time_batch=time[batch.batch])
-        
-        denoise_logits = self.denoiser.forward(
-            x_t=x_t*1.0, 
-            batch=batch, 
-            time=time, 
-            scheduler=self.scheduler, 
-            drop_condition=drop_condition
-        )
+    def calc_cross_entropy_from_probs(self, p, q):
+        return (p*torch.log(q)).sum(dim=-1)
 
-        q_revs = self.noiser.get_reverse_transition_probabilities(
-            x0_batch=batch.x*1.0,
-            x_t_batch=x_t*1.0, 
-            time_batch=time[batch.batch], 
-            scheduler=self.scheduler
-        )
     
+    def get_auxillary_term_loss(self, logits, x_t, batch, time):
+        return 0.0
 
-    def calculate_loss(self, batch, batch_idx):
-        time = self.scheduler.sample_time(n_samples=batch.batch_size)
-        x_t = self.noiser.noise_x0_xt(x0_batch=batch.x*1.0, time_batch=time[batch.batch])
-        drop_condition = True if torch.rand(1) <= self.drop_prob else False
-        denoise_logits = self.denoiser.forward(
-            x_t=x_t*1.0, 
-            batch=batch, 
-            time=time, 
-            scheduler=self.scheduler, 
-            drop_condition=drop_condition
-        )
-
+    def get_denoise_matching_term_loss(self, logits, x_t, batch, time):
+        #Calculate the known true posterier for when x0 is known
         q_revs = self.noiser.get_reverse_transition_probabilities(
             x0_batch=batch.x*1.0,
             x_t_batch=x_t*1.0, 
             time_batch=time[batch.batch], 
             scheduler=self.scheduler
         )
-
+        #Apply the x0 reparameterization as outlined in D3PM if desired
+        #return the cross entropy between the true posterier and the predicted reversals
+        #Note here that this is equal to the KL-divergence up to a constant which is not learnable
         if self.use_x0_reparam:
-            denoise_probs = self.perform_x0_reparam(
-                denoise_logits=denoise_logits,
+            denoise_probs = self.denoiser.get_probabilities_from_logits(logits=logits)
+            reverse_probs = self.perform_x0_reparam(
+                denoise_probs=denoise_probs,
                 x_t=x_t*1.0,
                 batch=batch,
                 time=time
             )
-            loss = None
+
+            #print(reverse_probs)
+            return self.cross_entropy_logits(reverse_probs, q_revs)
         else:
-            loss = self.loss_fn(denoise_logits, q_revs)
+            return self.cross_entropy_logits(logits, q_revs)
+
+
+    def get_reconstruction_term_loss(self, logits, x_1, batch):
+        #get the known forward noising probabilites for going from x0 -> x1
+        time = torch.ones(size=(batch.batch_size,), dtype=torch.long)
+        q_forward = self.noiser.get_transition_probabilities(
+            x_t_batch=x_1*1.0,
+            time_batch=time[batch.batch],
+            scheduler=self.scheduler
+        )
+        #Apply the x0 reparameterization as outlined in D3PM if desired
+        #Return the cross-entropy between the forward noising step and the predicted reversal.
+        if self.use_x0_reparam:
+            denoise_probs = self.denoiser.get_probabilities_from_logits(logits=logits)
+            reverse_probs = self.perform_x0_reparam(
+                denoise_probs=denoise_probs,
+                x_t=x_1*1.0,
+                batch=batch,
+                time=time
+            )
+            return self.calc_cross_entropy_from_probs(q=q_forward, p=reverse_probs)
+        else:
+            return self.cross_entropy_logits(logits, q_forward)
+    
+#Need to weigh the individual terms correctly such that it fits with timesteps.
+    def calculate_loss(self, batch, batch_idx):
+        loss = 0.0
+        #Determining whether conditioning should be dropped
+        drop_condition = True if torch.rand(1) <= self.drop_prob else False
+        #Sampling timesteps uniformly across all batches from t=2 -> T_final
+        time = self.scheduler.sample_time(n_samples=batch.batch_size, t_span=(2,self.scheduler.t_final))
+        #Noising the batch up to sampled timestep
+        x_t = self.noiser.noise_x0_xt(x0_batch=batch.x*1.0, time_batch=time[batch.batch])
+        #Lets the denoiser predict the logits of the reverse process of the noising
+        logits = self.denoiser.get_logits(
+            x_t=x_t*1.0,
+            batch=batch,
+            time=time,
+            scheduler=self.scheduler,
+            drop_cond=drop_condition   
+        )
+        #Calculating the denoise matching term from the loss and adding it to the total loss
+        loss+=self.get_denoise_matching_term_loss(
+            logits=logits,
+            x_t=x_t,
+            batch=batch,
+            time=time
+        )
+        #Noises the batch up to timestep 1 to get montecarlo estimate for reconstruction term
+        x_1 = self.noiser.noise_x0_xt(
+            x0_batch=batch.x*1.0, 
+            time_batch=torch.ones(size=(batch.batch_size,), dtype=torch.long)[batch.batch]
+        )
+
+        #Letting the model predict the logits for this noising
+        #recon_logits = self.denoiser.get_logits(
+        #    x_t=x_1*1.0,
+        #    batch=batch,
+        #    time=time,
+        #    scheduler=self.scheduler,
+        #    drop_cond=drop_condition   
+        #)
+
+        #Calculating the reconstruction term and adding it to the total loss
+        #loss+=self.get_reconstruction_term_loss(
+        #    logits=recon_logits,
+        #    x_1=x_1,
+        #    batch=batch
+        #)
+        
+        #If desired add the auxillary term as described in the D3PM paper
+        if self.auxillary_weight is not None:
+            loss+=0.0
+
         return loss
 
     def training_step(self, batch, batch_idx):

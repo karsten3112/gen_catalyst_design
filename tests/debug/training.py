@@ -65,7 +65,6 @@ def main():
     for batch in train_loader:
         diff_model.calculate_loss(batch=batch, batch_idx=None)
 
-    exit()
     trainer_kwargs={
         "max_epochs":-1,
         "log_every_n_steps":50, 
