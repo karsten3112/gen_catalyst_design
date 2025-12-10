@@ -53,6 +53,7 @@ class DiffusionModel(LightningModule):
     def perform_x0_reparam(self, denoise_logits, x_t, batch, time):
         denoise_probs = torch.softmax(denoise_logits, dim=-1)
         x0s = [F.one_hot(torch.tensor(i), num_classes=len(self.element_pool))*torch.ones(size=(len(x_t), 1)) for i in range(len(self.element_pool))]
+        print(x_t[0])
         q_revs_tot = torch.stack([self.noiser.get_reverse_transition_probabilities(
             x0_batch=x0*1.0,
             x_t_batch=x_t*1.0, 

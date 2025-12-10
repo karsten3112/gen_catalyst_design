@@ -59,9 +59,6 @@ class DiscreteSpaceNoiser(nn.Module):
     
     def get_accum_transition_probabilities(self, x0_batch:torch.tensor, time_batch:torch.tensor):
         Q_accum_t = self.accumulated_q_matrices[time_batch]
-        #print(Q_accum_t)
-        #print(Q_accum_t.shape)
-        #print(time_batch.shape)
         probs = torch.bmm(x0_batch.unsqueeze(1), Q_accum_t).squeeze()
         return probs
 
