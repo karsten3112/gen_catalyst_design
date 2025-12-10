@@ -12,13 +12,14 @@ def main():
     torch.cuda.manual_seed_all(random_seed)
     miller_index = "100"
     models = [
-        "model_001",
+        #"model_001",
+        #"model_002"
         "model_002"
     ]
 
-    masked_classes_model = "model_002"
+    masked_classes_model = "hej"
 
-    guidance_scales = [0.6, 0.8, 1.0, 1.2, 2.0]
+    guidance_scales = [0.6, 0.8, 2.0]#1.0, 1.2, 2.0]
     classes = [0, 1, 2]
     num_samples = 10
 

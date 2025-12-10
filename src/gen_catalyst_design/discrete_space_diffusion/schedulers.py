@@ -19,8 +19,8 @@ class DiscreteTimeScheduler(nn.Module):
             raise Exception(f"initial time stamp t_init, cannot be less than 1; given was:{t_init}")
         self.t_init = t_init
         self.t_final = t_final
-        self.beta_max = torch.tensor(beta_max)
-        self.beta_min = torch.tensor(beta_min)
+        self.beta_max = torch.tensor(beta_max, dtype=torch.float64)
+        self.beta_min = torch.tensor(beta_min, dtype=torch.float64)
         self.device = None
 
     @property
@@ -39,8 +39,11 @@ class DiscreteTimeScheduler(nn.Module):
     def __call__(self, t:torch.tensor):
         raise Exception("Must be implemented by sub-class")
     
-    def sample_time(self, n_samples:int):
-        return torch.randint(low=self.t_init, high=self.t_final, size=(n_samples,), device=self.device)
+    def sample_time(self, n_samples:int, t_span:tuple=None):
+        if t_span is not None:
+            return torch.randint(low=t_span[0], high=t_span[1], size=(n_samples,), device=self.device)
+        else:
+            return torch.randint(low=self.t_init, high=self.t_final, size=(n_samples,), device=self.device)
 
 
 # -------------------------------------------------------------------------------------

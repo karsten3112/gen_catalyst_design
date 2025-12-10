@@ -36,8 +36,11 @@ class DiscreteSpaceNoiser(nn.Module):
             time = torch.arange(scheduler.t_init, scheduler.t_final+1, 1)
             beta_t_batch = scheduler(t=time)
             Qts = self.__call__(beta_t_batch=beta_t_batch)
-            accum_matrices = []
             result_matrix = torch.eye(n=self.n_classes)
+            #print((result_matrix+1e-12).sum(dim=1, keepdim=True))
+            regularized_matrix = result_matrix*1.0#(result_matrix+1e-12)/(result_matrix+1e-12).sum(dim=1, keepdim=True)
+            #print(regularized_matrix)
+            accum_matrices = [regularized_matrix]
             for Qt in Qts: 
                 result_matrix @= Qt
                 accum_matrices.append(result_matrix)
@@ -49,11 +52,16 @@ class DiscreteSpaceNoiser(nn.Module):
     def get_transition_probabilities(self, x_t_batch:torch.tensor, time_batch:torch.tensor, scheduler:DiscreteTimeScheduler):
         beta_t_batch = scheduler(t=time_batch)
         Qts = self.__call__(beta_t_batch=beta_t_batch)
-        probs = torch.bmm(x_t_batch.unsqueeze(0), Qts).squeeze()
+        #print(Qts.shape)
+        #print(x_t_batch.unsqueeze(0).shape)
+        probs = torch.bmm(x_t_batch.unsqueeze(1), Qts).squeeze()
         return probs
     
     def get_accum_transition_probabilities(self, x0_batch:torch.tensor, time_batch:torch.tensor):
-        Q_accum_t = self.accumulated_q_matrices[time_batch-1]
+        Q_accum_t = self.accumulated_q_matrices[time_batch]
+        #print(Q_accum_t)
+        #print(Q_accum_t.shape)
+        #print(time_batch.shape)
         probs = torch.bmm(x0_batch.unsqueeze(1), Q_accum_t).squeeze()
         return probs
 
@@ -67,15 +75,18 @@ class DiscreteSpaceNoiser(nn.Module):
         if self.accumulated_q_matrices is None:
             raise Exception("reverse probabilites cannot be calculated before the accumulated matrices have been calculated")
         else:
-            Q_accum_t = self.accumulated_q_matrices[time_batch-1]
-            Q_accum_tm1 = self.accumulated_q_matrices[time_batch-2]
+            Q_accum_t = self.accumulated_q_matrices[time_batch]
+            Q_accum_tm1 = self.accumulated_q_matrices[time_batch-1]
             beta_t_batch = scheduler(t=time_batch)
             Qts = self.__call__(beta_t_batch=beta_t_batch)
             p1 = torch.bmm(x_t_batch.unsqueeze(1), Qts.transpose(-2,-1)).squeeze()
             p2 = torch.bmm(x0_batch.unsqueeze(1), Q_accum_tm1).squeeze() #(1.0*x0) @ Q_accum_tm1
             den = torch.bmm(x0_batch.unsqueeze(1), Q_accum_t).squeeze() #(1.0*x0) @ Q_accum_t
             denom = (den * x_t_batch).sum(dim=-1, keepdim=True)
-            return p1*p2/denom
+            reg_indices = (denom > 0.0).reshape(shape=(len(denom),))
+            probs = p1*p2
+            probs[reg_indices]/=denom[reg_indices]
+            return probs
     
     def get_dist(self, probabilites:torch.tensor) -> Categorical:
         return Categorical(probs=probabilites)
@@ -140,7 +151,7 @@ class UniformTransitionsNoiser(DiscreteSpaceNoiser):
 
 
 class AbsorbingStateNoiser(DiscreteSpaceNoiser):
-    def __init__(self, element_pool, accumulated_q_matrices = None, random_state = 42):
+    def __init__(self, element_pool, accumulated_q_matrices = None, random_state = 42, eps=1e-12):
         if "(X)" not in element_pool:
             raise Exception(f"Absorbing state (X) not found in element pool being: {element_pool}")
         super().__init__(element_pool, accumulated_q_matrices, random_state)
@@ -149,6 +160,7 @@ class AbsorbingStateNoiser(DiscreteSpaceNoiser):
                 self.absorbing_state_index = i
                 break
         self.stationary_dist = self.get_stationary_dist()
+        self.eps = eps
 
     @property
     def const_state_dict(self):

@@ -1,0 +1,40 @@
+{
+  "os": "Windows-10-10.0.26200-SP0",
+  "python": "CPython 3.10.18",
+  "startedAt": "2025-12-10T14:04:09.676977Z",
+  "program": "C:\\Users\\karst\\Desktop\\speciale\\gen_catalyst_design\\tests\\rate_testing\\test_training.py",
+  "codePath": "tests\\rate_testing\\test_training.py",
+  "codePathLocal": "test_training.py",
+  "git": {
+    "remote": "https://github.com/karsten3112/gen_catalyst_design.git",
+    "commit": "d292ed49a9815f4b3ea882e0e0fbfbd271d98212"
+  },
+  "email": "karsten.walz.jensen@gmail.com",
+  "root": "GeneticAlgorithm_training_absorb\\model_005",
+  "host": "DESKTOP-VQKKK7S",
+  "executable": "C:\\Users\\karst\\anaconda3\\envs\\cat_opt\\python.exe",
+  "cpu_count": 6,
+  "cpu_count_logical": 6,
+  "gpu": "NVIDIA GeForce RTX 2060 SUPER",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "499431501824",
+      "used": "409440919552"
+    }
+  },
+  "memory": {
+    "total": "17115222016"
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 2060 SUPER",
+      "memoryTotal": "8589934592",
+      "cudaCores": 2176,
+      "architecture": "Turing",
+      "uuid": "GPU-0482493f-5317-a09f-a19d-f25c725e9868"
+    }
+  ],
+  "cudaVersion": "13.0",
+  "writerId": "mbmxtmp65ab366gyp7j6dgiix7x5dqsd"
+}

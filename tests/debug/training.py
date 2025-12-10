@@ -1,6 +1,6 @@
 from gen_catalyst_design.discrete_space_diffusion import (
     DiffusionModel, DiscreteGNNDenoiser, AbsorbingStateNoiser, UniformTransitionsNoiser,
-    CosineScheduler, ClassLabelEmbedder
+    CosineScheduler, ClassLabelEmbedder, LinearScheduler
 )
 
 from gen_catalyst_design.utils import (
@@ -24,7 +24,9 @@ def main():
     torch.cuda.manual_seed_all(random_seed)
     
     use_absorbing_state = True
-    mask_classes = True
+    mask_classes = False #REMEMBER TO SET THIS PARAMETER
+    if mask_classes:
+        print("CLASSES WILL BE MASKED DURING TRAINING; SO MODEL BECOMES UNCONDITIONAL")
     element_pool = ["Au","Cu","Pd","Rh","Ni","Ga"]
     if use_absorbing_state:
         element_pool = ["(X)"] + element_pool
@@ -37,10 +39,10 @@ def main():
     train_loader, val_loader = get_dataloaders_from_atoms_list(
         atoms_list=atoms_list,
         element_pool=element_pool,
-        batch_size=50,
+        batch_size=40,
     )
 
-    scheduler = CosineScheduler(beta_max=1e-1, beta_min=1e-4)
+    scheduler = CosineScheduler(beta_max=1e-1, beta_min=1e-3)
     noiser = AbsorbingStateNoiser(element_pool=element_pool)
 
     hidden_dim = 28
@@ -59,23 +61,27 @@ def main():
         scheduler=scheduler,
         noiser=noiser,
         denoiser=denoiser,
-        drop_prob=0.2
+        drop_prob=0.1,
+        use_x0_reparam=True,
+        auxillary_weight=0.01
     )
     
-    for batch in train_loader:
-        diff_model.calculate_loss(batch=batch, batch_idx=None)
+    #for batch in train_loader:
+    #    diff_model.calculate_loss(batch=batch, batch_idx=None)
+    #    break
 
-    exit()
+    #exit()
     trainer_kwargs={
         "max_epochs":-1,
         "log_every_n_steps":50, 
         "enable_progress_bar":True, 
-        "enable_model_summary":True
+        "enable_model_summary":True,
     }
 
     trainer = setup_trainer_and_logger(
         model_name="AbsorbingStateModel",
-        patience=40,
+        patience=100,
+        gradient_clip_val=0.1,
         trainer_kwargs=trainer_kwargs
     )
 

@@ -51,6 +51,18 @@ class GraphDataset(Dataset):
         for graph, new_x in zip(self[unique_batch_indices], new_repr):
             graph.x = new_x
 
+    def to_atoms(self, element_pool):
+        atoms_list = [graph.to_atoms(element_pool) for graph in self.graph_list]
+        return atoms_list
+    
+    def to_elements(self, element_pool):
+        elements_list = [graph.to_elems(element_pool) for graph in self.graph_list]
+        return elements_list
+
+
+def get_elements_from_onehots(x:torch.tensor, element_pool:list):
+    indices = torch.argmax(x, dim=-1)
+    return [element_pool[index] for index in indices]
 
 def embed_elements_as_onehot(elements:list, element_pool:list):
     mapping_dict = {element:i for i, element in enumerate(element_pool)}

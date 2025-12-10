@@ -24,15 +24,15 @@ def main():
 
     conditions = {
         "random_search":[0, 2, 4, 6],
-        "GeneticAlgorithm":[1, 4, 7, 10]
+        "GeneticAlgorithm":[7]#[1, 4, 7, 10]
     }
 
 
-    guidance_scales = [0.6, 0.8, 1.0, 1.2, 2.0]
-    n_samples = 200
+    guidance_scales = [0.8, 2.0] #0.6, 1.0, 1.2, 2.0]
+    n_samples = 100
 
     models = [
-        "model_002"
+        "model_005"
     ]
 
     for opt_method in opt_methods:
@@ -66,6 +66,7 @@ def main():
                             log_all_timesteps=False, 
                             return_as_atoms_list=True
                         )
+                        print(result_samples)
                         atoms_list = [sample[0] for sample in result_samples]
                         out_file = os.path.join(final_dir, f"g_{guidance_scale}_scale.traj")
                         write(filename=out_file, images=atoms_list)

@@ -4,9 +4,15 @@ from gen_catalyst_design.discrete_space_diffusion import (
     DiscreteGNNDenoiser, CosineScheduler, ExponentialScheduler,
     AbsorbingStateNoiser, UniformTransitionsNoiser
 )
+from gen_catalyst_design.utils import (
+    setup_trainer_and_logger
+)
+
+from gen_catalyst_design.discrete_space_diffusion.Dataset import (
+    get_dataloaders_from_datadicts
+)
 import wandb
 from ase_ml_models.databases import get_atoms_list_from_db
-from gen_catalyst_design.utils import get_dataloaders_from_datadicts, setup_trainer_and_logger
 from pytorch_lightning.loggers import WandbLogger
 from torch_geometric.loader import DataLoader
 import matplotlib.pyplot as plt
@@ -18,7 +24,9 @@ import torch
 
 def main():
     #Setting up the diffusion model
-    assign_no_class = True
+    assign_no_class = False
+    if assign_no_class:
+        print("CLASSES WILL BE MASKED DURING TRAINING; SO MODEL BECOMES UNCONDITIONAL")
     opt_methods = [
         #"random_search",
         "GeneticAlgorithm",
@@ -99,14 +107,16 @@ def main():
             hidden_dim_rep=8
             )
         
-        scheduler = CosineScheduler(beta_min=1e-4, beta_max=1e-1)
+        scheduler = CosineScheduler(beta_max=1e-1, beta_min=1e-3)
 
         diff_model = DiffusionModel(
             element_pool=element_pool,
             scheduler=scheduler,
             noiser=noiser,
             denoiser=denoiser,
-            drop_prob=0.20
+            drop_prob=0.10,
+            use_x0_reparam=True,
+            auxillary_weight=0.01
         )
         diff_models[opt_method] = diff_model
 
@@ -128,7 +138,8 @@ def main():
         trainer = setup_trainer_and_logger(
             model_name=f"{opt_method}_training_absorb",
             trainer_kwargs=trainer_kwargs,
-            logger_kwargs=logger_kwargs
+            logger_kwargs=logger_kwargs,
+            patience=50,
         )
         trainer.fit(
             model=diff_models[opt_method],

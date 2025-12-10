@@ -167,6 +167,8 @@ def setup_trainer_and_logger(
         default_root_dir=out_dir,
         callbacks=[checkpoint_callback, early_stopping, hyper_params_log],
         gradient_clip_val=gradient_clip_val,
+        devices=1,
+        accelerator="cpu",
         **trainer_kwargs
     )
     return trainer
