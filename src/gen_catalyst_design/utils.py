@@ -110,40 +110,40 @@ class DumpCheckpointDataCallback(Callback):
 
 
 def setup_trainer_and_logger(
+        project_name:str,
         model_name:str=None,
         patience:int=10, 
         gradient_clip_val:float=2.0,
         checkpoint_dir:str="checkpoints",
+        accelerator:str="gpu",
         trainer_kwargs:dict={},
         logger_kwargs:dict={}
     ) -> Trainer:
 
 
     if model_name is None:
-        model_name = "models"
-        if not os.path.exists("models"):
-            os.makedirs("models")
+        model_name = "model"
+        filenames = os.listdir()
+        model_num = 0
+        for file in filenames:
+            if os.path.isdir(file) and model_name in file:
+                model_num+=1
+        model_num+=1
+        model_name = f"{model_name}_{model_num:03d}"
+        os.makedirs(model_name)
     else:
         if not os.path.exists(model_name):
             os.makedirs(model_name)
-    
-    existing_models = os.listdir(model_name)
-    run_id = len(existing_models) + 1
-    run_name = f"model_{run_id:03d}"
-
-    out_dir = os.path.join(model_name, run_name)
-
-    os.makedirs(out_dir)
 
     logger = WandbLogger(
-        project=model_name,
-        name=run_name,
-        save_dir=out_dir,
+        project=project_name,
+        name=model_name,
+        save_dir=model_name,
         **logger_kwargs
     )
 
     checkpoint_callback = ModelCheckpoint(
-        dirpath=os.path.join(out_dir, checkpoint_dir),
+        dirpath=os.path.join(model_name, checkpoint_dir),
         monitor="val_loss",
         mode="min",
         save_top_k=1,      # keep best model
@@ -164,11 +164,11 @@ def setup_trainer_and_logger(
 
     trainer = Trainer(
         logger=logger,
-        default_root_dir=out_dir,
+        default_root_dir=model_name,
         callbacks=[checkpoint_callback, early_stopping, hyper_params_log],
         gradient_clip_val=gradient_clip_val,
         devices=1,
-        accelerator="cpu",
+        accelerator=accelerator,
         **trainer_kwargs
     )
     return trainer

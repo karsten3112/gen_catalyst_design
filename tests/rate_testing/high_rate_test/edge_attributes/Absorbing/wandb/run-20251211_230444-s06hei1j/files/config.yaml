@@ -1,0 +1,74 @@
+_wandb:
+    value:
+        cli_version: 0.23.0
+        e:
+            9jr0f4wyunhhx0cqasybl0stgxfcm92g:
+                codePath: tests\rate_testing\high_rate_test\edge_attributes\training.py
+                codePathLocal: training.py
+                cpu_count: 6
+                cpu_count_logical: 6
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "499431501824"
+                        used: "411705442304"
+                email: karsten.walz.jensen@gmail.com
+                executable: C:\Users\karst\anaconda3\envs\cat_opt\python.exe
+                git:
+                    commit: 22e64ff2bbb4d1ac42bd2fbdf0f63974b03e1dab
+                    remote: https://github.com/karsten3112/gen_catalyst_design.git
+                gpu: NVIDIA GeForce RTX 2060 SUPER
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Turing
+                      cudaCores: 2176
+                      memoryTotal: "8589934592"
+                      name: NVIDIA GeForce RTX 2060 SUPER
+                      uuid: GPU-0482493f-5317-a09f-a19d-f25c725e9868
+                host: DESKTOP-VQKKK7S
+                memory:
+                    total: "17115222016"
+                os: Windows-10-10.0.26200-SP0
+                program: C:\Users\karst\Desktop\speciale\gen_catalyst_design\tests\rate_testing\high_rate_test\edge_attributes\training.py
+                python: CPython 3.10.18
+                root: Absorbing
+                startedAt: "2025-12-11T22:04:44.597589Z"
+                writerId: 9jr0f4wyunhhx0cqasybl0stgxfcm92g
+        m:
+            - "1": trainer/global_step
+              "6":
+                - 3
+              "7": []
+            - "2": '*'
+              "5": 1
+              "6":
+                - 1
+              "7": []
+        python_version: 3.10.18
+        t:
+            "1":
+                - 1
+                - 5
+                - 9
+                - 41
+                - 53
+                - 77
+                - 103
+            "2":
+                - 1
+                - 5
+                - 9
+                - 41
+                - 53
+                - 77
+                - 103
+            "3":
+                - 7
+                - 13
+                - 66
+            "4": 3.10.18
+            "5": 0.23.0
+            "8":
+                - 3
+            "12": 0.23.0
+            "13": windows-amd64

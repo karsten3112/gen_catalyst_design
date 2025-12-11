@@ -13,10 +13,12 @@ class Graph(Data):
             x = None, 
             edge_index = None, 
             edge_attr = None, 
-            y = None, 
+            y = None,
+            active_sites = None, 
             pos = None
         ):
         super().__init__(x, edge_index, edge_attr, y, pos)
+        self.active_sites = active_sites
     
     def to_elems(self, element_pool:list):
         indices = torch.argmax(self.x, dim=-1)
@@ -82,15 +84,42 @@ def get_graph_from_atoms(
         atoms:Atoms,
         element_pool:list,
         condition_key:str=None,
+        mark_active_sites:bool=True,
+        use_edge_attr:bool=True
     ):
+
+    #Get active site embedding - maybe change to index instead and use nn.Embedding
+    active_sites = None
+    if mark_active_sites or use_edge_attr:
+        active_sites = torch.zeros(size=(len(atoms), 2))
+        indices_site = atoms.info["indices_site"]
+        for i in range(len(atoms)):
+            if i in indices_site:
+                active_sites[i,0] += 1
+            else:
+                active_sites[i,1] += 1
+
+    elements = atoms.get_chemical_symbols()
+    x = embed_elements_as_onehot(elements=elements, element_pool=element_pool)
     edges_list = get_edges_list_from_connectivity(atoms.info["connectivity"])
     edge_index = torch.tensor(edges_list, dtype=torch.long).reshape(2,-1)
-    elements = atoms.get_chemical_symbols()
+
+    #Get edge attributes as sum of one-hots from elements + active-site onehot - maybe change to index and use nn.Embedding
+    edge_attr = None
+    if use_edge_attr:
+        x_stacked = torch.hstack([x, active_sites])
+        edge_attr = x_stacked[edge_index[0]] + x_stacked[edge_index[1]]
+
+    #Construct the graph
     graph = Graph(
-        x=embed_elements_as_onehot(elements=elements, element_pool=element_pool),
+        x=x,
         edge_index=edge_index,
-        pos=torch.tensor(atoms.positions)
+        pos=torch.tensor(atoms.positions),
+        active_sites=active_sites,
+        edge_attr=edge_attr
     )
+
+    #Assign condition to graph
     if condition_key is not None:
         if condition_key in atoms.info:
             graph.y = atoms.info[condition_key]
@@ -138,13 +167,15 @@ def get_dataset_from_datadicts(
 def get_dataset_from_atoms_list(
         atoms_list:list,
         element_pool:list,
-        condition_key:str=None
+        condition_key:str=None,
+        graph_kwargs:dict={}
     ):
     graph_list = [
         get_graph_from_atoms(
             atoms=atoms, 
             element_pool=element_pool, 
-            condition_key=condition_key
+            condition_key=condition_key,
+            **graph_kwargs
         )
         for atoms in atoms_list
     ]
@@ -198,7 +229,8 @@ def get_dataloaders_from_atoms_list(
         train_val_split:float=0.1,
         do_initial_shuffling:bool=True,
         random_seed:int=42,
-        loader_kwargs:dict={} 
+        loader_kwargs:dict={},
+        graph_kwargs:dict={} 
     ):
     if do_initial_shuffling:
         random.seed(random_seed)
@@ -207,12 +239,14 @@ def get_dataloaders_from_atoms_list(
     train_dataset = get_dataset_from_atoms_list(
         atoms_list=atoms_list[:split_index],
         element_pool=element_pool,
-        condition_key=condition_key
+        condition_key=condition_key,
+        graph_kwargs=graph_kwargs
     )
     val_dataset = get_dataset_from_atoms_list(
         atoms_list=atoms_list[split_index:],
         element_pool=element_pool,
-        condition_key=condition_key
+        condition_key=condition_key,
+        graph_kwargs=graph_kwargs
     )
     train_loader = DataLoader(
         train_dataset, 

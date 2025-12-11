@@ -37,9 +37,7 @@ class DiscreteSpaceNoiser(nn.Module):
             beta_t_batch = scheduler(t=time)
             Qts = self.__call__(beta_t_batch=beta_t_batch)
             result_matrix = torch.eye(n=self.n_classes)
-            #print((result_matrix+1e-12).sum(dim=1, keepdim=True))
-            regularized_matrix = result_matrix*1.0#(result_matrix+1e-12)/(result_matrix+1e-12).sum(dim=1, keepdim=True)
-            #print(regularized_matrix)
+            regularized_matrix = result_matrix*1.0
             accum_matrices = [regularized_matrix]
             for Qt in Qts: 
                 result_matrix @= Qt
@@ -52,8 +50,6 @@ class DiscreteSpaceNoiser(nn.Module):
     def get_transition_probabilities(self, x_t_batch:torch.tensor, time_batch:torch.tensor, scheduler:DiscreteTimeScheduler):
         beta_t_batch = scheduler(t=time_batch)
         Qts = self.__call__(beta_t_batch=beta_t_batch)
-        #print(Qts.shape)
-        #print(x_t_batch.unsqueeze(0).shape)
         probs = torch.bmm(x_t_batch.unsqueeze(1), Qts).squeeze()
         return probs
     
@@ -88,7 +84,19 @@ class DiscreteSpaceNoiser(nn.Module):
     def get_dist(self, probabilites:torch.tensor) -> Categorical:
         return Categorical(probs=probabilites)
 
-    def noise_x0_xt(self, x0_batch:torch.tensor, time_batch:torch.tensor):
+    def noise_batch_x0_xt(self, batch, time_batch:torch.tensor):
+        probs = self.get_accum_transition_probabilities(x0_batch=batch.x*1.0, time_batch=time_batch)
+        noised_xs = self.sample_transition(probabilites=probs)
+        #print(batch.x.device)
+        batch.x = noised_xs
+        #print(batch.x.device)
+        try:
+            x_stacked = torch.hstack([batch.x, batch.active_sites])
+            batch.edge_attr = x_stacked[batch.edge_index[0]] + x_stacked[batch.edge_index[1]]
+        except:
+            pass
+
+    def noise_x0_xt(self, x0_batch:torch.tensor, time_batch:torch.tensor, ):
         probs = self.get_accum_transition_probabilities(x0_batch=x0_batch, time_batch=time_batch)
         noised_x_batch = self.sample_transition(probabilites=probs)
         return noised_x_batch
