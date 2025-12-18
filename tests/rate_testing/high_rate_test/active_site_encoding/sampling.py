@@ -9,12 +9,14 @@ import random
 
 def main():
     random_seed = 42
-    noiser_types = ["Uniform", "Absorbing"] # Absorbing | Uniform
-    guidance_scales = [0.8, 1.2, 2.0]
+    noiser_types = ["Absorbing"] # Absorbing | Uniform
+    guidance_scales = [10.0, 0.8, 1.2, 2.0]a
     n_samples = 100
     miller_index = "100"
-    model_type = "last" # Best/epoch | last
+    model_type = "epoch" # Best/epoch | last
     condition = 0
+
+    condition_dicts = [{"class":condition} for _ in range(n_samples)]
 
     db = connect(f"../../../../databases/templates/{miller_index}/{miller_index}_templates.db")
     template_atoms = get_atoms_list_from_db(db_ase=db)[0]
@@ -34,20 +36,20 @@ def main():
         
         diff_model = DiffusionModel.load_from_checkpoint(os.path.join(pth_header, checkpoint_file))
         diff_model = diff_model.to(device=torch.device("cpu"))
-
         for guidance_scale in guidance_scales:
             random.seed(random_seed)
             torch.manual_seed(random_seed)
             torch.cuda.manual_seed_all(random_seed)
             result_samples = diff_model.sample(
+                conditioning_dicts=condition_dicts,
                 guidance_scale=guidance_scale,
                 n_samples=n_samples, 
-                conditionings=condition*torch.ones(size=(n_samples,), dtype=torch.long), 
                 template_atoms=template_atoms, 
                 batch_size=50, 
                 timesteps=None, 
                 log_all_timesteps=False, 
-                return_as_atoms_list=True
+                return_as_atoms_list=True,
+                #dataset_kwargs={"conditition_key":"class"}
             )
             atoms_list = [sample[0] for sample in result_samples]
             write(filename=os.path.join(out_dir, f"g_{guidance_scale}_scale.traj"), images=atoms_list)

@@ -14,7 +14,6 @@ import os
 def main():
     miller_index = "100"
     model = "WWL-GPR"
-    guidance_scale = 2.0
 
     db = connect(f"../../../../databases/templates/{miller_index}/{miller_index}_templates.db")
     template_atoms_list = get_atoms_list_from_db(db_ase=db)
@@ -40,7 +39,7 @@ def main():
         mechanism_pth_header=os.path.join(universal_pth_header,"yaml_files/reaction_mechanism")
     )
 
-    noiser_types = ["Absorbing", "Uniform"]
+    noiser_types = ["Absorbing"]#, "Uniform"]
     guidance_scales = [0.8, 1.2, 2.0]
     for noiser_type in noiser_types:
         pth_header = os.path.join(noiser_type, "samples")

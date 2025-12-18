@@ -6,13 +6,14 @@ import os
 
 def main():
     scenarios = [
-        "active_site_encoding",
-        "no_active_site_encoding"
+        #"active_site_encoding",
+        #"no_active_site_encoding"
+        "edge_attributes"
     ]
 
     models = [
         "Absorbing",
-        "Uniform"
+        #"Uniform"
     ]
 
     guidance_scales = [0.8, 1.2, 2.0]

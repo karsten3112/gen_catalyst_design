@@ -44,6 +44,7 @@ class DiffusionModel(LightningModule):
         self.use_x0_reparam = use_x0_reparam
         self.auxillary_weight = auxillary_weight
         self.iteration = 0
+    
     def on_fit_start(self):
         device = self.device
         self.noiser.set_device(device=device)
@@ -64,10 +65,9 @@ class DiffusionModel(LightningModule):
         normalized_probs = reverse_probs/reverse_probs.sum(dim=1, keepdim=True)
         return normalized_probs
     
-    def get_reverse_transition_probabilities(self, x_t, batch, time, guidance_scale):
+    def get_reverse_transition_probabilities(self, batch, time, guidance_scale):
         logits = [
            self.denoiser.get_logits(
-               x_t=x_t,
                batch=batch,
                time=time,
                scheduler=self.scheduler,
@@ -81,7 +81,7 @@ class DiffusionModel(LightningModule):
         if self.use_x0_reparam:
             guided_probs = self.perform_x0_reparam(
                 denoise_logits=guided_logits,
-                x_t=x_t*1.0,
+                x_t=batch.x*1.0,
                 batch=batch,
                 time=time
             )
@@ -206,7 +206,7 @@ class DiffusionModel(LightningModule):
         #Determining whether conditioning should be dropped
         drop_condition = True if torch.rand(1) <= self.drop_prob else False
         #batch = batch.to(self.device) #should not have to do this parse here. Think it is because of how i dont define dataloaders in lightning module
-        denoise_matching_term = self.get_denoise_matching_term_loss(
+        denoise_matching_term = (1000.0 - 2.0)*self.get_denoise_matching_term_loss(
             batch=batch,
             drop_condition=drop_condition
         )
@@ -252,20 +252,28 @@ class DiffusionModel(LightningModule):
         return [self.element_pool[index] for index in indices]
 
     def sample(self, 
-               n_samples:int, 
-               conditionings:torch.tensor,
-               template_atoms:Atoms,
+               n_samples:int,
+               template_atoms:Atoms, 
+               conditioning_dicts:dict={},
+               condition_key:str="class",
                guidance_scale:float=2.0,
                return_as_atoms_list:bool=False, 
                batch_size:int=40,
                timesteps:torch.tensor=None,
-               log_all_timesteps:bool=False
+               log_all_timesteps:bool=False,
+               dataset_kwargs:dict={}
         ):
-        noised_xs = [self.noiser.sample_from_stationary(num_atoms=len(template_atoms)) for _ in range(n_samples)]
-        sample_dataset = self.denoiser.get_sample_dataset(
-            noised_xs=noised_xs, 
-            conditionings=conditionings,
+        noised_atoms = self.noiser.sample_atoms_from_stationary(
+            n_samples=n_samples, 
             template_atoms=template_atoms
+        )
+        for atoms, condition_dict in zip(noised_atoms, conditioning_dicts):
+            atoms.info.update(condition_dict)
+        
+        sample_dataset = self.denoiser.get_sample_dataset_from_atoms_list(
+            atoms_list=noised_atoms,
+            condition_key=condition_key,
+            dataset_kwargs=dataset_kwargs
         )
         sample_loader = self.denoiser.get_sample_loader(
             dataset=sample_dataset,
@@ -303,6 +311,10 @@ class DiffusionModel(LightningModule):
                 guidance_scale=guidance_scale
             )
             batch.x = xs_denoised
+            try:
+                batch.edge_attr = batch.x[batch.edge_index[0]] + batch.x[batch.edge_index[1]]
+            except:
+                pass
         return batch_list
 
     def get_distribution(self, probabilites:torch.tensor) -> Categorical:
@@ -317,18 +329,18 @@ class DiffusionModel(LightningModule):
     def single_denoise_step(self, batch, time, guidance_scale:float=2.0):
         ts = time*torch.ones(size=(batch.batch_size,), dtype=torch.long)
         probs = self.get_reverse_transition_probabilities(
-            x_t=batch.x*1.0,
             batch=batch, 
             time=ts, 
             guidance_scale=guidance_scale
         )
         if time == self.scheduler.t_init and self.denoiser.absorbing_state:
             probs[:,self.denoiser.absorbing_state_index] = 0.0
+        #need to renormalize her actually
         xs_denoised = self.sample_onehot_vectors(probabilities=probs)
         return xs_denoised
 
     def convert_denoised_batches_to_traj(self, denoised_batch_list, batch_size, return_as_atoms_list:bool=False):
-        num_timesteps = len(denoised_batch_list)#, num_samples, num_atoms, n_classes = denoised_xs_batched.shape
+        num_timesteps = len(denoised_batch_list)
         result_list = []
         for sample_idx in range(batch_size):
             denoise_traj = []

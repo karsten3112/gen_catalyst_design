@@ -53,7 +53,8 @@ def main():
         cond_embedder=condition_embedder,
         message_dim=embedding_dim,
         hidden_dim_rep=embedding_dim,
-        mark_active_sites=mark_active_sites
+        mark_active_sites=mark_active_sites,
+        aggr="max"
     )
         
     scheduler = CosineScheduler(beta_max=1e-1, beta_min=1e-3)
@@ -65,7 +66,7 @@ def main():
         denoiser=denoiser,
         drop_prob=0.10,
         use_x0_reparam=True,
-        auxillary_weight=0.01
+        auxillary_weight=0.001
     )
 
     train_loader, val_loader = get_dataloaders_from_atoms_list(
@@ -89,6 +90,7 @@ def main():
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,
         gradient_clip_val=1.0,
+        accelerator="cpu",
         patience=15,
     )
 

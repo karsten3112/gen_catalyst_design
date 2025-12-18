@@ -64,17 +64,26 @@ class GraphDataset(Dataset):
 
 def get_elements_from_onehots(x:torch.tensor, element_pool:list):
     indices = torch.argmax(x, dim=-1)
-    return [element_pool[index] for index in indices]
+    if "(X)" in element_pool:
+        elements = []
+        for index in indices:
+            if element_pool[index] == "(X)":
+                elements.append("O")
+            else:
+                elements.append(element_pool[index])
+        return elements
+    else:
+        return [element_pool[index] for index in indices]
 
 def embed_elements_as_onehot(elements:list, element_pool:list):
     mapping_dict = {element:i for i, element in enumerate(element_pool)}
     return torch.stack([get_onehot(element=element, mapping_dict=mapping_dict) for element in elements])
 
-
 def embed_cluster_as_onehots(atoms:Atoms, element_pool:list):
     elements = atoms.get_chemical_symbols()
+    if "(X)" in element_pool:
+        elements = ['(X)' if elem == 'O' else elem for elem in elements]
     return embed_elements_as_onehot(elements=elements, element_pool=element_pool)
-
 
 def get_onehot(element:str, mapping_dict:dict):
     onehot = F.one_hot(torch.tensor(mapping_dict[element]), len(mapping_dict))
@@ -91,24 +100,18 @@ def get_graph_from_atoms(
     #Get active site embedding - maybe change to index instead and use nn.Embedding
     active_sites = None
     if mark_active_sites or use_edge_attr:
-        active_sites = torch.zeros(size=(len(atoms), 2))
+        active_sites = torch.zeros(size=(len(atoms),), dtype=torch.bool)
         indices_site = atoms.info["indices_site"]
-        for i in range(len(atoms)):
-            if i in indices_site:
-                active_sites[i,0] += 1
-            else:
-                active_sites[i,1] += 1
-
-    elements = atoms.get_chemical_symbols()
-    x = embed_elements_as_onehot(elements=elements, element_pool=element_pool)
+        active_sites[indices_site] = True
+    
+    x = embed_cluster_as_onehots(atoms=atoms, element_pool=element_pool)
     edges_list = get_edges_list_from_connectivity(atoms.info["connectivity"])
     edge_index = torch.tensor(edges_list, dtype=torch.long).reshape(2,-1)
 
     #Get edge attributes as sum of one-hots from elements + active-site onehot - maybe change to index and use nn.Embedding
     edge_attr = None
     if use_edge_attr:
-        x_stacked = torch.hstack([x, active_sites])
-        edge_attr = x_stacked[edge_index[0]] + x_stacked[edge_index[1]]
+        edge_attr = x[edge_index[0]] + x[edge_index[1]]
 
     #Construct the graph
     graph = Graph(
@@ -126,6 +129,7 @@ def get_graph_from_atoms(
         else:
             raise Exception(f"condition key {condition_key} is not available in datadict, having: {atoms.info.keys()}")
     return graph
+
 
 def get_graph_from_datadict(
         datadict:dict, 
@@ -180,6 +184,7 @@ def get_dataset_from_atoms_list(
         for atoms in atoms_list
     ]
     return GraphDataset(graph_list=graph_list)
+
 
 
 def get_dataloaders_from_datadicts(

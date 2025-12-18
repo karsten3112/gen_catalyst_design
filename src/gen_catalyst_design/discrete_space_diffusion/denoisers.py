@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .conditioning import ConditioningEmbedder
 from .schedulers import DiscreteTimeScheduler
-from .Dataset import GraphDataset, Graph
+from .Dataset import GraphDataset, Graph, get_dataset_from_atoms_list
 from torch.distributions import Categorical
 from torch_geometric.nn import MessagePassing
 from torch_geometric.loader import DataLoader
@@ -37,6 +37,9 @@ class DiscreteSpaceDenoiser(nn.Module):
     def forward(self, x_t:torch.tensor, batch, time, scheduler:DiscreteTimeScheduler, drop_condition:bool, **kwargs):
         raise Exception("must be implemented by sub-class")
     
+    def get_sample_dataset_from_atoms_list(self, atoms_list:list, dataset_kwargs:dict={}):
+        raise Exception("must be implemented by sub-class")
+
     def get_sample_loader(self, dataset, batch_size, shuffle:bool=True):
         raise Exception("must be implemented by sub-class")
 
@@ -45,6 +48,22 @@ class DiscreteSpaceDenoiser(nn.Module):
         sin = torch.sin(torch.pi/(t_final-t_init)*time).view(-1,1)
         return torch.hstack([cos, sin])
     
+    def get_time_embedding_new(self, time, t_init, t_final):
+        pass
+        positions = torch.arange(timesteps)[:, None]  # Shape: (timesteps, 1)
+        #dimensions = np.arange(self.embedding_dim)[
+        #    np.newaxis, :
+        #]  # Shape: (1, embedding_dim)
+
+        # Compute angles using sine for even indices and cosine for odd indices
+        #angle_rates = 1 / np.power(10000, (2 * (dimensions // 2)) / self.embedding_dim)
+        #angle_rads = positions * angle_rates
+
+        #pos_encoding = np.zeros_like(angle_rads)
+        #pos_encoding[:, 0::2] = np.sin(angle_rads[:, 0::2])
+        #pos_encoding[:, 1::2] = np.cos(angle_rads[:, 1::2])
+
+
     def get_probabilities_from_logits(self, logits):
         probabilities = F.log_softmax(logits, dim=-1) 
         return torch.exp(probabilities)
@@ -71,7 +90,6 @@ class DiscreteSpaceDenoiser(nn.Module):
         )
         return logits
         
-
     def denoise_batch(self, batch, scheduler:DiscreteTimeScheduler, guidance_scale:float=2.0, timesteps:torch.tensor=None, log_all_timesteps:bool=False):
         batch_list = []
         if timesteps is None:
@@ -123,12 +141,14 @@ class SingleMessageLayer(MessagePassing):
             conditioning_dim:int=8,
             activation_func=torch.nn.ReLU(),
             time_embedding_dim:int=2, 
-            aggr = 'mean'
+            aggr = 'mean',
+            non_active_site_scale:float=0.1,
+
         ):
         super().__init__(aggr)
 
         self.psi_network = nn.Sequential(
-            nn.Linear(input_dim+edge_attr_dim, message_dim),
+            nn.Linear(2*input_dim+edge_attr_dim, message_dim),
             activation_func,
             nn.Linear(message_dim, message_dim)
         )
@@ -147,27 +167,36 @@ class SingleMessageLayer(MessagePassing):
             activation_func,
             nn.Linear(conditioning_dim, output_dim)
         )
-
+        self.non_active_site_scale = non_active_site_scale
         self.const_state_dict = {
             "input_dim":input_dim,
             "output_dim":output_dim,
             "message_dim":message_dim,
-            "time_embedding_dim":time_embedding_dim              
+            "time_embedding_dim":time_embedding_dim,
+            "non_active_site_scale":self.non_active_site_scale              
         }
 
-    def forward(self, x_t, edge_index, conds_embedded, time_embedded, edge_attr=None):
-        aggregated_messages = self.propagate(edge_index=edge_index, x=x_t, edge_attr=edge_attr)
+    def forward(self, x_t, edge_index, conds_embedded, time_embedded, edge_attr=None, active_sites=None):
+        #print(edge_index.shape)
+        aggregated_messages = self.propagate(edge_index=edge_index, x=x_t, edge_attr=edge_attr, active_sites=active_sites)
         #we let the time embedding work on the global aggregation
         x_t = self.phi_network(torch.hstack([x_t, aggregated_messages, time_embedded]))
         #We shift the final representation using gamma, and beta MLP's
         gamma, beta = self.gamma_net(conds_embedded), self.beta_net(conds_embedded)
         return gamma*x_t + beta
     
-    def message(self, x_j, edge_attr):
+    def message(self, x_i, x_j, edge_index_j, edge_attr, active_sites):
         if edge_attr is None:
-            return self.psi_network(x_j)
+            concatenated_x = torch.hstack([x_i, x_j])
         else:
-            return self.psi_network(torch.hstack([x_j, edge_attr]))
+            concatenated_x = torch.hstack([x_i, x_j, edge_attr])
+        message = self.psi_network(concatenated_x)
+        if active_sites is None:
+            return message
+        else:
+            message[active_sites[edge_index_j] == False, :]*=self.non_active_site_scale
+            return message
+       
     
 
 class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
@@ -179,27 +208,29 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
                  hidden_dim_rep:int=8,
                  mark_active_sites:bool=True,
                  use_edge_attr:bool=True,
+                 aggr:str="mean"
                  ):
         super().__init__(element_pool, cond_embedder)
         input_dim = len(self.element_pool)
         edge_attr_dim = 0
         if use_edge_attr:
-            edge_attr_dim = len(self.element_pool) + 2
-        if mark_active_sites:
-            input_dim += 2
+            edge_attr_dim = len(self.element_pool)
+        
         self.input_layer = SingleMessageLayer(
             input_dim=input_dim,
             output_dim=message_dim,
             message_dim=message_dim,
             edge_attr_dim=edge_attr_dim, 
-            conditioning_dim=self.cond_embedder.embedding_dim
+            conditioning_dim=self.cond_embedder.embedding_dim,
+            aggr=aggr,
         )
         output_layer = SingleMessageLayer(
             input_dim=hidden_dim_rep,
             message_dim=message_dim,
             edge_attr_dim=edge_attr_dim, 
             output_dim=len(self.element_pool), 
-            conditioning_dim=self.cond_embedder.embedding_dim
+            conditioning_dim=self.cond_embedder.embedding_dim,
+            aggr=aggr
         )
         hidden_layers = [
             SingleMessageLayer(
@@ -207,7 +238,8 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
                 message_dim=message_dim, 
                 output_dim=hidden_dim_rep,
                 edge_attr_dim=edge_attr_dim, 
-                conditioning_dim=self.cond_embedder.embedding_dim
+                conditioning_dim=self.cond_embedder.embedding_dim,
+                aggr=aggr
             ) for _ in range(n_hidden_layers)
         ]
         
@@ -217,20 +249,19 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
         self.message_dim = message_dim
         self.mark_active_sites = mark_active_sites
         self.use_edge_attr = use_edge_attr
+        self.aggr = aggr
     
     def forward(self, x_t, batch, time, scheduler:DiscreteTimeScheduler, drop_condition:bool):
         edge_index, conds, batch_indices = batch.edge_index, batch.y, batch.batch
         time_embedded = self.get_time_embedding(time=time[batch_indices], t_init=scheduler.t_init, t_final=scheduler.t_final)
         embedded_conds = self.cond_embedder.forward(condition=conds[batch_indices], drop_condition=drop_condition)
-        if self.mark_active_sites:
-            active_sites = batch.active_sites
-            x_t = torch.hstack([x_t, active_sites])
         x_t = self.input_layer.forward(
             x_t, 
             edge_index=edge_index, 
             conds_embedded=embedded_conds, 
             time_embedded=time_embedded,
-            edge_attr=batch.edge_attr if self.use_edge_attr else None
+            edge_attr=batch.edge_attr if self.use_edge_attr else None,
+            active_sites=batch.active_sites if self.mark_active_sites else None
         )
         for message_passing_layer in self.hidden_layers:
             x_t = message_passing_layer.forward(
@@ -238,34 +269,23 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
                 edge_index=edge_index, 
                 conds_embedded=embedded_conds, 
                 time_embedded=time_embedded,
-                edge_attr=batch.edge_attr if self.use_edge_attr else None
+                edge_attr=batch.edge_attr if self.use_edge_attr else None,
+                active_sites=batch.active_sites if self.mark_active_sites else None
+
             )
         return x_t
 
     def get_sample_loader(self, dataset, batch_size, shuffle:bool=True):
         return DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
 
-    def get_sample_dataset(self, noised_xs, conditionings, template_atoms):
-        edges_list = get_edges_list_from_connectivity(template_atoms.info["connectivity"])
-        edge_index = torch.tensor(edges_list, dtype=torch.long).reshape(2,-1)
-        active_sites = torch.zeros(size=(len(template_atoms), 2))
-        indices_site = template_atoms.info["indices_site"]
-        for i in range(len(template_atoms)):
-            if i in indices_site:
-                active_sites[i,0] += 1
-            else:
-                active_sites[i,1] += 1
-        graphs = [
-            Graph(
-                x=noised_x, 
-                edge_index=edge_index, 
-                y=conditioning, 
-                pos=torch.tensor(template_atoms.positions),
-                active_sites=active_sites
-            )
-            for noised_x, conditioning in zip(noised_xs, conditionings)
-        ]
-        return GraphDataset(graph_list=graphs)
+    def get_sample_dataset_from_atoms_list(self, atoms_list:list, condition_key:str, dataset_kwargs:dict={}):
+        dataset = get_dataset_from_atoms_list(
+            atoms_list=atoms_list,
+            element_pool=self.element_pool,
+            condition_key=condition_key,
+            graph_kwargs=dataset_kwargs
+        )
+        return dataset
 
     
     @property
@@ -277,7 +297,8 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
             "mark_active_sites":self.mark_active_sites,
             "use_edge_attr":self.use_edge_attr,
             "n_hidden_layers":self.n_hidden_layers,
-            "hidden_dim_rep":self.hidden_dim_rep
+            "hidden_dim_rep":self.hidden_dim_rep,
+            "aggr":self.aggr,
         }
         state_dict.update(denoiser_info)
         return state_dict

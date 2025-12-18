@@ -1,6 +1,6 @@
 from gen_catalyst_design.discrete_space_diffusion import (
     RateClassEmbedder, DiffusionModel, ClassLabelEmbedder,
-    DiscreteGNNDenoiser, CosineScheduler, ExponentialScheduler,
+    DiscreteGNNDenoiser, CosineScheduler, ExponentialScheduler, LinearScheduler,
     AbsorbingStateNoiser, UniformTransitionsNoiser
 )
 from gen_catalyst_design.utils import (
@@ -29,7 +29,8 @@ def main():
     torch.cuda.manual_seed_all(random_seed)
 
     noiser_type = "Absorbing" # Absorbing | Uniform
-    use_edge_attr = True
+    mark_active_sites = True
+    use_edge_attr = False
     element_pool = ["Rh", "Cu", "Au", "Pd"]
     embedding_dim = 24
     
@@ -53,7 +54,10 @@ def main():
         cond_embedder=condition_embedder,
         message_dim=embedding_dim,
         hidden_dim_rep=embedding_dim,
-        use_edge_attr=use_edge_attr
+        use_edge_attr=use_edge_attr,
+        mark_active_sites=mark_active_sites,
+        n_hidden_layers=3,
+        aggr="max"
     )
         
     scheduler = CosineScheduler(beta_max=1e-1, beta_min=1e-3)
@@ -65,7 +69,7 @@ def main():
         denoiser=denoiser,
         drop_prob=0.10,
         use_x0_reparam=True,
-        auxillary_weight=0.01
+        auxillary_weight=0.1
     )
 
     train_loader, val_loader = get_dataloaders_from_atoms_list(
@@ -74,6 +78,10 @@ def main():
         batch_size=40,
         #loader_kwargs={"device":torch.device("cuda")}
     )
+    #for batch in train_loader:
+    #    print(batch.active_sites)
+
+    #exit()
   
     trainer_kwargs={
         "max_epochs":-1,
@@ -89,8 +97,9 @@ def main():
         model_name=noiser_type,
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,
+        accelerator="cpu",
         gradient_clip_val=1.0,
-        patience=15,
+        patience=30,
     )
 
     trainer.fit(

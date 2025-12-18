@@ -3,6 +3,8 @@ from torch.distributions import Categorical
 from .schedulers import DiscreteTimeScheduler
 import torch.nn.functional as F
 import torch.nn as nn
+from .Dataset import get_elements_from_onehots
+from ase.atoms import Atoms
 
 
 # -------------------------------------------------------------------------------------
@@ -17,6 +19,7 @@ class DiscreteSpaceNoiser(nn.Module):
             random_state:int=42
         ):
         super().__init__()
+        self.element_pool = element_pool
         self.accumulated_q_matrices = accumulated_q_matrices
         self.random_state = random_state
         self.n_classes = len(element_pool)
@@ -87,12 +90,9 @@ class DiscreteSpaceNoiser(nn.Module):
     def noise_batch_x0_xt(self, batch, time_batch:torch.tensor):
         probs = self.get_accum_transition_probabilities(x0_batch=batch.x*1.0, time_batch=time_batch)
         noised_xs = self.sample_transition(probabilites=probs)
-        #print(batch.x.device)
         batch.x = noised_xs
-        #print(batch.x.device)
         try:
-            x_stacked = torch.hstack([batch.x, batch.active_sites])
-            batch.edge_attr = x_stacked[batch.edge_index[0]] + x_stacked[batch.edge_index[1]]
+            batch.edge_attr = batch.x[batch.edge_index[0]] + batch.x[batch.edge_index[1]]
         except:
             pass
 
@@ -118,6 +118,16 @@ class DiscreteSpaceNoiser(nn.Module):
         probs = self.stationary_dist*torch.ones(size=(num_atoms,1))
         sample = self.sample_transition(probabilites=probs)
         return sample
+    
+    def sample_atoms_from_stationary(self, n_samples:int, template_atoms:Atoms):
+        atoms_list = []
+        for _ in range(n_samples):
+            atoms = template_atoms.copy()
+            xs = self.sample_from_stationary(num_atoms=len(atoms))
+            symbols = get_elements_from_onehots(x=xs, element_pool=self.element_pool)
+            atoms.symbols = symbols
+            atoms_list.append(atoms)
+        return atoms_list
 
 
 # -------------------------------------------------------------------------------------
