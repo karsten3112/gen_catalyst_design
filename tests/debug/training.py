@@ -42,10 +42,10 @@ def main():
         batch_size=40,
     )
 
-    scheduler = CosineScheduler(beta_max=1e-1, beta_min=1e-3)
+    scheduler = LinearScheduler(beta_max=1e-1, beta_min=1e-3)
     noiser = AbsorbingStateNoiser(element_pool=element_pool)
 
-    hidden_dim = 28
+    hidden_dim = 128
 
     conditioning = ClassLabelEmbedder(num_labels=3, embedding_dim=hidden_dim)    
     denoiser = DiscreteGNNDenoiser(
@@ -53,7 +53,8 @@ def main():
         cond_embedder=conditioning,
         message_dim=hidden_dim,
         n_hidden_layers=1,
-        hidden_dim_rep=hidden_dim
+        hidden_dim_rep=hidden_dim,
+        time_embedding_dim=hidden_dim,
     )
 
     diff_model = DiffusionModel(
@@ -63,7 +64,7 @@ def main():
         denoiser=denoiser,
         drop_prob=0.1,
         use_x0_reparam=True,
-        auxillary_weight=0.01
+        auxillary_weight=0.1
     )
     
     #for batch in train_loader:
@@ -79,9 +80,11 @@ def main():
     }
 
     trainer = setup_trainer_and_logger(
-        model_name="AbsorbingStateModel",
-        patience=100,
-        gradient_clip_val=0.1,
+        project_name="AbsorbingStateTest",
+        model_name="model_001",
+        patience=30,
+        accelerator="cpu",
+        gradient_clip_val=2.0,
         trainer_kwargs=trainer_kwargs
     )
 

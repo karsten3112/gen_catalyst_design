@@ -32,7 +32,7 @@ def main():
     mark_active_sites = True
     use_edge_attr = False
     element_pool = ["Rh", "Cu", "Au", "Pd"]
-    embedding_dim = 24
+    embedding_dim = 128
     
     if "Absorbing" in noiser_type:
         element_pool = ["(X)"] + element_pool
@@ -56,8 +56,9 @@ def main():
         hidden_dim_rep=embedding_dim,
         use_edge_attr=use_edge_attr,
         mark_active_sites=mark_active_sites,
-        n_hidden_layers=3,
-        aggr="max"
+        time_embedding_dim=embedding_dim,
+        n_hidden_layers=1,
+        aggr="sum"
     )
         
     scheduler = CosineScheduler(beta_max=1e-1, beta_min=1e-3)
@@ -69,7 +70,7 @@ def main():
         denoiser=denoiser,
         drop_prob=0.10,
         use_x0_reparam=True,
-        auxillary_weight=0.1
+        auxillary_weight=10.0
     )
 
     train_loader, val_loader = get_dataloaders_from_atoms_list(

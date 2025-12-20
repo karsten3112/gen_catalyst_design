@@ -70,7 +70,6 @@ class DiffusionModel(LightningModule):
            self.denoiser.get_logits(
                batch=batch,
                time=time,
-               scheduler=self.scheduler,
                drop_cond=drop_condition
            )
            for drop_condition in [False, True]
@@ -105,7 +104,6 @@ class DiffusionModel(LightningModule):
         logits = self.denoiser.get_logits(
             batch=batch_t,
             time=time,
-            scheduler=self.scheduler,
             drop_cond=drop_condition   
         )
         q_forward = self.noiser.get_transition_probabilities(
@@ -116,16 +114,17 @@ class DiffusionModel(LightningModule):
         return self.cross_entropy_logits(logits, q_forward)
 
     def calculate_cross_entropy_from_probs(self, p_dist, q_dist):
-        with torch.no_grad():
-            mask_indices = torch.isinf(torch.log(q_dist)) == False
-        return -(p_dist[mask_indices]*torch.log(q_dist[mask_indices])).mean()
+        #with torch.no_grad():
+        #    mask_indices = torch.isinf(torch.log(q_dist)) == False
+        ce = -(p_dist*torch.log(q_dist+1e-12)).sum(dim=-1)
+        return ce.mean()
 
 
     def get_denoise_matching_term_loss(self, batch, drop_condition):
         #Calculate the known true posterier for when x0 is known
         batch_t = batch.clone()
         t_span = (2, self.scheduler.t_final)
-        time = self.scheduler.sample_time(n_samples=batch.batch_size, t_span=t_span)
+        time = self.scheduler.sample_time(n_samples=batch.batch_size, t_span=t_span) #200*torch.ones(size=(batch.batch_size,),dtype=torch.long)
 
         self.noiser.noise_batch_x0_xt(
             batch=batch_t,
@@ -142,7 +141,6 @@ class DiffusionModel(LightningModule):
         logits = self.denoiser.get_logits(
             batch=batch_t,
             time=time,
-            scheduler=self.scheduler,
             drop_cond=drop_condition   
         )
         #Apply the x0 reparameterization as outlined in D3PM if desired
@@ -171,11 +169,6 @@ class DiffusionModel(LightningModule):
             time_batch=time[batch.batch]
         )
 
-        #x_1 = self.noiser.noise_x0_xt(
-        #    x0_batch=batch.x*1.0, 
-        #    time_batch=torch.ones(size=(batch.batch_size,), dtype=torch.long)[batch.batch]
-        #)
-
         q_forward = self.noiser.get_transition_probabilities(
             x_t_batch=batch.x*1.0,
             time_batch=time[batch.batch],
@@ -185,7 +178,6 @@ class DiffusionModel(LightningModule):
         logits = self.denoiser.get_logits(
             batch=batch_1,
             time=time,
-            scheduler=self.scheduler,
             drop_cond=drop_condition   
         )
 

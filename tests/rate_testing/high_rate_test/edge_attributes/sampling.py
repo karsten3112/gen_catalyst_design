@@ -13,7 +13,7 @@ def main():
     guidance_scales = [10.0, 0.8, 1.2, 2.0]
     n_samples = 100
     miller_index = "100"
-    model_type = "last" # Best/epoch | last
+    model_type = "epoch" # Best/epoch | last
     condition = 0
 
     condition_dicts = [{"class":condition} for _ in range(n_samples)]

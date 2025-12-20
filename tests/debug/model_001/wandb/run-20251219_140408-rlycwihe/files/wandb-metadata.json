@@ -1,0 +1,17 @@
+{
+  "os": "macOS-15.6.1-arm64-arm-64bit",
+  "python": "CPython 3.10.19",
+  "startedAt": "2025-12-19T13:04:08.422716Z",
+  "program": "/Users/karsten/Desktop/speciale/gen_catalyst_design/tests/debug/training.py",
+  "codePath": "tests/debug/training.py",
+  "codePathLocal": "training.py",
+  "git": {
+    "remote": "https://github.com/karsten3112/gen_catalyst_design.git",
+    "commit": "30716144b103f557255d24ac40012cf94cc1a7c6"
+  },
+  "email": "karsten.walz.jensen@gmail.com",
+  "root": "model_001",
+  "host": "MacBook-Pro-tilhrende-Karsten.local",
+  "executable": "/opt/anaconda3/envs/cat_opt/bin/python",
+  "writerId": "k1tsbv2lanpb67sm5zfkodpv0nbzq7xx"
+}

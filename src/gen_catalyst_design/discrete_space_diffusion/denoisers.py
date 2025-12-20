@@ -17,11 +17,13 @@ class DiscreteSpaceDenoiser(nn.Module):
     def __init__(
             self, 
             element_pool:list,
-            cond_embedder:ConditioningEmbedder
+            cond_embedder:ConditioningEmbedder,
+            time_embedding_dim:int=2
         ):
         super().__init__()
         self.cond_embedder = cond_embedder
         self.element_pool = element_pool
+        self.time_embedding_dim = time_embedding_dim
         if "(X)" in element_pool:
             self.absorbing_state = True
             self.absorbing_state_index = self.get_absorbing_state_index(element_pool=element_pool)
@@ -34,7 +36,7 @@ class DiscreteSpaceDenoiser(nn.Module):
             if element == "(X)":
                 return i
 
-    def forward(self, x_t:torch.tensor, batch, time, scheduler:DiscreteTimeScheduler, drop_condition:bool, **kwargs):
+    def forward(self, x_t:torch.tensor, batch, time, drop_condition:bool, **kwargs):
         raise Exception("must be implemented by sub-class")
     
     def get_sample_dataset_from_atoms_list(self, atoms_list:list, dataset_kwargs:dict={}):
@@ -43,49 +45,41 @@ class DiscreteSpaceDenoiser(nn.Module):
     def get_sample_loader(self, dataset, batch_size, shuffle:bool=True):
         raise Exception("must be implemented by sub-class")
 
-    def get_time_embedding(self, time, t_init, t_final):
-        cos = torch.cos(torch.pi/(t_final-t_init)*time).view(-1,1)
-        sin = torch.sin(torch.pi/(t_final-t_init)*time).view(-1,1)
-        return torch.hstack([cos, sin])
+    #def get_time_embedding(self, time, t_init, t_final):
+    #    cos = torch.cos(torch.pi/(t_final-t_init)*time).view(-1,1)
+    #    sin = torch.sin(torch.pi/(t_final-t_init)*time).view(-1,1)
+    #    return torch.hstack([cos, sin])
     
-    def get_time_embedding_new(self, time, t_init, t_final):
-        pass
-        positions = torch.arange(timesteps)[:, None]  # Shape: (timesteps, 1)
-        #dimensions = np.arange(self.embedding_dim)[
-        #    np.newaxis, :
-        #]  # Shape: (1, embedding_dim)
-
-        # Compute angles using sine for even indices and cosine for odd indices
-        #angle_rates = 1 / np.power(10000, (2 * (dimensions // 2)) / self.embedding_dim)
-        #angle_rads = positions * angle_rates
-
-        #pos_encoding = np.zeros_like(angle_rads)
-        #pos_encoding[:, 0::2] = np.sin(angle_rads[:, 0::2])
-        #pos_encoding[:, 1::2] = np.cos(angle_rads[:, 1::2])
+    def get_time_embedding(self, time):
+        indices = torch.arange(0, self.time_embedding_dim, 1)
+        angle_rates = 1 / torch.pow(10000, (2 * (indices // 2)) / self.time_embedding_dim)
+        timesteps=time[:,None]*angle_rates[None,:]
+        time_embedded = torch.zeros_like(timesteps)
+        time_embedded[:, 0::2] = torch.sin(timesteps[:, 0::2])
+        time_embedded[:, 1::2] = torch.cos(timesteps[:, 1::2])
+        return time_embedded
 
 
     def get_probabilities_from_logits(self, logits):
         probabilities = F.log_softmax(logits, dim=-1) 
         return torch.exp(probabilities)
     
-    def get_guided_logits(self, batch, time, scheduler:DiscreteTimeScheduler, guidance_scale:float=2.0, **kwargs):
+    def get_guided_logits(self, batch, time, guidance_scale:float=2.0, **kwargs):
         logits = [
             self.forward(
             x_t=batch.x*1.0, 
             batch=batch, 
             time=time, 
-            scheduler=scheduler, 
             drop_condition=drop_cond) for drop_cond in [True, False]
         ]
         logits_guided = logits[0] + guidance_scale*(logits[1] - logits[0])
         return logits_guided
     
-    def get_logits(self, batch, time, scheduler:DiscreteTimeScheduler, drop_cond:bool):
+    def get_logits(self, batch, time, drop_cond:bool):
         logits = self.forward(
             x_t=batch.x*1.0, 
             batch=batch, 
             time=time, 
-            scheduler=scheduler, 
             drop_condition=drop_cond
         )
         return logits
@@ -140,7 +134,7 @@ class SingleMessageLayer(MessagePassing):
             edge_attr_dim:int=0, 
             conditioning_dim:int=8,
             activation_func=torch.nn.ReLU(),
-            time_embedding_dim:int=2, 
+            time_embedding_dim:int=10, 
             aggr = 'mean',
             non_active_site_scale:float=0.1,
 
@@ -200,17 +194,19 @@ class SingleMessageLayer(MessagePassing):
     
 
 class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
-    def __init__(self, 
-                 element_pool:list, 
-                 cond_embedder:ConditioningEmbedder,
-                 message_dim:int=8,
-                 n_hidden_layers:int=1,
-                 hidden_dim_rep:int=8,
-                 mark_active_sites:bool=True,
-                 use_edge_attr:bool=True,
-                 aggr:str="mean"
-                 ):
-        super().__init__(element_pool, cond_embedder)
+    def __init__(
+            self,
+            element_pool:list, 
+            cond_embedder:ConditioningEmbedder,
+            message_dim:int=8,
+            n_hidden_layers:int=1,
+            hidden_dim_rep:int=8,
+            time_embedding_dim = 10,
+            mark_active_sites:bool=True,
+            use_edge_attr:bool=True,
+            aggr:str="mean"
+        ):
+        super().__init__(element_pool, cond_embedder, time_embedding_dim)
         input_dim = len(self.element_pool)
         edge_attr_dim = 0
         if use_edge_attr:
@@ -220,7 +216,8 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
             input_dim=input_dim,
             output_dim=message_dim,
             message_dim=message_dim,
-            edge_attr_dim=edge_attr_dim, 
+            edge_attr_dim=edge_attr_dim,
+            time_embedding_dim=self.time_embedding_dim, 
             conditioning_dim=self.cond_embedder.embedding_dim,
             aggr=aggr,
         )
@@ -228,7 +225,8 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
             input_dim=hidden_dim_rep,
             message_dim=message_dim,
             edge_attr_dim=edge_attr_dim, 
-            output_dim=len(self.element_pool), 
+            output_dim=len(self.element_pool),
+            time_embedding_dim=self.time_embedding_dim, 
             conditioning_dim=self.cond_embedder.embedding_dim,
             aggr=aggr
         )
@@ -238,6 +236,7 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
                 message_dim=message_dim, 
                 output_dim=hidden_dim_rep,
                 edge_attr_dim=edge_attr_dim, 
+                time_embedding_dim=self.time_embedding_dim,
                 conditioning_dim=self.cond_embedder.embedding_dim,
                 aggr=aggr
             ) for _ in range(n_hidden_layers)
@@ -251,9 +250,9 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
         self.use_edge_attr = use_edge_attr
         self.aggr = aggr
     
-    def forward(self, x_t, batch, time, scheduler:DiscreteTimeScheduler, drop_condition:bool):
+    def forward(self, x_t, batch, time, drop_condition:bool):
         edge_index, conds, batch_indices = batch.edge_index, batch.y, batch.batch
-        time_embedded = self.get_time_embedding(time=time[batch_indices], t_init=scheduler.t_init, t_final=scheduler.t_final)
+        time_embedded = self.get_time_embedding(time=time)[batch_indices]
         embedded_conds = self.cond_embedder.forward(condition=conds[batch_indices], drop_condition=drop_condition)
         x_t = self.input_layer.forward(
             x_t, 
@@ -298,6 +297,7 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
             "use_edge_attr":self.use_edge_attr,
             "n_hidden_layers":self.n_hidden_layers,
             "hidden_dim_rep":self.hidden_dim_rep,
+            "time_embedding_dim":self.time_embedding_dim,
             "aggr":self.aggr,
         }
         state_dict.update(denoiser_info)
