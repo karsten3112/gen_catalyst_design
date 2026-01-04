@@ -47,6 +47,13 @@ class DiscreteSpaceNoiser(nn.Module):
                 accum_matrices.append(result_matrix)
             self.accumulated_q_matrices = torch.stack(accum_matrices)
 
+    def get_alpha_bar_t(self, time):
+        return self.accumulated_q_matrices[time].diagonal(offset=0, dim1=-1, dim2=-2).sum(-1)/len(self.element_pool)
+
+    def get_snr_t(self, time):
+        alpha_bar_t = self.get_alpha_bar_t(time=time)
+        return alpha_bar_t/(1.0-alpha_bar_t)
+
     def __call__(self, beta_t_batch:torch.tensor) -> torch.tensor:
         raise Exception ("Must be implemented in sub-class")
 

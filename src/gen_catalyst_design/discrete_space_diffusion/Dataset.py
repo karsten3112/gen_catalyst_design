@@ -233,6 +233,7 @@ def get_dataloaders_from_atoms_list(
         condition_key:str="class", 
         train_val_split:float=0.1,
         do_initial_shuffling:bool=True,
+        do_train_shuffling:bool=True,
         random_seed:int=42,
         loader_kwargs:dict={},
         graph_kwargs:dict={} 
@@ -256,7 +257,7 @@ def get_dataloaders_from_atoms_list(
     train_loader = DataLoader(
         train_dataset, 
         batch_size=batch_size, 
-        shuffle=True,
+        shuffle=do_train_shuffling,
         **loader_kwargs
     )
     val_loader = DataLoader(

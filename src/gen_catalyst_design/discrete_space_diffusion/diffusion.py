@@ -22,7 +22,8 @@ class DiffusionModel(LightningModule):
             drop_prob:float=0.2,
             random_seed:int=42,
             lr:float=1e-4,
-            weight_decay:float=1e-4,
+            weight_decay:float=0.0,
+            min_loss_weight:float=1e-3,
             use_x0_reparam:bool=False,
             auxillary_weight:float=None
         ):
@@ -35,6 +36,7 @@ class DiffusionModel(LightningModule):
         self.drop_prob = drop_prob
         self.lr = lr
         self.weight_decay = weight_decay
+        self.min_loss_weight = min_loss_weight
         if self.noiser is not None:
             if self.noiser.accumulated_q_matrices is None:
                 self.noiser.pre_compute_accum_q_matrices(scheduler=self.scheduler)
@@ -153,8 +155,11 @@ class DiffusionModel(LightningModule):
                 batch=batch,
                 time=time
             )
-            #denoise_matching_term = self.calculate_cross_entropy_from_probs(p_dist=q_revs, q_dist=denoise_probs)
-            return self.calculate_cross_entropy_from_probs(p_dist=q_revs, q_dist=denoise_probs)
+            snr_t = self.noiser.get_snr_t(time=time[batch.batch])
+            snr_regularized = torch.max(snr_t, torch.tensor(self.min_loss_weight, device=self.device))
+            cross_entropy = -(q_revs*torch.log(denoise_probs+1e-12)).sum(dim=-1)
+            loss = (torch.log(1.0+snr_regularized)*cross_entropy).mean()
+            return loss #self.calculate_cross_entropy_from_probs(p_dist=q_revs, q_dist=denoise_probs)
         else:
             return self.cross_entropy_logits(logits, q_revs)
     
@@ -198,7 +203,8 @@ class DiffusionModel(LightningModule):
         #Determining whether conditioning should be dropped
         drop_condition = True if torch.rand(1) <= self.drop_prob else False
         #batch = batch.to(self.device) #should not have to do this parse here. Think it is because of how i dont define dataloaders in lightning module
-        denoise_matching_term = (1000.0 - 2.0)*self.get_denoise_matching_term_loss(
+        #should i do the weighing here of each term in the sum??
+        denoise_matching_term = self.get_denoise_matching_term_loss(
             batch=batch,
             drop_condition=drop_condition
         )
@@ -370,7 +376,8 @@ class DiffusionModel(LightningModule):
             "lr":self.lr,
             "weight_decay":self.weight_decay,
             "use_x0_reparam":self.use_x0_reparam,
-            "auxillary_weight":self.auxillary_weight
+            "auxillary_weight":self.auxillary_weight,
+            "min_loss_weight":self.min_loss_weight
         }
         modules = {"scheduler_info":self.scheduler, "denoiser_info":self.denoiser, "noiser_info":self.noiser}
         for module_type in modules:
@@ -440,6 +447,7 @@ class DiffusionModel(LightningModule):
         self.weight_decay = cfg.pop("weight_decay")
         self.use_x0_reparam = cfg.pop("use_x0_reparam")
         self.auxillary_weight = cfg.pop("auxillary_weight")
+        self.min_loss_weight = cfg.pop("min_loss_weight")
         self.lr = cfg.pop("lr")
         self.scheduler = self.get_scheduler_from_checkpoint(scheduler_params=cfg.pop("scheduler_info"))
         self.noiser = self.get_noiser_from_checkpoint(noiser_params=cfg.pop("noiser_info"), element_pool=self.element_pool)

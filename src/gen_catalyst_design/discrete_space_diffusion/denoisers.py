@@ -18,7 +18,7 @@ class DiscreteSpaceDenoiser(nn.Module):
             self, 
             element_pool:list,
             cond_embedder:ConditioningEmbedder,
-            time_embedding_dim:int=2
+            time_embedding_dim:int=24,
         ):
         super().__init__()
         self.cond_embedder = cond_embedder
@@ -44,11 +44,6 @@ class DiscreteSpaceDenoiser(nn.Module):
 
     def get_sample_loader(self, dataset, batch_size, shuffle:bool=True):
         raise Exception("must be implemented by sub-class")
-
-    #def get_time_embedding(self, time, t_init, t_final):
-    #    cos = torch.cos(torch.pi/(t_final-t_init)*time).view(-1,1)
-    #    sin = torch.sin(torch.pi/(t_final-t_init)*time).view(-1,1)
-    #    return torch.hstack([cos, sin])
     
     def get_time_embedding(self, time):
         indices = torch.arange(0, self.time_embedding_dim, 1)
@@ -174,7 +169,7 @@ class SingleMessageLayer(MessagePassing):
         #print(edge_index.shape)
         aggregated_messages = self.propagate(edge_index=edge_index, x=x_t, edge_attr=edge_attr, active_sites=active_sites)
         #we let the time embedding work on the global aggregation
-        x_t = self.phi_network(torch.hstack([x_t, aggregated_messages, time_embedded]))
+        x_t = self.phi_network(torch.hstack([x_t, aggregated_messages, time_embedded])) #time_embedded
         #We shift the final representation using gamma, and beta MLP's
         gamma, beta = self.gamma_net(conds_embedded), self.beta_net(conds_embedded)
         return gamma*x_t + beta
@@ -198,6 +193,7 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
             self,
             element_pool:list, 
             cond_embedder:ConditioningEmbedder,
+            n_elements:int=21,
             message_dim:int=8,
             n_hidden_layers:int=1,
             hidden_dim_rep:int=8,
@@ -213,7 +209,7 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
             edge_attr_dim = len(self.element_pool)
         
         self.input_layer = SingleMessageLayer(
-            input_dim=input_dim,
+            input_dim=input_dim+message_dim,
             output_dim=message_dim,
             message_dim=message_dim,
             edge_attr_dim=edge_attr_dim,
@@ -241,7 +237,8 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
                 aggr=aggr
             ) for _ in range(n_hidden_layers)
         ]
-        
+        self.n_elements = n_elements
+        self.site_embeddings = nn.Embedding(num_embeddings=n_elements, embedding_dim=message_dim)
         self.hidden_layers = nn.ModuleList(hidden_layers + [output_layer])
         self.hidden_dim_rep = hidden_dim_rep
         self.n_hidden_layers = n_hidden_layers
@@ -254,8 +251,10 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
         edge_index, conds, batch_indices = batch.edge_index, batch.y, batch.batch
         time_embedded = self.get_time_embedding(time=time)[batch_indices]
         embedded_conds = self.cond_embedder.forward(condition=conds[batch_indices], drop_condition=drop_condition)
+        ids = (torch.arange(0, 21, 1)*torch.ones(size=(batch.batch_size, 1), dtype=torch.long)).reshape(shape=(self.n_elements*batch.batch_size,))
+        embedded_sites = self.site_embeddings(ids)
         x_t = self.input_layer.forward(
-            x_t, 
+            torch.hstack([x_t, embedded_sites]), 
             edge_index=edge_index, 
             conds_embedded=embedded_conds, 
             time_embedded=time_embedded,
@@ -303,3 +302,6 @@ class DiscreteGNNDenoiser(DiscreteSpaceDenoiser):
         state_dict.update(denoiser_info)
         return state_dict
 
+class HiericalGNNDenoiser(DiscreteSpaceDenoiser):
+    def __init__(self, element_pool, cond_embedder, time_embedding_dim = 2):
+        super().__init__(element_pool, cond_embedder, time_embedding_dim)

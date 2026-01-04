@@ -1,0 +1,70 @@
+_wandb:
+    value:
+        cli_version: 0.23.0
+        e:
+            p4x919zd8bzg7y06ldbjjtzqev8bue9f:
+                apple:
+                    ecpuCores: 6
+                    gpuCores: 10
+                    memoryGb: 16
+                    name: Apple M4
+                    pcpuCores: 4
+                    ramTotalBytes: "17179869184"
+                    swapTotalBytes: "1073741824"
+                codePath: tests/debug/training.py
+                codePathLocal: training.py
+                cpu_count: 10
+                cpu_count_logical: 10
+                disk:
+                    /:
+                        total: "494384795648"
+                        used: "154673987584"
+                email: karsten.walz.jensen@gmail.com
+                executable: /opt/anaconda3/envs/cat_opt/bin/python
+                git:
+                    commit: 0c08a2b03e7f9c25f61d576bbfa5b18aacbc807b
+                    remote: https://github.com/karsten3112/gen_catalyst_design.git
+                host: MacBook-Pro-tilhrende-Karsten.local
+                memory:
+                    total: "17179869184"
+                os: macOS-15.6.1-arm64-arm-64bit
+                program: /Users/karsten/Desktop/speciale/gen_catalyst_design/tests/debug/training.py
+                python: CPython 3.10.19
+                root: model_001
+                startedAt: "2026-01-02T01:00:54.875925Z"
+                writerId: p4x919zd8bzg7y06ldbjjtzqev8bue9f
+        m:
+            - "1": trainer/global_step
+              "6":
+                - 3
+              "7": []
+            - "2": '*'
+              "5": 1
+              "6":
+                - 1
+              "7": []
+        python_version: 3.10.19
+        t:
+            "1":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+            "2":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+            "3":
+                - 3
+                - 7
+                - 13
+                - 66
+            "4": 3.10.19
+            "5": 0.23.0
+            "12": 0.23.0
+            "13": darwin-arm64

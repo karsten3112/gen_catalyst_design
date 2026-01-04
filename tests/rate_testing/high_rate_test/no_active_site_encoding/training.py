@@ -30,8 +30,9 @@ def main():
 
     noiser_type = "Absorbing" # Absorbing | Uniform
     mark_active_sites = False
+    use_edge_attr = False
     element_pool = ["Rh", "Cu", "Au", "Pd"]
-    embedding_dim = 24
+    hidden_dim = 128
     
     if "Absorbing" in noiser_type:
         element_pool = ["(X)"] + element_pool
@@ -47,16 +48,20 @@ def main():
     else:
         raise Exception(f"noiser of type {noiser_type} is not implemented")
 
-    condition_embedder = ClassLabelEmbedder(num_labels=1, embedding_dim=embedding_dim)
+    scheduler = ExponentialScheduler(beta_max=1e-1, beta_min=1e-4)
+
+    conditioning = ClassLabelEmbedder(num_labels=1, embedding_dim=hidden_dim)    
     denoiser = DiscreteGNNDenoiser(
         element_pool=element_pool,
-        cond_embedder=condition_embedder,
-        message_dim=embedding_dim,
-        hidden_dim_rep=embedding_dim,
-        mark_active_sites=mark_active_sites
+        cond_embedder=conditioning,
+        message_dim=hidden_dim,
+        n_hidden_layers=1,
+        hidden_dim_rep=hidden_dim,
+        time_embedding_dim=hidden_dim,
+        use_edge_attr=mark_active_sites,
+        mark_active_sites=use_edge_attr,
     )
         
-    scheduler = CosineScheduler(beta_max=1e-1, beta_min=1e-3)
 
     diff_model = DiffusionModel(
         element_pool=element_pool,
@@ -65,7 +70,7 @@ def main():
         denoiser=denoiser,
         drop_prob=0.10,
         use_x0_reparam=True,
-        auxillary_weight=0.01
+        auxillary_weight=0.0
     )
 
     train_loader, val_loader = get_dataloaders_from_atoms_list(
@@ -90,6 +95,7 @@ def main():
         logger_kwargs=logger_kwargs,
         gradient_clip_val=1.0,
         patience=15,
+        accelerator="cpu"
     )
 
     trainer.fit(

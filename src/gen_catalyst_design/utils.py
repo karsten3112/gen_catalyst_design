@@ -120,7 +120,7 @@ def setup_trainer_and_logger(
         logger_kwargs:dict={}
     ) -> Trainer:
 
-
+    
     if model_name is None:
         model_name = "model"
         filenames = os.listdir()

@@ -9,11 +9,11 @@ import random
 
 def main():
     random_seed = 42
-    noiser_types = ["Uniform", "Absorbing"] # Absorbing | Uniform
+    noiser_types = ["Uniform"] # Absorbing | Uniform
     guidance_scales = [0.8, 1.2, 2.0]
     n_samples = 100
     miller_index = "100"
-    model_type = "last" # Best/epoch | last
+    model_type = "last-v2" # Best/epoch | last
     condition = 0
 
     db = connect(f"../../../../databases/templates/{miller_index}/{miller_index}_templates.db")
@@ -34,15 +34,17 @@ def main():
         
         diff_model = DiffusionModel.load_from_checkpoint(os.path.join(pth_header, checkpoint_file))
         diff_model = diff_model.to(device=torch.device("cpu"))
-
+        conditioning_dicts = [{"class":0} for _ in range(n_samples)]
         for guidance_scale in guidance_scales:
             random.seed(random_seed)
             torch.manual_seed(random_seed)
             torch.cuda.manual_seed_all(random_seed)
+
             result_samples = diff_model.sample(
                 guidance_scale=guidance_scale,
                 n_samples=n_samples, 
-                conditionings=condition*torch.ones(size=(n_samples,), dtype=torch.long), 
+                conditioning_dicts=conditioning_dicts,
+                condition_key="class",
                 template_atoms=template_atoms, 
                 batch_size=50, 
                 timesteps=None, 

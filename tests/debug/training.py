@@ -1,6 +1,6 @@
 from gen_catalyst_design.discrete_space_diffusion import (
     DiffusionModel, DiscreteGNNDenoiser, AbsorbingStateNoiser, UniformTransitionsNoiser,
-    CosineScheduler, ClassLabelEmbedder, LinearScheduler
+    CosineScheduler, ClassLabelEmbedder, LinearScheduler, ExponentialScheduler
 )
 
 from gen_catalyst_design.utils import (
@@ -30,6 +30,9 @@ def main():
     element_pool = ["Au","Cu","Pd","Rh","Ni","Ga"]
     if use_absorbing_state:
         element_pool = ["(X)"] + element_pool
+        noiser = AbsorbingStateNoiser(element_pool=element_pool)
+    else:
+        noiser = UniformTransitionsNoiser(element_pool=element_pool)
 
     atoms_list = read("dataset.traj", index=":")
     if mask_classes:
@@ -42,8 +45,7 @@ def main():
         batch_size=40,
     )
 
-    scheduler = LinearScheduler(beta_max=1e-1, beta_min=1e-3)
-    noiser = AbsorbingStateNoiser(element_pool=element_pool)
+    scheduler = ExponentialScheduler(beta_max=1e-1, beta_min=1e-4)
 
     hidden_dim = 128
 
@@ -52,11 +54,11 @@ def main():
         element_pool=element_pool,
         cond_embedder=conditioning,
         message_dim=hidden_dim,
-        n_hidden_layers=1,
+        n_hidden_layers=3,
         hidden_dim_rep=hidden_dim,
         time_embedding_dim=hidden_dim,
     )
-
+    #print(denoiser.const_state_dict)
     diff_model = DiffusionModel(
         element_pool=element_pool,
         scheduler=scheduler,
@@ -64,9 +66,10 @@ def main():
         denoiser=denoiser,
         drop_prob=0.1,
         use_x0_reparam=True,
-        auxillary_weight=0.1
+        auxillary_weight=0.01
     )
-    
+    #print(diff_model.const_state_dict)
+    #exit()
     #for batch in train_loader:
     #    diff_model.calculate_loss(batch=batch, batch_idx=None)
     #    break
@@ -81,8 +84,8 @@ def main():
 
     trainer = setup_trainer_and_logger(
         project_name="AbsorbingStateTest",
-        model_name="model_001",
-        patience=30,
+        model_name="model_003",
+        patience=50,
         accelerator="cpu",
         gradient_clip_val=2.0,
         trainer_kwargs=trainer_kwargs
