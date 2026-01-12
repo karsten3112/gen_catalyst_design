@@ -25,6 +25,7 @@ class DiscreteSpaceNoiser(nn.Module):
         self.n_classes = len(element_pool)
         self.stationary_dist = None
         self.device = None
+        self.absorbing_state = None
 
     @property
     def const_state_dict(self):
@@ -98,10 +99,6 @@ class DiscreteSpaceNoiser(nn.Module):
         probs = self.get_accum_transition_probabilities(x0_batch=batch.x*1.0, time_batch=time_batch)
         noised_xs = self.sample_transition(probabilites=probs)
         batch.x = noised_xs
-        try:
-            batch.edge_attr = batch.x[batch.edge_index[0]] + batch.x[batch.edge_index[1]]
-        except:
-            pass
 
     def noise_x0_xt(self, x0_batch:torch.tensor, time_batch:torch.tensor, ):
         probs = self.get_accum_transition_probabilities(x0_batch=x0_batch, time_batch=time_batch)
@@ -126,6 +123,10 @@ class DiscreteSpaceNoiser(nn.Module):
         sample = self.sample_transition(probabilites=probs)
         return sample
     
+    def sample_onehots_from_stationary(self, n_samples:int, num_atoms:int):
+        samples = torch.cat([self.sample_from_stationary(num_atoms=num_atoms) for _ in range(n_samples)])
+        return samples
+
     def sample_atoms_from_stationary(self, n_samples:int, template_atoms:Atoms):
         atoms_list = []
         for _ in range(n_samples):

@@ -7,12 +7,16 @@ import torch
 # -------------------------------------------------------------------------------------
 
 class ConditioningEmbedder(nn.Module):
-    def __init__(self, cond_dim:int=1, embedding_dim:int=28):
+    def __init__(self, cond_dim:int=1, embedding_dim:int=28, device=None):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.cond_dim = cond_dim
         self.uncond_embedding = nn.Embedding(num_embeddings=1, embedding_dim=embedding_dim)
+        self.device = device
 
+    def set_device(self, device):
+        self.device = device
+    
     @property
     def const_state_dict(self):
         return {"cond_dim":self.cond_dim, "embedding_dim":self.embedding_dim}
@@ -105,4 +109,38 @@ class RateClassEmbedder(ClassLabelEmbedder):
         state_dict.update({"embedding_type":"RateClassEmbedder"})
         return state_dict
 
+
+class ActiveSiteConditioning(ClassLabelEmbedder):
+    def __init__(self, element_pool:list, num_active_sites:int=4, embedding_dim = 28, activation_function=torch.nn.ReLU()):
+        super().__init__(num_labels=len(element_pool), embedding_dim=embedding_dim)
+        self.element_pool = element_pool
+        self.elem_to_int = {element:i for i, element in enumerate(element_pool)}
+        self.ml_layers = nn.Sequential(
+            nn.Linear(in_features=num_active_sites*self.embedding_dim, out_features=self.embedding_dim),
+            activation_function,
+            nn.Linear(in_features=self.embedding_dim, out_features=self.embedding_dim)
+        )
+
+    def get_embedded_condition(self, condition):
+        embedded_conditions = []
+        for cond in condition:
+            idx = torch.tensor([self.elem_to_int[elem] for elem in cond], dtype=torch.long, device=self.device)
+            learned_embs = super().get_embedded_condition(idx)
+            embedded_condition = self.ml_layers(torch.hstack(list(learned_embs)))
+            embedded_conditions.append(embedded_condition)
+        return torch.vstack(embedded_conditions)
+    
+    def forward(self, condition, drop_condition = False):
+        if drop_condition:
+            return self.uncond_embedding(torch.zeros(size=(len(condition), ), dtype=torch.long, device=self.device))
+        else:
+            return self.get_embedded_condition(condition=condition)
+
+    @property
+    def const_state_dict(self):
+        state_dict = super().const_state_dict
+        state_dict.pop("num_labels")
+        state_dict.update({"embedding_type":"ActiveSiteConditioning"})
+        state_dict["element_pool"] = self.element_pool
+        return state_dict
 

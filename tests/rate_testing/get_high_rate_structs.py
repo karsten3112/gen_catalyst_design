@@ -9,13 +9,10 @@ def main():
     opt_method = "GeneticAlgorithm"
     miller_index = "100"
 
-    db = connect(f"../../../databases/templates/{miller_index}/{miller_index}_templates.db")
+    db = connect(f"../../databases/templates/{miller_index}/{miller_index}_templates.db")
     template_atoms = get_atoms_list_from_db(db_ase=db)[0]
-    print(template_atoms.info)
 
-    exit()
-
-    pth_header = f"../../../results/{opt_method}/results/Rh_Cu_Au_Pd/miller_index_{miller_index}"
+    pth_header = f"../../results/{opt_method}/results/Rh_Cu_Au_Pd/miller_index_{miller_index}"
     datadicts = []
     for runid in [0,1,2]:
         filename = f"runID_{runid}_results.db"
@@ -23,16 +20,17 @@ def main():
         datadicts += load_data_from_db(database=database)
     
     filtered_dicts = filter_data_dicts(data_dicts=datadicts, rate_min=rate_min)
-    #rates = [filtered_dict["rate"] for filtered_dict in filtered_dicts]
+    active_sites = [0,1,2,3]
     atoms_list = []
     for filtered_dict in filtered_dicts:
         atoms = template_atoms.copy()
         atoms.symbols = filtered_dict["elements"]
+        atoms.info["active_site_conf"] = atoms[active_sites].get_chemical_symbols()
         atoms.info["class"] = 0
         atoms.info["rate"] = filtered_dict["rate"]
         atoms_list.append(atoms)
 
-    write("training_set.traj", atoms_list)
+    write("high_rate_structs.traj", atoms_list)
     
 
 

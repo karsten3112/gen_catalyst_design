@@ -14,11 +14,9 @@ class Graph(Data):
             edge_index = None, 
             edge_attr = None, 
             y = None,
-            active_sites = None, 
             pos = None
         ):
         super().__init__(x, edge_index, edge_attr, y, pos)
-        self.active_sites = active_sites
     
     def to_elems(self, element_pool:list):
         indices = torch.argmax(self.x, dim=-1)
@@ -93,33 +91,17 @@ def get_graph_from_atoms(
         atoms:Atoms,
         element_pool:list,
         condition_key:str=None,
-        mark_active_sites:bool=True,
-        use_edge_attr:bool=True
     ):
-
-    #Get active site embedding - maybe change to index instead and use nn.Embedding
-    active_sites = None
-    if mark_active_sites or use_edge_attr:
-        active_sites = torch.zeros(size=(len(atoms),), dtype=torch.bool)
-        indices_site = atoms.info["indices_site"]
-        active_sites[indices_site] = True
-    
     x = embed_cluster_as_onehots(atoms=atoms, element_pool=element_pool)
     edges_list = get_edges_list_from_connectivity(atoms.info["connectivity"])
     edge_index = torch.tensor(edges_list, dtype=torch.long).reshape(2,-1)
-
-    #Get edge attributes as sum of one-hots from elements + active-site onehot - maybe change to index and use nn.Embedding
-    edge_attr = None
-    if use_edge_attr:
-        edge_attr = x[edge_index[0]] + x[edge_index[1]]
 
     #Construct the graph
     graph = Graph(
         x=x,
         edge_index=edge_index,
         pos=torch.tensor(atoms.positions),
-        active_sites=active_sites,
-        edge_attr=edge_attr
+        edge_attr=None
     )
 
     #Assign condition to graph
@@ -129,7 +111,6 @@ def get_graph_from_atoms(
         else:
             raise Exception(f"condition key {condition_key} is not available in datadict, having: {atoms.info.keys()}")
     return graph
-
 
 def get_graph_from_datadict(
         datadict:dict, 

@@ -1,7 +1,8 @@
 from .schedulers import DiscreteTimeScheduler, ExponentialScheduler, CosineScheduler, LinearScheduler
 from .noisers import DiscreteSpaceNoiser, UniformTransitionsNoiser, AbsorbingStateNoiser
 from .denoisers import DiscreteSpaceDenoiser, DiscreteGNNDenoiser
-from .conditioning import RateEmbedder, ClassLabelEmbedder, RateClassEmbedder
+from .conditioning import RateEmbedder, ClassLabelEmbedder, RateClassEmbedder, ActiveSiteConditioning
+from .Dataset import get_graph_from_atoms
 from ase.atoms import Atoms
 from .Dataset import get_elements_from_onehots
 import torch
@@ -19,13 +20,15 @@ class DiffusionModel(LightningModule):
             scheduler:DiscreteTimeScheduler=None,
             noiser:DiscreteSpaceNoiser=None,
             denoiser:DiscreteSpaceDenoiser=None,
-            drop_prob:float=0.2,
+            drop_prob:float=0.1,
             random_seed:int=42,
             lr:float=1e-4,
             weight_decay:float=0.0,
             min_loss_weight:float=1e-3,
-            use_x0_reparam:bool=False,
-            auxillary_weight:float=None
+            num_sample_estimate:int=5,
+            use_x0_reparam:bool=True,
+            auxillary_weight:float=None,
+            auxillary_elem_weight:float=None
         ):
         super().__init__()
         self.element_pool = element_pool
@@ -37,6 +40,7 @@ class DiffusionModel(LightningModule):
         self.lr = lr
         self.weight_decay = weight_decay
         self.min_loss_weight = min_loss_weight
+        self.num_sample_estimate = num_sample_estimate
         if self.noiser is not None:
             if self.noiser.accumulated_q_matrices is None:
                 self.noiser.pre_compute_accum_q_matrices(scheduler=self.scheduler)
@@ -45,12 +49,16 @@ class DiffusionModel(LightningModule):
         #set to false for now as it does not work currently
         self.use_x0_reparam = use_x0_reparam
         self.auxillary_weight = auxillary_weight
+        self.auxillary_elem_weight = auxillary_elem_weight
         self.iteration = 0
     
     def on_fit_start(self):
         device = self.device
         self.noiser.set_device(device=device)
         self.scheduler.set_device(device=device)
+        self.denoiser.set_device(device=device)
+        if self.denoiser.cond_embedder is not None:
+            self.denoiser.cond_embedder.set_device(device=device)
     
     def perform_x0_reparam(self, denoise_logits, x_t, batch, time):
         denoise_probs = torch.softmax(denoise_logits, dim=-1)
@@ -101,7 +109,6 @@ class DiffusionModel(LightningModule):
             batch=batch_t,
             time_batch=time[batch.batch]
         )
-        #x_t = self.noiser.noise_x0_xt(x0_batch=batch.x*1.0, time_batch=time[batch.batch])
         
         logits = self.denoiser.get_logits(
             batch=batch_t,
@@ -124,45 +131,45 @@ class DiffusionModel(LightningModule):
 
     def get_denoise_matching_term_loss(self, batch, drop_condition):
         #Calculate the known true posterier for when x0 is known
-        batch_t = batch.clone()
+        loss = 0.0
         t_span = (2, self.scheduler.t_final)
-        time = self.scheduler.sample_time(n_samples=batch.batch_size, t_span=t_span) #200*torch.ones(size=(batch.batch_size,),dtype=torch.long)
-
-        self.noiser.noise_batch_x0_xt(
-            batch=batch_t,
-            time_batch=time[batch.batch]
-        )
-
-        q_revs = self.noiser.get_reverse_transition_probabilities(
-            x0_batch=batch.x*1.0,
-            x_t_batch=batch_t.x*1.0, 
-            time_batch=time[batch.batch], 
-            scheduler=self.scheduler
-        )
-        
-        logits = self.denoiser.get_logits(
-            batch=batch_t,
-            time=time,
-            drop_cond=drop_condition   
-        )
-        #Apply the x0 reparameterization as outlined in D3PM if desired
-        #return the cross entropy between the true posterier and the predicted reversals
-        #Note here that this is equal to the KL-divergence up to a constant which is not learnable
-        if self.use_x0_reparam:
-            denoise_probs = self.perform_x0_reparam(
-                denoise_logits=logits,
-                x_t=batch_t.x*1.0,
-                batch=batch,
-                time=time
+        for _ in range(self.num_sample_estimate):
+            batch_t = batch.clone()
+            time = self.scheduler.sample_time(n_samples=batch.batch_size, t_span=t_span) #200*torch.ones(size=(batch.batch_size,),dtype=torch.long)
+            self.noiser.noise_batch_x0_xt(
+                batch=batch_t,
+                time_batch=time[batch.batch]
             )
-            snr_t = self.noiser.get_snr_t(time=time[batch.batch])
-            snr_regularized = torch.max(snr_t, torch.tensor(self.min_loss_weight, device=self.device))
-            cross_entropy = -(q_revs*torch.log(denoise_probs+1e-12)).sum(dim=-1)
-            loss = (torch.log(1.0+snr_regularized)*cross_entropy).mean()
-            return loss #self.calculate_cross_entropy_from_probs(p_dist=q_revs, q_dist=denoise_probs)
-        else:
-            return self.cross_entropy_logits(logits, q_revs)
-    
+
+            q_revs = self.noiser.get_reverse_transition_probabilities(
+                x0_batch=batch.x*1.0,
+                x_t_batch=batch_t.x*1.0, 
+                time_batch=time[batch.batch], 
+                scheduler=self.scheduler
+            )
+        
+            logits = self.denoiser.get_logits(
+                batch=batch_t,
+                time=time,
+                drop_cond=drop_condition   
+            )
+            #Apply the x0 reparameterization as outlined in D3PM if desired
+            #return the cross entropy between the true posterier and the predicted reversals
+            #Note here that this is equal to the KL-divergence up to a constant which is not learnable
+            if self.use_x0_reparam:
+                denoise_probs = self.perform_x0_reparam(
+                    denoise_logits=logits,
+                    x_t=batch_t.x*1.0,
+                    batch=batch,
+                    time=time
+                )
+                snr_t = self.noiser.get_snr_t(time=time[batch.batch])
+                snr_regularized = torch.max(snr_t, torch.tensor(self.min_loss_weight, device=self.device))
+                cross_entropy = -(q_revs*torch.log(denoise_probs+1e-12)).sum(dim=-1)
+                loss += (torch.log(1.0+snr_regularized)*cross_entropy).mean()
+            else:
+                loss += self.cross_entropy_logits(logits, q_revs)
+        return (t_span[1] - t_span[0])*loss/self.num_sample_estimate
 
     def get_reconstruction_term_loss(self, batch, drop_condition):
         #get the known forward noising probabilites for going from x0 -> x1  
@@ -199,6 +206,34 @@ class DiffusionModel(LightningModule):
         else:
             return self.cross_entropy_logits(logits, q_forward)
     
+    def get_auxillary_elem_count_loss(self, batch, drop_condition):
+        batch_t = batch.clone()
+        t_span = (1, self.scheduler.t_final)
+        time = self.scheduler.sample_time(n_samples=batch.batch_size, t_span=t_span)
+        
+        self.noiser.noise_batch_x0_xt(
+            batch=batch_t,
+            time_batch=time[batch.batch]
+        )
+
+        logits = self.denoiser.get_logits(
+            batch=batch_t,
+            time=time,
+            drop_cond=drop_condition   
+        )
+        
+        probs = torch.softmax(logits, dim=-1)
+        if self.denoiser.absorbing_state:
+            probs[:,self.denoiser.absorbing_state_index] = 0.0
+        onehots = F.one_hot(torch.argmax(probs, dim=1), num_classes=len(self.element_pool)).reshape(batch.batch_size, 21, len(self.element_pool))
+        elem_counts_pred = onehots.sum(dim=1)
+        true_elem_counts = batch.x.reshape(batch.batch_size, 21, len(self.element_pool)).sum(dim=1)
+        loss = F.mse_loss(elem_counts_pred*1.0, true_elem_counts*1.0)
+        return loss
+        #exit()
+        #Need to mask absorbing states here and then add
+
+
     def calculate_loss_terms(self, batch, batch_idx):
         #Determining whether conditioning should be dropped
         drop_condition = True if torch.rand(1) <= self.drop_prob else False
@@ -216,32 +251,39 @@ class DiffusionModel(LightningModule):
         #If desired add the auxillary term as described in the D3PM paper
         aux_loss = 0.0
         if self.auxillary_weight is not None:
-            aux_loss =  self.auxillary_weight*self.get_auxillary_term_loss(
+            aux_loss = self.auxillary_weight*self.get_auxillary_term_loss(
+                batch=batch,
+                drop_condition=drop_condition
+            )
+        aux_elem_loss = 0.0
+        if self.auxillary_elem_weight is not None:
+            aux_elem_loss = self.auxillary_elem_weight*self.get_auxillary_elem_count_loss(
                 batch=batch,
                 drop_condition=drop_condition
             )
         self.iteration+=1
         #print(self.iteration)
-        return denoise_matching_term, reconstruction_term, aux_loss
+        return denoise_matching_term, reconstruction_term, aux_loss, aux_elem_loss
 
     def training_step(self, batch, batch_idx):
-        denoise_term, recon_term, aux_loss = self.calculate_loss_terms(batch=batch, batch_idx=batch_idx)
-        loss = denoise_term + recon_term + aux_loss
+        denoise_term, recon_term, aux_loss, aux_elem_loss = self.calculate_loss_terms(batch=batch, batch_idx=batch_idx)
+        loss = denoise_term + recon_term + aux_loss + aux_elem_loss
         self.log("train_loss", loss, on_epoch=True, batch_size=batch.batch_size)
         self.log("train_loss/denoise", denoise_term, on_epoch=True, batch_size=batch.batch_size)
         self.log("train_loss/recon", recon_term, on_epoch=True, batch_size=batch.batch_size)
         self.log("train_loss/aux_term", aux_loss, on_epoch=True, batch_size=batch.batch_size)
+        self.log("train_loss/aux_elem_term", aux_elem_loss, on_epoch=True, batch_size=batch.batch_size)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        denoise_term, recon_term, aux_loss = self.calculate_loss_terms(batch=batch, batch_idx=batch_idx)
-        loss = denoise_term + recon_term + aux_loss
+        denoise_term, recon_term, aux_loss, aux_elem_loss = self.calculate_loss_terms(batch=batch, batch_idx=batch_idx)
+        loss = denoise_term + recon_term + aux_loss + aux_elem_loss
         self.log("val_loss", loss, on_epoch=True, batch_size=batch.batch_size)
         return loss
 
     def test_step(self, batch, batch_idx):
-        denoise_term, recon_term, aux_loss = self.calculate_loss_terms(batch=batch, batch_idx=batch_idx)
-        loss = denoise_term + recon_term + aux_loss
+        denoise_term, recon_term, aux_loss, aux_elem_loss = self.calculate_loss_terms(batch=batch, batch_idx=batch_idx)
+        loss = denoise_term + recon_term + aux_loss + aux_elem_loss
         self.log("test_loss", loss, on_epoch=True, batch_size=batch.batch_size)
         return loss
     
@@ -294,6 +336,35 @@ class DiffusionModel(LightningModule):
             samples+=result_list
         return samples
     
+    def beam_sample(
+            self, 
+            n_samples:int,
+            template_atoms:Atoms, 
+            conditioning_dicts:dict={},
+            condition_key:str="class",
+            n_branches:int=10,
+            top_k_solutions:int=2,
+            guidance_scale:float=2.0,
+            return_as_atoms_list:bool=False,
+            timesteps:torch.tensor=None,
+            log_all_timesteps:bool=False,
+            dataset_kwargs:dict={}
+        ):
+
+        noised_atoms_list = self.noiser.sample_atoms_from_stationary(
+            n_samples=n_samples*n_branches, 
+            template_atoms=template_atoms
+        )
+        #1000 branches already
+        #calculate all scores
+        #pick top-k solutions among (n_samples, top-k) so i get top-k for all all samples
+        #
+
+        for noised_atoms in noised_atoms_list:
+            graphs = [get_graph_from_atoms(atoms=noised_atoms.copy(), element_pool=self.element_pool, condition_key=condition_key) for _ in range(n_branches)]
+            #get n candidates
+            #do single denoise step for each candidate
+
     def denoise_batch(self, batch, guidance_scale, timesteps, log_all_timesteps):
         batch_list = []
         if timesteps is None:
@@ -309,10 +380,6 @@ class DiffusionModel(LightningModule):
                 guidance_scale=guidance_scale
             )
             batch.x = xs_denoised
-            try:
-                batch.edge_attr = batch.x[batch.edge_index[0]] + batch.x[batch.edge_index[1]]
-            except:
-                pass
         return batch_list
 
     def get_distribution(self, probabilites:torch.tensor) -> Categorical:
@@ -333,7 +400,7 @@ class DiffusionModel(LightningModule):
         )
         if time == self.scheduler.t_init and self.denoiser.absorbing_state:
             probs[:,self.denoiser.absorbing_state_index] = 0.0
-        #need to renormalize her actually
+        #need to renormalize here actually
         xs_denoised = self.sample_onehot_vectors(probabilities=probs)
         return xs_denoised
 
@@ -425,14 +492,20 @@ class DiffusionModel(LightningModule):
         implemented_embedders = {
             "RateEmbedder":RateEmbedder, 
             "ClassLabelEmbedder":ClassLabelEmbedder,
-            "RateClassEmbedder":RateClassEmbedder
+            "RateClassEmbedder":RateClassEmbedder,
+            "ActiveSiteConditioning":ActiveSiteConditioning
         }
-        embedder_type = cond_embedder_params.pop("embedding_type")
-        if embedder_type in implemented_embedders:
-            cond_embedder = implemented_embedders[embedder_type](**cond_embedder_params)
+        if cond_embedder_params is None:
+            cond_embedder = None
             return cond_embedder
         else:
-            raise Exception(f"Denoiser of type: {embedder_type} has not been implemented yet")
+            embedder_type = cond_embedder_params.pop("embedding_type")
+            if embedder_type in implemented_embedders:
+                print(cond_embedder_params.pop("num_labels"))
+                cond_embedder = implemented_embedders[embedder_type](**cond_embedder_params)
+                return cond_embedder
+            else:
+                raise Exception(f"Denoiser of type: {embedder_type} has not been implemented yet")
 
 
     def on_save_checkpoint(self, checkpoint):
@@ -457,4 +530,3 @@ class DiffusionModel(LightningModule):
 
     def load_state_dict(self, state_dict, strict = True, assign = False):
         return super().load_state_dict(state_dict, strict, assign)
-
