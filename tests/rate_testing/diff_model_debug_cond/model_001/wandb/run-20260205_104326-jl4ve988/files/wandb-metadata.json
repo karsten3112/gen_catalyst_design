@@ -1,0 +1,17 @@
+{
+  "os": "macOS-15.6.1-arm64-arm-64bit",
+  "python": "CPython 3.10.19",
+  "startedAt": "2026-02-05T09:43:26.614652Z",
+  "program": "/Users/karsten/Desktop/speciale/gen_catalyst_design/tests/rate_testing/diff_model_debug_cond/training.py",
+  "codePath": "tests/rate_testing/diff_model_debug_cond/training.py",
+  "codePathLocal": "training.py",
+  "git": {
+    "remote": "https://github.com/karsten3112/gen_catalyst_design.git",
+    "commit": "d5f00ff8a0a6c1e77912c90d08a3cb4e0947f37c"
+  },
+  "email": "karsten.walz.jensen@gmail.com",
+  "root": "model_001",
+  "host": "MacBook-Pro-tilhrende-Karsten.local",
+  "executable": "/opt/anaconda3/envs/cat_opt/bin/python",
+  "writerId": "q3pxseaa1tc9cq1v40rvnxkswd7ws984"
+}

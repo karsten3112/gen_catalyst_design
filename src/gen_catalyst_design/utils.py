@@ -1,7 +1,3 @@
-from .discrete_space_diffusion import (
-    DiscreteSpaceNoiser,
-    ConditioningEmbedder,
-)
 from gen_catalyst_design.reaction_rates import ReactionMechanism
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, Callback
 from pytorch_lightning.loggers import WandbLogger
@@ -11,64 +7,6 @@ import yaml
 import torch
 import wandb
 import os
-
-# -------------------------------------------------------------------------------------
-# SETUP NOISER
-# -------------------------------------------------------------------------------------
-
-def setup_noiser(noiser_type:str, noiser_params:dict={}) -> DiscreteSpaceNoiser:
-    from gen_catalyst_design.discrete_space_diffusion import AbsorbingStateNoiser, UniformTransitionsNoiser
-    noisers = {"AbsorbingStateNoiser": AbsorbingStateNoiser, "UniformTransitionsNoiser": UniformTransitionsNoiser}
-    if noiser_type in noisers:
-        return noisers[noiser_type](**noiser_params)
-    else:
-        raise NotImplementedError(f"Noiser of type {noiser_type} is not implemented")
-
-# -------------------------------------------------------------------------------------
-# SETUP SCHEDULER
-# -------------------------------------------------------------------------------------
-
-def setup_scheduler(scheduler_type:str, scheduler_params:dict={}):
-    from gen_catalyst_design.discrete_space_diffusion import LinearScheduler, ExponentialScheduler, CosineScheduler
-    schedulers = {
-        "LinearScheduler":LinearScheduler,
-        "ExponentialScheduler":ExponentialScheduler,
-        "CosineScheduler":CosineScheduler
-    }
-    if scheduler_type in schedulers:
-        return schedulers[scheduler_type](**scheduler_params)
-    else:
-        raise NotImplementedError(f"Scheduler of type {scheduler_type} is not implemented")
-
-# -------------------------------------------------------------------------------------
-# SETUP DENOISER
-# -------------------------------------------------------------------------------------
-
-def setup_denoiser(denoiser_type:str, condition_embedder:ConditioningEmbedder, denoiser_params:dict={}):
-    from gen_catalyst_design.discrete_space_diffusion import DiscreteGNNDenoiser
-    denoisers = {
-        "DiscreteGNNDenoiser":DiscreteGNNDenoiser
-    }
-    if denoiser_type in denoisers:
-        return denoisers[denoiser_type](**denoiser_params, cond_embedder=condition_embedder)
-    else:
-        raise NotImplementedError(f"Denoiser of type {denoiser_type} is not implemented")
-
-# -------------------------------------------------------------------------------------
-# SETUP CONDITION EMBEDDER
-# -------------------------------------------------------------------------------------
-
-def setup_condition_embedder(condition_type:str, condition_params:dict={}) -> ConditioningEmbedder:
-    from gen_catalyst_design.discrete_space_diffusion import ClassLabelEmbedder, RateClassEmbedder, RateEmbedder
-    cond_embs = {
-        "ClassLabelEmbedder":ClassLabelEmbedder,
-        "RateEmbedder":RateEmbedder,
-        "RateClassEmbedder": RateClassEmbedder
-    }
-    if condition_type in cond_embs:
-        return cond_embs[condition_type](**condition_params)
-    else:
-        raise NotImplementedError(f"Conditioning of type {condition_type} is not implemented")
 
 # -------------------------------------------------------------------------------------
 # SETUP TRAINER
@@ -141,7 +79,7 @@ def setup_trainer_and_logger(
         save_dir=model_name,
         **logger_kwargs
     )
-
+    
     checkpoint_callback = ModelCheckpoint(
         dirpath=os.path.join(model_name, checkpoint_dir),
         monitor="val_loss",

@@ -12,16 +12,10 @@ import os
 
 
 def main():
-    opt_methods = [
-        #"random_search",
-        "GeneticAlgorithm"
-    ]
-    
     db = connect("../../databases/templates/100/100_templates.db")
     template_atoms_list = get_atoms_list_from_db(db_ase=db)
     n_atoms_surf = len(template_atoms_list[0])
     miller_index = "100"
-    
     universal_pth_header = "../.."
     load_indices = ":"
     model = "WWL-GPR"
@@ -46,43 +40,41 @@ def main():
     )
     
     models = [
-        "model_005"
+        #"active_site_emb_only_all",
+        "model_009"
+        #"active_site_emb_only_filtered"
+        #"bare_bones_all_structs",
+        #"bare_bones_filtered",
+        #"site_emb_all_structs",
+        #"site_emb_filtered"
     ]
 
-    for opt_method in opt_methods:
-        file_dir = os.path.join("samples", opt_method)
-        #models = os.listdir(file_dir)
-        for model in models:
-            class_divisions = ["class_7"]#os.listdir(os.path.join(file_dir, model))
-            for i, cls in enumerate(class_divisions):
-                samples_files = ["g_0.8_scale.traj","g_2.0_scale.traj"]#os.listdir(os.path.join(file_dir, model, cls))
-                for sample_file in samples_files:
-                    filename = os.path.join(file_dir, model, cls, sample_file)
-                    atoms_list = read(filename=filename, index=load_indices)
-                    elements_list = [atoms.get_chemical_symbols() for atoms in atoms_list]
-                    guidance_scale = split_traj_file(filename=sample_file)
-                    score_dicts = reaction_rate_calculation(
-                        symbols_list=elements_list,
-                        template_atoms_list=template_atoms_list,
-                        n_atoms_surf=n_atoms_surf,
-                        reaction_mechanism=reaction_mechanism,
-                        features_bulk=features_bulk,
-                        features_gas=features_gas
-                    )
-                    db_pth_header = os.path.join(file_dir, model, "rate_evals", cls)
-                    if not os.path.exists(db_pth_header):
-                        os.makedirs(db_pth_header)
-                    database = Database.establish_connection(
-                        filename=f"g_{guidance_scale}_scale.db",
-                        miller_index="100",
-                        pth_header=db_pth_header
-                    )
-                    data_dicts = []
-                    for elements, score_dict in zip(elements_list, score_dicts):
-                        data_dicts.append({"elements":elements, "score_dict":score_dict, "batch":0})
-                    database.write_data_to_tables(data_dicts=data_dicts, append=False)
-                    database.close_connection()
-                    print(f"done evaluating: method: {opt_method}, class: {cls}, guidance_scale: {guidance_scale}")
+    cls = 22.0
+
+    for model in models:
+        filename = os.path.join(model, f"samples_{cls}.traj")
+        atoms_list = read(filename=filename, index=load_indices)
+        filtered_atoms_list = [atoms for atoms in atoms_list if "O" not in atoms.symbols]
+        elements_list = [atoms.get_chemical_symbols() for atoms in filtered_atoms_list]
+        score_dicts = reaction_rate_calculation(
+            symbols_list=elements_list,
+            template_atoms_list=template_atoms_list,
+            n_atoms_surf=n_atoms_surf,
+            reaction_mechanism=reaction_mechanism,
+            features_bulk=features_bulk,
+            features_gas=features_gas
+        )
+        database = Database.establish_connection(
+            filename=f"rate_evals_{cls}.db",
+            miller_index="100",
+            pth_header=model
+        )
+        data_dicts = []
+        for elements, score_dict in zip(elements_list, score_dicts):
+            data_dicts.append({"elements":elements, "score_dict":score_dict, "batch":0})
+        database.write_data_to_tables(data_dicts=data_dicts, append=False)
+        database.close_connection()
+        print(f"done evaluating: model {model}")
 
 
 def get_features_bulk_and_gas(

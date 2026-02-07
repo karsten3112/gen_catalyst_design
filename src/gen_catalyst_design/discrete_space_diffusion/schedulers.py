@@ -13,6 +13,7 @@ class DiscreteTimeScheduler(nn.Module):
             t_final:int=1000, 
             beta_max:float=1.0,
             beta_min:float=1e-3,
+            time_sample_method:str="uniform"
         ):
         super().__init__()
         if t_init < 1:
@@ -22,6 +23,7 @@ class DiscreteTimeScheduler(nn.Module):
         self.beta_max = torch.tensor(beta_max, dtype=torch.float64)
         self.beta_min = torch.tensor(beta_min, dtype=torch.float64)
         self.device = None
+        self.time_sample_method = time_sample_method
 
     @property
     def const_state_dict(self):
@@ -39,11 +41,36 @@ class DiscreteTimeScheduler(nn.Module):
     def __call__(self, t:torch.tensor):
         raise Exception("Must be implemented by sub-class")
     
-    def sample_time(self, n_samples:int, t_span:tuple=None):
-        if t_span is not None:
-            return torch.randint(low=t_span[0], high=t_span[1], size=(n_samples,), device=self.device)
+    def sample_time(self, n_samples, t_span:tuple=None):
+        methods = {
+            "uniform": self.sample_time_uniformly, 
+            "stratified": self.sample_time_stratified
+        }
+        if self.time_sample_method not in methods:
+            raise Exception(f"method for sampling time: {self.time_sample_method} is not implemented")
         else:
-            return torch.randint(low=self.t_init, high=self.t_final, size=(n_samples,), device=self.device)
+            return methods[self.time_sample_method](n_samples=n_samples, t_span=t_span)
+    
+    def sample_time_uniformly(self, n_samples:int, t_span:tuple=None):
+        if t_span is not None:
+            low, high = t_span[0], t_span[1]
+        else:
+            low, high = self.t_init, self.t_final
+        return torch.randint(low=low, high=high, size=(n_samples,), device=self.device) 
+    
+    def sample_time_stratified(self, n_samples:int, t_span:tuple=None):
+        if t_span is not None:
+            low, high = t_span[0], t_span[1]
+        else:
+            low, high = self.t_init, self.t_final
+        edges = torch.linspace(low, high + 1, n_samples + 1, device=self.device)  # +1 to make upper edge exclusive
+        lows = edges[:-1].long()
+        highs = edges[1:].long()
+        u = torch.rand(n_samples, device=self.device)
+        t = (lows + (u * (highs - lows).float()).floor().long())
+        t = t.clamp(min=low, max=high)
+        t = t[torch.randperm(n_samples, device=self.device)]
+        return t
 
 
 # -------------------------------------------------------------------------------------
@@ -52,8 +79,8 @@ class DiscreteTimeScheduler(nn.Module):
 
 
 class LinearScheduler(DiscreteTimeScheduler):
-    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001):
-        super().__init__(t_init, t_final, beta_max, beta_min)
+    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, time_sample_method = "uniform"):
+        super().__init__(t_init, t_final, beta_max, beta_min, time_sample_method)
 
     @property
     def const_state_dict(self):
@@ -71,8 +98,8 @@ class LinearScheduler(DiscreteTimeScheduler):
 
 
 class CosineScheduler(DiscreteTimeScheduler):
-    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, reg:float=1e-3):
-        super().__init__(t_init, t_final, beta_max, beta_min)
+    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, reg:float=1e-3, time_sample_method = "uniform"):
+        super().__init__(t_init, t_final, beta_max, beta_min, time_sample_method)
         self.reg = torch.tensor(reg)
     
     @property
@@ -97,8 +124,8 @@ class CosineScheduler(DiscreteTimeScheduler):
 
 
 class ExponentialScheduler(DiscreteTimeScheduler):
-    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001):
-        super().__init__(t_init, t_final, beta_max, beta_min)
+    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, time_sample_method = "uniform"):
+        super().__init__(t_init, t_final, beta_max, beta_min, time_sample_method)
 
     @property
     def const_state_dict(self):

@@ -1,11 +1,14 @@
 from torch_geometric.data import Dataset, Data
 from torch_geometric.loader import DataLoader
+import numpy as np
 from ase_ml_models.pyg import get_edges_list_from_connectivity
 import torch.nn.functional as F
 from ase.atoms import Atoms
 from ase.atom import Atom
 import torch
 import random
+
+
 
 class Graph(Data):
     def __init__(
@@ -14,9 +17,13 @@ class Graph(Data):
             edge_index = None, 
             edge_attr = None, 
             y = None,
-            pos = None
+            pos = None,
+            active_sites = None,
+            active_site_dists = None
         ):
         super().__init__(x, edge_index, edge_attr, y, pos)
+        self.active_sites = active_sites
+        self.active_site_dists = active_site_dists
     
     def to_elems(self, element_pool:list):
         indices = torch.argmax(self.x, dim=-1)
@@ -38,7 +45,7 @@ class Graph(Data):
 
 class GraphDataset(Dataset):
     def __init__(self, graph_list, transform = None):
-        super().__init__(transform)
+        super().__init__(transform=transform)
         self.graph_list = graph_list
 
     def len(self):
@@ -87,27 +94,58 @@ def get_onehot(element:str, mapping_dict:dict):
     onehot = F.one_hot(torch.tensor(mapping_dict[element]), len(mapping_dict))
     return onehot
 
+def add_site_connections(connectivity, site_indices):
+    for i in site_indices:
+        for j in site_indices:
+            entry = connectivity[i,j]
+            if entry == 0 and i != j:
+                connectivity[i,j] += 1
+
+def get_active_site_dists(atoms:Atoms, site_indices:list):
+    positions_all = atoms.positions
+    positions_site = positions_all[site_indices]
+    diff = positions_all[:, None, :] - positions_site[None, :, :]
+    dists = np.linalg.norm(diff, axis=2)
+    sorted_dists = np.sort(dists, axis=-1)[:, ::-1].copy()
+    return sorted_dists
+
 def get_graph_from_atoms(
         atoms:Atoms,
         element_pool:list,
         condition_key:str=None,
+        add_active_site_connectivity:bool=False
     ):
     x = embed_cluster_as_onehots(atoms=atoms, element_pool=element_pool)
-    edges_list = get_edges_list_from_connectivity(atoms.info["connectivity"])
+    connectivity = atoms.info["connectivity"]
+    site_indices = atoms.info["indices_site"]
+    
+    active_site_dists = get_active_site_dists(atoms=atoms, site_indices=site_indices)
+
+    if add_active_site_connectivity:
+        add_site_connections(connectivity=connectivity, site_indices=site_indices)
+    edges_list = get_edges_list_from_connectivity(connectivity=connectivity)
     edge_index = torch.tensor(edges_list, dtype=torch.long).reshape(2,-1)
 
+    #embed coordination numbers
+    coord_nums = torch.tensor(connectivity.sum(axis=-1), dtype=torch.long)
+
+    #embed whether a site is active or not
+    active_sites = torch.zeros((len(atoms),), dtype=torch.long)   # 21 atoms
+    active_sites[site_indices]+=1
     #Construct the graph
     graph = Graph(
         x=x,
         edge_index=edge_index,
-        pos=torch.tensor(atoms.positions),
-        edge_attr=None
+        pos=torch.tensor(atoms.positions, dtype=torch.float),
+        edge_attr=None,
+        active_sites=active_sites,
+        active_site_dists=torch.tensor(active_site_dists, dtype=torch.float)
     )
 
     #Assign condition to graph
     if condition_key is not None:
         if condition_key in atoms.info:
-            graph.y = atoms.info[condition_key]
+            graph.y = torch.tensor(atoms.info[condition_key])
         else:
             raise Exception(f"condition key {condition_key} is not available in datadict, having: {atoms.info.keys()}")
     return graph
@@ -116,13 +154,15 @@ def get_graph_from_datadict(
         datadict:dict, 
         template_atoms:Atoms, 
         element_pool:list, 
-        condition_key:str=None
+        condition_key:str=None,
+        add_active_site_connectivity:bool=False, 
     ):
     template_atoms.symbols = datadict["elements"]
     graph = get_graph_from_atoms(
         atoms=template_atoms,
         element_pool=element_pool,
-        condition_key=None
+        condition_key=None,
+        add_active_site_connectivity=add_active_site_connectivity
     )
     if condition_key is not None:
         if condition_key in datadict:
@@ -137,6 +177,7 @@ def get_dataset_from_datadicts(
         element_pool:list, 
         condition_key:str=None
     ):
+
     graph_list = [
         get_graph_from_datadict(
             datadict=datadict, 
@@ -153,6 +194,7 @@ def get_dataset_from_atoms_list(
         atoms_list:list,
         element_pool:list,
         condition_key:str=None,
+        add_active_site_connectivity:bool=False,
         graph_kwargs:dict={}
     ):
     graph_list = [
@@ -160,12 +202,12 @@ def get_dataset_from_atoms_list(
             atoms=atoms, 
             element_pool=element_pool, 
             condition_key=condition_key,
+            add_active_site_connectivity=add_active_site_connectivity,
             **graph_kwargs
         )
         for atoms in atoms_list
     ]
     return GraphDataset(graph_list=graph_list)
-
 
 
 def get_dataloaders_from_datadicts(
@@ -213,6 +255,7 @@ def get_dataloaders_from_atoms_list(
         batch_size:int=42,
         condition_key:str="class", 
         train_val_split:float=0.1,
+        add_active_site_connectivity:bool=False,
         do_initial_shuffling:bool=True,
         do_train_shuffling:bool=True,
         random_seed:int=42,
@@ -227,12 +270,15 @@ def get_dataloaders_from_atoms_list(
         atoms_list=atoms_list[:split_index],
         element_pool=element_pool,
         condition_key=condition_key,
+        add_active_site_connectivity=add_active_site_connectivity,
         graph_kwargs=graph_kwargs
     )
+
     val_dataset = get_dataset_from_atoms_list(
         atoms_list=atoms_list[split_index:],
         element_pool=element_pool,
         condition_key=condition_key,
+        add_active_site_connectivity=add_active_site_connectivity,
         graph_kwargs=graph_kwargs
     )
     train_loader = DataLoader(

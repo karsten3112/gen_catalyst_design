@@ -1,0 +1,17 @@
+{
+  "os": "macOS-15.6.1-arm64-arm-64bit",
+  "python": "CPython 3.10.19",
+  "startedAt": "2026-02-02T14:22:10.275704Z",
+  "program": "/Users/karsten/Desktop/speciale/gen_catalyst_design/tests/rate_testing/nn_rate_predictor/training_gnn.py",
+  "codePath": "tests/rate_testing/nn_rate_predictor/training_gnn.py",
+  "codePathLocal": "training_gnn.py",
+  "git": {
+    "remote": "https://github.com/karsten3112/gen_catalyst_design.git",
+    "commit": "d5f00ff8a0a6c1e77912c90d08a3cb4e0947f37c"
+  },
+  "email": "karsten.walz.jensen@gmail.com",
+  "root": "3mpl1",
+  "host": "MacBook-Pro-tilhrende-Karsten.local",
+  "executable": "/opt/anaconda3/envs/cat_opt/bin/python",
+  "writerId": "0cxwbtn254jwkonr3hyc1f50digzyw1k"
+}

@@ -16,6 +16,8 @@ class DiscreteSpaceNoiser(nn.Module):
             self, 
             element_pool:list, 
             accumulated_q_matrices:torch.tensor=None, 
+            active_site_freezing:int=600,
+            label_smoothing:float=0.0,
             random_state:int=42
         ):
         super().__init__()
@@ -25,7 +27,11 @@ class DiscreteSpaceNoiser(nn.Module):
         self.n_classes = len(element_pool)
         self.stationary_dist = None
         self.device = None
-        self.absorbing_state = None
+        self.absorbing_state = False
+        self.absorbing_state_index = None
+        self.active_site_freezing = active_site_freezing
+        self.label_smoothing = label_smoothing
+        self.active_sites = torch.tensor([0,1,2,3])
 
     @property
     def const_state_dict(self):
@@ -58,13 +64,22 @@ class DiscreteSpaceNoiser(nn.Module):
     def __call__(self, beta_t_batch:torch.tensor) -> torch.tensor:
         raise Exception ("Must be implemented in sub-class")
 
-    def get_transition_probabilities(self, x_t_batch:torch.tensor, time_batch:torch.tensor, scheduler:DiscreteTimeScheduler):
+    def get_transition_probabilities(
+            self, 
+            x_t_batch:torch.tensor, 
+            time_batch:torch.tensor, 
+            scheduler:DiscreteTimeScheduler
+        ):
         beta_t_batch = scheduler(t=time_batch)
         Qts = self.__call__(beta_t_batch=beta_t_batch)
         probs = torch.bmm(x_t_batch.unsqueeze(1), Qts).squeeze()
         return probs
     
-    def get_accum_transition_probabilities(self, x0_batch:torch.tensor, time_batch:torch.tensor):
+    def get_accum_transition_probabilities(
+            self, 
+            x0_batch:torch.tensor, 
+            time_batch:torch.tensor
+        ):
         Q_accum_t = self.accumulated_q_matrices[time_batch]
         probs = torch.bmm(x0_batch.unsqueeze(1), Q_accum_t).squeeze()
         return probs
@@ -90,37 +105,38 @@ class DiscreteSpaceNoiser(nn.Module):
             reg_indices = (denom > 0.0).reshape(shape=(len(denom),))
             probs = p1*p2
             probs[reg_indices]/=denom[reg_indices]
-            return probs
+            return probs*(1.0-self.label_smoothing) + self.label_smoothing/self.n_classes
     
-    def get_dist(self, probabilites:torch.tensor) -> Categorical:
-        return Categorical(probs=probabilites)
+    def get_dist(self, probabilities:torch.tensor) -> Categorical:
+        return Categorical(probs=probabilities)
 
     def noise_batch_x0_xt(self, batch, time_batch:torch.tensor):
-        probs = self.get_accum_transition_probabilities(x0_batch=batch.x*1.0, time_batch=time_batch)
-        noised_xs = self.sample_transition(probabilites=probs)
+        x0 = batch.x*1.0
+        probs = self.get_accum_transition_probabilities(x0_batch=x0, time_batch=time_batch)
+        noised_xs = self.sample_transition(probabilities=probs)
         batch.x = noised_xs
-
+    
     def noise_x0_xt(self, x0_batch:torch.tensor, time_batch:torch.tensor, ):
         probs = self.get_accum_transition_probabilities(x0_batch=x0_batch, time_batch=time_batch)
-        noised_x_batch = self.sample_transition(probabilites=probs)
+        noised_x_batch = self.sample_transition(probabilities=probs)
         return noised_x_batch
 
     def noise_step(self, x_t:torch.tensor, time:torch.tensor):
         probs = self.get_transition_probabilities(x_t=x_t, time=time)
-        noised_x = self.sample_transition(probabilites=probs)
+        noised_x = self.sample_transition(probabilities=probs)
         return noised_x
 
-    def sample_transition(self, probabilites:torch.tensor, **kwargs):
-        dist = self.get_dist(probabilites)
+    def sample_transition(self, probabilities:torch.tensor, **kwargs):
+        dist = self.get_dist(probabilities)
         sample = F.one_hot(dist.sample(), num_classes=self.n_classes)
         return sample
     
-    def sample_reverse_transition(self, probabilites:torch.tensor, **kwargs):
+    def sample_reverse_transition(self, probabilities:torch.tensor, **kwargs):
         raise Exception("Must be implemented by sub-class")
 
     def sample_from_stationary(self, num_atoms:int):
         probs = self.stationary_dist*torch.ones(size=(num_atoms,1))
-        sample = self.sample_transition(probabilites=probs)
+        sample = self.sample_transition(probabilities=probs)
         return sample
     
     def sample_onehots_from_stationary(self, n_samples:int, num_atoms:int):
@@ -164,8 +180,8 @@ class UniformTransitionsNoiser(DiscreteSpaceNoiser):
     def get_stationary_dist(self):
         return torch.ones(size=(self.n_classes,))/self.n_classes
 
-    def sample_reverse_transition(self, probabilites, **kwargs):
-        return super().sample_transition(probabilites=probabilites)
+    def sample_reverse_transition(self, probabilities, **kwargs):
+        return super().sample_transition(probabilities=probabilities)
 
 
 # -------------------------------------------------------------------------------------
@@ -174,16 +190,23 @@ class UniformTransitionsNoiser(DiscreteSpaceNoiser):
 
 
 class AbsorbingStateNoiser(DiscreteSpaceNoiser):
-    def __init__(self, element_pool, accumulated_q_matrices = None, random_state = 42, eps=1e-12):
+    def __init__(
+            self, 
+            element_pool, 
+            accumulated_q_matrices = None,
+            active_site_freezing = 0,
+            label_smoothing:float=1e-3, 
+            random_state = 42
+            ):
         if "(X)" not in element_pool:
             raise Exception(f"Absorbing state (X) not found in element pool being: {element_pool}")
-        super().__init__(element_pool, accumulated_q_matrices, random_state)
+        super().__init__(element_pool, accumulated_q_matrices, active_site_freezing, label_smoothing, random_state)
         for i, elem in enumerate(element_pool):
             if elem == "(X)":
                 self.absorbing_state_index = i
                 break
         self.stationary_dist = self.get_stationary_dist()
-        self.eps = eps
+        self.absorbing_state = True
 
     @property
     def const_state_dict(self):
@@ -204,7 +227,7 @@ class AbsorbingStateNoiser(DiscreteSpaceNoiser):
         t2 = beta_t_reshaped*(torch.ones(size=(n_classes,1), device=self.device) @ e_m)
         return t1 + t2
     
-    def sample_reverse_transition(self, probabilites, time:torch.tensor):
+    def sample_reverse_transition(self, probabilities, time:torch.tensor):
         if time == 1:
-            probabilites[:,self.absorbing_state_index] = 0.0 #enforce 0 probability for absorbing state at initial time-step
-        return super().sample_transition(probabilites)
+            probabilities[:,self.absorbing_state_index] = 0.0 #enforce 0 probability for absorbing state at initial time-step
+        return super().sample_transition(pprobabilities)
