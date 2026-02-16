@@ -4,46 +4,86 @@ import torch.nn.functional as F
 from torch_geometric.nn import MessagePassing, GlobalAttention, global_add_pool, global_mean_pool
 from .Dataset import get_dataset_from_atoms_list
 from torch_geometric.utils import to_dense_batch
+from torch_geometric.utils import softmax as pyg_softmax
+
+
+# -------------------------------------------------------------------------------------
+# LOGIT PREDICTOR BASE CLASS
+# -------------------------------------------------------------------------------------
 
 class LogitPredictor(nn.Module):
     def __init__(
             self,
-            time_embedding_dim:int=24, 
+            num_elements:int,
+            hidden_rep_dim:int=32,
+            conditioning_dim:int=32,
+            activation_func:callable=nn.ReLU(),
             device=None
         ):
         super().__init__()
         self.device = device
-        self.time_embedding_dim = time_embedding_dim
+        self.num_elements = num_elements
+        self.hidden_rep_dim = hidden_rep_dim
+        self.conditioning_dim = conditioning_dim
+
+        #head for predicting rates
+        self.rate_head = nn.Sequential(
+            nn.Linear(in_features=hidden_rep_dim, out_features=hidden_rep_dim),
+            activation_func,
+            nn.Linear(in_features=hidden_rep_dim, out_features=hidden_rep_dim),
+            activation_func,
+            nn.Linear(in_features=hidden_rep_dim, out_features=1)
+        )
+
+        #head for predicting logits
+        self.logit_head = nn.Sequential(
+            nn.Linear(in_features=hidden_rep_dim + conditioning_dim, out_features=hidden_rep_dim),
+            activation_func,
+            nn.Linear(in_features=hidden_rep_dim, out_features=hidden_rep_dim),
+            activation_func,
+            nn.Linear(in_features=hidden_rep_dim, out_features=num_elements)
+        )
 
     def set_device(self, device):
         self.device = device
 
     @property
     def const_state_dict(self):
-        return {"time_embedding_dim":self.time_embedding_dim}
+        state_dict = {
+            "num_elements":self.num_elements,
+            "conditioning_dim":self.conditioning_dim,
+            "hidden_rep_dim":self.hidden_rep_dim
+        }
+        return state_dict
 
-
-    def get_x0_rate_prediction(self, batch, time, embedded_condition):
+    def forward(self, batch, time, embedded_condition):
         raise NotImplementedError("logit estimation must be inferred by sub-class")
 
+    def get_x0_rate_prediction(self, batch, time, embedded_condition):
+        x_t = self.forward(
+            batch=batch,
+            time=time,
+            embedded_condition=embedded_condition
+        )
+        ctx = global_mean_pool(x_t, batch.batch)
+        return self.rate_head(ctx)
+
     def get_logits(self, batch, time, embedded_condition):
-        raise NotImplementedError("rate estimation must be inferred by sub-class")
+        x_t = self.forward(
+            batch=batch,
+            time=time,
+            embedded_condition=embedded_condition
+        )
+        if embedded_condition is not None:
+            return self.logit_head(torch.hstack([x_t, embedded_condition]))
+        else:
+            return self.logit_head(x_t)
 
     def get_sample_loader(self, atoms_list:list, element_pool:list, batch_size:int, condition_key:str=None, dataset_kwargs:dict={}):
         raise NotImplementedError("sample loader must be implemented by sub-class")
 
     def get_probs_from_logits(self, logits):
         return F.softmax(logits, dim=-1)
-
-    def get_time_embedding(self, time):
-        indices = torch.arange(0, self.time_embedding_dim, 1, device=self.device)
-        angle_rates = 1 / torch.pow(10000, (2 * (indices // 2)) / self.time_embedding_dim)
-        timesteps=time[:,None]*angle_rates[None,:]
-        time_embedded = torch.zeros_like(timesteps, device=self.device)
-        time_embedded[:, 0::2] = torch.sin(timesteps[:, 0::2])
-        time_embedded[:, 1::2] = torch.cos(timesteps[:, 1::2])
-        return time_embedded
-
 
 
 class InteractionBlock(MessagePassing):
@@ -124,7 +164,7 @@ class FiLMNet(nn.Module):
             embedding_dim=embedding_dim
         )
         self.gamma = nn.Sequential(
-            nn.Linear(conditining_dim+embedding_dim+2*output_dim, output_dim),
+            nn.Linear(conditining_dim+embedding_dim, output_dim),
             activation_func,
             nn.Linear(output_dim, output_dim),
             activation_func,
@@ -132,31 +172,26 @@ class FiLMNet(nn.Module):
         )
 
         self.beta = nn.Sequential(
-            nn.Linear(conditining_dim+embedding_dim+2*output_dim, output_dim),
+            nn.Linear(conditining_dim+embedding_dim, output_dim),
             activation_func,
             nn.Linear(output_dim, output_dim),
             activation_func,
             nn.Linear(output_dim, output_dim),
         )
 
-    def forward(self, x_i, x_next_iter, embedded_condition, interaction_block_id:str):
-        M, _ = embedded_condition.shape
-        block_id=int(interaction_block_id.split("_")[-1])
-        embedded_block = self.int_layer_emb(torch.tensor(block_id)).repeat(M,1)
-        features = torch.hstack([x_i, x_next_iter, embedded_condition, embedded_block])
+    def forward(self, message, embedded_condition):
+        features = torch.hstack([message, embedded_condition])
         return self.gamma(features), self.beta(features)
 
-    def modulate_representation(self, x_i, x_next_iter, embeddded_condition, interaction_block_id:str):
+    def modulate_representation(self, message, embeddded_condition):
         if embeddded_condition is None:
             gamma, beta = 1.0, 0.0
         else:
             gamma, beta = self.forward(
-                x_i=x_i,
-                x_next_iter=x_next_iter,
-                embedded_condition=embeddded_condition,
-                interaction_block_id=interaction_block_id
+                message=message,
+                embedded_condition=embeddded_condition
             )
-        return (1.0+gamma)*x_next_iter #+ beta
+        return (1.0+gamma)*message + beta
 
 class ContentDistanceAttentionPooling(nn.Module):
     def __init__(self, hidden_dim: int, rbf_dim: int = 32, n_heads: int = 4):
@@ -221,73 +256,31 @@ class ContentDistanceAttentionPooling(nn.Module):
         return ctx[mask]
 
 
-
-class GNNLogitPredictor(LogitPredictor):
+class EmbeddingBlock(nn.Module):
     def __init__(
-            self,
+            self, 
             num_elements:int,
-            conditioning_dim:int=32,
-            embedding_dim:int=32,
-            time_embedding_dim = 32,
-            n_interaction_blocks:int=3,
-            message_dim:int=32,
-            hidden_rep_dim:int=32,
+            embedding_dim:int=128,
+            time_embedding_dim:int=32, 
             activation_func:callable=nn.ReLU(),
-            aggr:str="mean", 
             device=None
         ):
-        super().__init__(time_embedding_dim, device)
-        self.num_elements=num_elements
+        super().__init__()
+        self.time_embedding_dim = time_embedding_dim
+        self.device = device
         self.embedding_dim = embedding_dim
-        self.conditioning_dim = conditioning_dim
-        self.n_interaction_blocks = n_interaction_blocks
-        self.message_dim = message_dim
-        self.hidden_rep_dim = hidden_rep_dim
-        self.activation_func = activation_func
-        self.aggr = aggr
-
-        #Embedding for each element species
+        #Element embedddings
         self.element_embeddings = nn.Embedding(
             num_embeddings=num_elements, 
             embedding_dim=embedding_dim
         )
 
-        #Embedding for active sites
+        self.element_proj = nn.Linear(embedding_dim, embedding_dim, bias=False)
+
+        #Embedding of active sites
         self.active_site_embedding = nn.Embedding(
             num_embeddings=2,
             embedding_dim=embedding_dim
-        )
-
-        #Number of interaction blocks
-        self.interaction_blocks = nn.ModuleDict(
-            {f"block_{i}": 
-             InteractionBlock(
-                input_dim=embedding_dim if i == 0 else hidden_rep_dim,
-                output_dim=hidden_rep_dim,
-                message_dim=message_dim,
-                time_embedding_dim=self.time_embedding_dim, 
-                conditioning_dim=conditioning_dim,
-                activation_func=activation_func,
-                aggr=aggr,
-            )
-            for i in range(n_interaction_blocks)
-            }
-        )
-
-        #Feature wise linear modulation
-        self.film_net = FiLMNet(
-            conditining_dim=conditioning_dim,
-            num_interaction_blocks=n_interaction_blocks,
-            output_dim=hidden_rep_dim,
-            embedding_dim=embedding_dim,
-            activation_func=activation_func
-        )
-
-        #Transformer style distance pooling
-        self.distance_pooling = ContentDistanceAttentionPooling(
-            hidden_dim=hidden_rep_dim,
-            rbf_dim=message_dim,
-            n_heads=4
         )
 
         #Embedder of distance to active_sites
@@ -296,42 +289,29 @@ class GNNLogitPredictor(LogitPredictor):
             activation_func,
             nn.Linear(embedding_dim, embedding_dim)
         )
+        
+        self.geom_rep_proj = nn.Linear(2*embedding_dim, embedding_dim, bias=False)
 
-        #head for predicting rates
-        self.rate_head = nn.Sequential(
-            nn.Linear(in_features=hidden_rep_dim, out_features=hidden_rep_dim),
+        #Embedder of time
+        self.time_nn_embedder = nn.Sequential(
+            nn.Linear(time_embedding_dim, time_embedding_dim),
             activation_func,
-            nn.Linear(in_features=hidden_rep_dim, out_features=hidden_rep_dim),
-            activation_func,
-            nn.Linear(in_features=hidden_rep_dim, out_features=1)
+            nn.Linear(time_embedding_dim, time_embedding_dim)
         )
 
-        #head for predicting logits
-        self.logit_head = nn.Sequential(
-            nn.Linear(in_features=2*hidden_rep_dim + conditioning_dim, out_features=hidden_rep_dim),
-            activation_func,
-            nn.Linear(in_features=hidden_rep_dim, out_features=hidden_rep_dim),
-            activation_func,
-            nn.Linear(in_features=hidden_rep_dim, out_features=num_elements)
-        )
+    def set_device(self, device):
+        self.device = device
 
-    @property
-    def const_state_dict(self):
-        state_dict = super().const_state_dict
-        extra_info = {
-            "logit_predictor_type":"GNNLogitPredictor",
-            "num_elements":self.num_elements,
-            "embedding_dim":self.embedding_dim,
-            "n_interaction_blocks":self.n_interaction_blocks,
-            "message_dim":self.message_dim,
-            "hidden_rep_dim":self.hidden_rep_dim,
-            "activation_func":self.activation_func,
-            "conditioning_dim":self.conditioning_dim
-        }
-        state_dict.update(extra_info)
-        return state_dict
+    def get_time_embedding(self, time):
+        indices = torch.arange(0, self.time_embedding_dim, 1, device=self.device)
+        angle_rates = 1 / torch.pow(10000, (2 * (indices // 2)) / self.time_embedding_dim)
+        timesteps=time[:,None]*angle_rates[None,:]
+        time_embedded = torch.zeros_like(timesteps, device=self.device)
+        time_embedded[:, 0::2] = torch.sin(timesteps[:, 0::2])
+        time_embedded[:, 1::2] = torch.cos(timesteps[:, 1::2])
+        return self.time_nn_embedder(time_embedded)
 
-    def embedding_block(self, batch, time):
+    def forward(self, batch, time):
         x_t, batch_indices, active_sites, active_site_dists = (
             batch.x,
             batch.batch, 
@@ -343,55 +323,351 @@ class GNNLogitPredictor(LogitPredictor):
         x_t = self.element_embeddings(indices)
 
         #Embed geometrical information via active site embeddings
-        #indices = torch.arange(0, 21, 1, device=self.device).repeat(batch.batch_size)
         active_site_emb = self.active_site_embedding(active_sites)
-        #active_site_dist_emb = self.dist_embedder(active_site_dists)
-        geom_rep = active_site_emb#torch.hstack([active_site_emb, active_site_dist_emb])
+        #Embed geometrical information via distance to active sites
+        active_site_dist_emb = self.dist_embedder(active_site_dists)
 
-        #Embed time via sinusoidal embedding, and expand to each node in every graph
+        #Concatenate geometrical information
+        geom_rep = torch.hstack([active_site_emb, active_site_dist_emb])
+
+        #Embed time by using sinusoidal embeddings
         time_embedded = self.get_time_embedding(time=time)[batch_indices]
         return x_t, geom_rep, time_embedded
 
+    def project_embeddings(self, x_t, geom_rep):
+        return self.element_proj(x_t) + self.geom_rep_proj(geom_rep)
+
+
+class MessagePassingBlock(MessagePassing):
+    def __init__(
+            self,
+            input_dim:int=32,
+            output_dim:int=32,
+            message_dim:int=32,
+            conditioning_dim:int=32,
+            time_embedding_dim:int=32,
+            activation_func=nn.ReLU(),
+            aggr = 'sum'
+        ):
+        super().__init__(aggr)
+        self.psi_network = nn.Sequential(
+            nn.Linear(2*input_dim, message_dim),
+            activation_func,
+            nn.Linear(message_dim, message_dim),
+            activation_func,
+            nn.Linear(message_dim, message_dim)
+        )
+        self.phi_network = nn.Sequential(
+            nn.Linear(message_dim+input_dim+time_embedding_dim, message_dim+output_dim),
+            activation_func,
+            nn.Linear(message_dim+output_dim, message_dim+output_dim),
+            activation_func,
+            nn.Linear(message_dim+output_dim, output_dim),
+        )
+
+        self.film_net = FiLMNet(
+            conditining_dim=conditioning_dim,
+            output_dim=message_dim,
+            num_interaction_blocks=1,
+            embedding_dim=message_dim
+        )
+
+
+        self.layer_norm = nn.LayerNorm(output_dim)
+        self.const_state_dict = {
+            "input_dim":input_dim,
+            "output_dim":output_dim,
+            "message_dim":message_dim,
+            "time_embedding_dim":time_embedding_dim
+        }
+    
+    def forward(self, x_t, edge_index, conds_embedded, time_embedded):
+        aggregated_messages = self.propagate(
+            edge_index=edge_index, 
+            x=x_t,
+            conds_embedded=conds_embedded
+        )
+        #we let the time embedding work on the global aggregation
+        x_t_updated = self.phi_network(torch.hstack([x_t, aggregated_messages, time_embedded]))
+        return self.layer_norm(x_t + x_t_updated)
+    
+    def message(self, x_i, x_j, conds_embedded_i):
+        message = self.psi_network(torch.hstack([x_i, x_j]))
+        modulated_message = self.film_net.modulate_representation(
+            message=message,
+            embeddded_condition=conds_embedded_i
+        )
+        return modulated_message
+    
+
+class TransformerBlock(MessagePassingBlock):
+    def __init__(
+            self,
+            input_dim = 32, 
+            output_dim = 32, 
+            message_dim = 32,
+            rbf_dim = 32 ,
+            n_heads:int=4, 
+            conditioning_dim = 32, 
+            time_embedding_dim = 32, 
+            activation_func=nn.ReLU(), 
+            aggr='sum'
+        ):
+        super().__init__(input_dim, output_dim, message_dim, conditioning_dim, time_embedding_dim, activation_func, aggr)
+        self.n_heads = n_heads
+        self.d_head = int(input_dim/n_heads)
+        self.head_dim = torch.tensor([self.d_head], dtype=torch.float)
+        self.q_proj = nn.Linear(input_dim, input_dim, bias=False)
+        self.k_proj = nn.Linear(input_dim, input_dim, bias=False)
+        self.v_proj = nn.Linear(input_dim, input_dim, bias=False)
+        #self.out_proj = nn.Linear(input_dim, n_heads*output_dim, bias=False)
+        
+        self.centers = nn.Parameter(torch.linspace(0.0, 12.0, rbf_dim))
+        self.width = nn.Parameter(torch.tensor(1.0))
+        self.edge_mlp = nn.Sequential(
+            nn.Linear(rbf_dim, input_dim),
+            activation_func,
+            nn.Linear(input_dim, 1)   # scalar bias per (i,j)
+        )
+
+
+        self.head_mlp = nn.Sequential(
+            nn.Linear(input_dim, input_dim),
+            activation_func,
+            nn.Linear(input_dim, input_dim),
+            activation_func,
+            nn.Linear(input_dim, input_dim)
+        )
+
+        self.phi_network = nn.Sequential(
+            nn.Linear(input_dim+time_embedding_dim, output_dim),
+            activation_func,
+            nn.Linear(output_dim, output_dim),
+            activation_func,
+            nn.Linear(output_dim, output_dim),
+        )
+    
+    def rbf(self, d):
+        diff = d[..., None] - self.centers[None, ...]
+        return torch.exp(-(diff**2) / (self.width.abs() + 1e-6))
+
+    def forward(self, x_t, pos, edge_index, conds_embedded, time_embedded):
+        aggregated_messages = self.propagate(
+            edge_index=edge_index, 
+            x=x_t,
+            pos=pos,
+            conds_embedded=conds_embedded
+        )
+        x_new = self.layer_norm(x_t + aggregated_messages)
+        x_t_updated = self.phi_network(torch.hstack([x_new, time_embedded]))
+        return self.layer_norm(x_new + x_t_updated)
+    
+    def message(self, x_i, x_j, pos_i, pos_j, conds_embedded_i, index):
+        M, D = x_i.shape
+        Wq_xi = self.q_proj(x_i).view(M, self.n_heads, self.d_head)
+        Wk_xj = self.k_proj(x_j).view(M, self.n_heads, self.d_head)
+        Wv_xj = self.v_proj(x_j).view(M, self.n_heads, self.d_head)
+        dot_prod = (Wq_xi*Wk_xj).sum(dim=-1)/torch.sqrt(self.head_dim)
+
+        dists = torch.norm(pos_i - pos_j, dim=1)
+        rbf_dists = self.rbf(dists)
+        dist_bias = self.edge_mlp(rbf_dists)
+        alpha = pyg_softmax(dot_prod+dist_bias, index)
+        final_prod = (alpha[:,:,None]*Wv_xj).view(M, self.n_heads*self.d_head)
+        return self.head_mlp(final_prod)
+
+
+class MPNNLogitPredictor(LogitPredictor):
+    def __init__(
+            self, 
+            num_elements,
+            embedding_dim:int=32, 
+            hidden_rep_dim = 32, 
+            conditioning_dim = 32,
+            time_embedding_dim = 32,
+            n_interaction_blocks:int=3,
+            message_dim:int=32, 
+            activation_func = nn.ReLU(),
+            aggr:str="mean", 
+            device=None
+        ):
+        super().__init__(num_elements, hidden_rep_dim, conditioning_dim, activation_func, device)
+        self.n_interaction_blocks = n_interaction_blocks
+        self.time_embedding_dim = time_embedding_dim
+        self.embedding_dim = embedding_dim
+        self.message_dim = message_dim
+        self.aggr = aggr
+
+        self.embedding_block = EmbeddingBlock(
+            num_elements=num_elements,
+            embedding_dim=embedding_dim,
+            time_embedding_dim=time_embedding_dim,
+            activation_func=activation_func,
+            device=device
+        )        
+
+        self.interaction_blocks = nn.ModuleDict(
+            {f"block_{i}": 
+             MessagePassingBlock(
+                input_dim=embedding_dim if i == 0 else hidden_rep_dim,
+                output_dim=hidden_rep_dim,
+                message_dim=message_dim,
+                time_embedding_dim=time_embedding_dim, 
+                conditioning_dim=conditioning_dim,
+                activation_func=activation_func,
+                aggr=aggr,
+            )
+            for i in range(n_interaction_blocks)
+            }
+        )
+
+        self.distance_pooling = ContentDistanceAttentionPooling(
+            hidden_dim=hidden_rep_dim,
+            rbf_dim=message_dim,
+            n_heads=4
+        )
+
+        self.logit_head = nn.Sequential(
+            nn.Linear(in_features=2*hidden_rep_dim + conditioning_dim, out_features=hidden_rep_dim),
+            activation_func,
+            nn.Linear(in_features=hidden_rep_dim, out_features=hidden_rep_dim),
+            activation_func,
+            nn.Linear(in_features=hidden_rep_dim, out_features=num_elements)
+        )
+
+    def set_device(self, device):
+        super().set_device(device)
+        self.embedding_block.set_device(device=device)
+
+    @property
+    def const_state_dict(self):
+        state_dict = super().const_state_dict
+        extra_info = {
+            "logit_predictor_type":"MPNNLogitPredictor",
+            "time_embedding_dim":self.time_embedding_dim,
+            "embedding_dim":self.embedding_dim,
+            "n_interaction_blocks":self.n_interaction_blocks,
+            "message_dim":self.message_dim,
+        }
+        state_dict.update(extra_info)
+        return state_dict
+
     def forward(self, batch, time, embedded_condition):
         x_t, geom_rep, time_embedded = self.embedding_block(batch=batch, time=time)
+        x_t = self.embedding_block.project_embeddings(x_t=x_t, geom_rep=geom_rep)
         for block_id in self.interaction_blocks:
-            x_t_next_iter = self.interaction_blocks[block_id](
+            x_t = self.interaction_blocks[block_id](
                 x_t=x_t, 
-                geom_rep=geom_rep, 
                 edge_index=batch.edge_index, 
                 conds_embedded=embedded_condition, 
                 time_embedded=time_embedded
             )
-            x_t_next_iter = self.film_net.modulate_representation(
-                x_i=x_t,
-                x_next_iter=x_t_next_iter,
-                embeddded_condition=embedded_condition,
-                interaction_block_id=block_id
-            )
-            x_t+=x_t_next_iter
         return x_t
-
+    
     def get_logits(self, batch, time, embedded_condition):
         x_t = self.forward(
             batch=batch,
             time=time,
             embedded_condition=embedded_condition
         )
-        ctx = global_mean_pool(x_t, batch.batch)[batch.batch]#self.distance_pooling(x_t, pos=batch.pos, batch=batch.batch)
+        ctx = self.distance_pooling(h=x_t, batch=batch.batch, pos=batch.pos)
         if embedded_condition is not None:
             return self.logit_head(torch.hstack([x_t, ctx, embedded_condition]))
         else:
             return self.logit_head(torch.hstack([x_t, ctx]))
+        
+
+    def get_sample_loader(self, atoms_list:list, element_pool:list, batch_size:int, condition_key:str=None, dataset_kwargs:dict={}):
+        from torch_geometric.loader import DataLoader
+        sample_data = get_dataset_from_atoms_list(
+            atoms_list=atoms_list,
+            element_pool=element_pool,
+            condition_key=condition_key,
+            **dataset_kwargs
+        )
+        return DataLoader(dataset=sample_data, batch_size=batch_size, shuffle=False)
     
 
-    def get_x0_rate_prediction(self, batch, time, embedded_condition):
-        x0 = self.forward(
-            batch=batch,
-            time=time,
-            embedded_condition=embedded_condition
+
+class TransformerLogitPredictor(LogitPredictor):
+    def __init__(
+            self, 
+            num_elements,
+            embedding_dim:int=32, 
+            hidden_rep_dim = 32, 
+            conditioning_dim = 32,
+            time_embedding_dim = 32,
+            n_interaction_blocks:int=3,
+            n_heads:int=4,
+            message_dim:int=32, 
+            activation_func = nn.ReLU(),
+            aggr:str="sum", 
+            device=None
+        ):
+        super().__init__(num_elements, hidden_rep_dim, conditioning_dim, activation_func, device)
+        self.n_interaction_blocks = n_interaction_blocks
+        self.time_embedding_dim = time_embedding_dim
+        self.embedding_dim = embedding_dim
+        self.message_dim = message_dim
+        self.n_heads = n_heads
+        self.aggr = aggr
+        
+        self.embedding_block = EmbeddingBlock(
+            num_elements=num_elements,
+            embedding_dim=embedding_dim,
+            time_embedding_dim=time_embedding_dim,
+            activation_func=activation_func,
+            device=device
+        )        
+
+        self.interaction_blocks = nn.ModuleDict(
+            {f"block_{i}": 
+             TransformerBlock(
+                input_dim=embedding_dim if i == 0 else hidden_rep_dim,
+                output_dim=hidden_rep_dim,
+                message_dim=message_dim,
+                time_embedding_dim=time_embedding_dim, 
+                conditioning_dim=conditioning_dim,
+                activation_func=activation_func,
+                n_heads=n_heads,
+                aggr=aggr,
+            )
+            for i in range(n_interaction_blocks)
+            }
         )
-        ctx = global_mean_pool(x0, batch.batch)
-        return self.rate_head(ctx)
+
+    def set_device(self, device):
+        super().set_device(device)
+        self.embedding_block.set_device(device=device)
+        for block in self.interaction_blocks:
+            self.interaction_blocks[block].head_dim = self.interaction_blocks[block].head_dim.to(device)
+
+    @property
+    def const_state_dict(self):
+        state_dict = super().const_state_dict
+        extra_info = {
+            "logit_predictor_type":"TransformerLogitPredictor",
+            "time_embedding_dim":self.time_embedding_dim,
+            "embedding_dim":self.embedding_dim,
+            "n_interaction_blocks":self.n_interaction_blocks,
+            "message_dim":self.message_dim,
+            "n_heads":self.n_heads
+        }
+        state_dict.update(extra_info)
+        return state_dict
+    
+    def forward(self, batch, time, embedded_condition):
+        x_t, geom_rep, time_embedded = self.embedding_block(batch=batch, time=time)
+        x_t = self.embedding_block.project_embeddings(x_t=x_t, geom_rep=geom_rep)
+        for block_id in self.interaction_blocks:
+            x_t = self.interaction_blocks[block_id](
+                x_t=x_t,
+                pos=batch.pos, 
+                edge_index=batch.edge_index, 
+                conds_embedded=embedded_condition, 
+                time_embedded=time_embedded
+            )
+        return x_t
     
     def get_sample_loader(self, atoms_list:list, element_pool:list, batch_size:int, condition_key:str=None, dataset_kwargs:dict={}):
         from torch_geometric.loader import DataLoader
@@ -402,3 +678,5 @@ class GNNLogitPredictor(LogitPredictor):
             **dataset_kwargs
         )
         return DataLoader(dataset=sample_data, batch_size=batch_size, shuffle=False)
+
+

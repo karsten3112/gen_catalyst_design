@@ -1,5 +1,6 @@
 from torch_geometric.data import Dataset, Data
 from torch_geometric.loader import DataLoader
+from ase.constraints import FixAtoms
 import numpy as np
 from ase_ml_models.pyg import get_edges_list_from_connectivity
 import torch.nn.functional as F
@@ -36,7 +37,9 @@ class Graph(Data):
         for element, position in zip(updated_elements, self.pos):
             atom = Atom(symbol=element, position=position.numpy())
             atom_list.append(atom)
-        return Atoms(atom_list)    
+        atoms = Atoms(atom_list)
+        atoms.set_constraint(FixAtoms(indices=[atom.index for atom in atoms if atom.symbol == 'O']))
+        return atoms
 
     def update_x_from_elements(self, elements:list):
         x = embed_elements_as_onehot(elements=elements, element_pool=self.element_pool)
@@ -120,9 +123,11 @@ def get_graph_from_atoms(
     site_indices = atoms.info["indices_site"]
     
     active_site_dists = get_active_site_dists(atoms=atoms, site_indices=site_indices)
-
-    if add_active_site_connectivity:
-        add_site_connections(connectivity=connectivity, site_indices=site_indices)
+    connectivity = np.ones_like(connectivity) - np.identity(len(connectivity))
+    #print(connectivity)
+    #exit()    
+    #if add_active_site_connectivity:
+    #    add_site_connections(connectivity=connectivity, site_indices=site_indices)
     edges_list = get_edges_list_from_connectivity(connectivity=connectivity)
     edge_index = torch.tensor(edges_list, dtype=torch.long).reshape(2,-1)
 
@@ -131,7 +136,7 @@ def get_graph_from_atoms(
 
     #embed whether a site is active or not
     active_sites = torch.zeros((len(atoms),), dtype=torch.long)   # 21 atoms
-    active_sites[site_indices]+=1
+    #active_sites[site_indices]+=1
     #Construct the graph
     graph = Graph(
         x=x,

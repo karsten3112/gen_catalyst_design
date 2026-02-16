@@ -1,7 +1,8 @@
 from .schedulers import DiscreteTimeScheduler, ExponentialScheduler, CosineScheduler, LinearScheduler
 from .noisers import DiscreteSpaceNoiser, UniformTransitionsNoiser, AbsorbingStateNoiser
-from .logits import GNNLogitPredictor, LogitPredictor
+from .logits import MPNNLogitPredictor, LogitPredictor, TransformerLogitPredictor
 from .conditioning import Conditioning, NoneConditioning, RateConditioning
+from torch_geometric.utils import to_dense_batch
 from .guidance import ReactionRateModule, rateGNN
 from ase.atoms import Atoms
 from torch_geometric.utils import scatter
@@ -22,7 +23,8 @@ implemented_modules = {
         "LinearScheduler":LinearScheduler
     },
     "logit_predictor":{
-        "GNNLogitPredictor":GNNLogitPredictor
+        "MPNNLogitPredictor":MPNNLogitPredictor,
+        "TransformerLogitPredictor":TransformerLogitPredictor
     },
     "conditioning":{
         "None":NoneConditioning,
@@ -200,8 +202,19 @@ class DiffusionModel(LightningModule):
             return self.cross_entropy_logits(logits, q_forward)
 
 
-    def get_auxillary_rate_loss(self, batch, embedded_condition):
-        raise NotImplementedError("Not implemtented yet")
+    def get_auxillary_rate_loss(self, batch, time, embedded_condition=None):
+        x0_rates = self.logit_predictor.get_x0_rate_prediction(
+            batch=batch,
+            time=time[batch.batch],
+            embedded_condition=self.conditioning.get_condition_embedding(
+                condition=batch.y,
+                batch_size=batch.batch_size,
+                drop_condition=True
+            )[batch.batch]
+        )
+        #print(torch.log(batch.y))
+        #print(x0_rates.squeeze(-1))
+        return F.mse_loss(x0_rates.squeeze(-1), torch.log(batch.y))
 
     def calculate_loss_terms(self, batch, batch_idx):
         #Determining whether conditioning should be dropped
@@ -244,8 +257,9 @@ class DiffusionModel(LightningModule):
             #If desired add the auxillary-rate loss
             if self.auxillary_rate_weight is not None:
                 aux_rate_loss += self.auxillary_rate_weight*self.get_auxillary_rate_loss(
-                    batch=batch,
-                    embedded_condition=embedded_condition
+                    batch=batch_t,
+                    time=time,
+                    embedded_condition=embedded_condition,
                 )
         
         denoise_matching_term/=self.num_kl_div_estimates
@@ -298,18 +312,20 @@ class DiffusionModel(LightningModule):
         }
         return {"optimizer":optimizer, "lr_scheduler":scheduler}
 
-    def sample(self, 
-               n_samples:int,
-               template_atoms:Atoms, 
-               conditioning_dicts:dict={},
-               condition_key:str="class",
-               guidance_scale:float=2.0,
-               return_as_atoms_list:bool=False, 
-               batch_size:int=40,
-               timesteps:torch.tensor=None,
-               log_all_timesteps:bool=False,
-               temp:float=1.0,
-               dataset_kwargs:dict={}
+
+    def sample(
+            self, 
+            n_samples:int,
+            template_atoms:Atoms, 
+            conditioning_dicts:dict={},
+            condition_key:str="class",
+            guidance_scale:float=2.0,
+            return_as_atoms_list:bool=False, 
+            batch_size:int=40,
+            timesteps:torch.tensor=None,
+            log_all_timesteps:bool=False,
+            temp:float=1.0,
+            dataset_kwargs:dict={}
         ):
         noised_atoms = self.noiser.sample_atoms_from_stationary(
             n_samples=n_samples, 
@@ -342,7 +358,14 @@ class DiffusionModel(LightningModule):
             samples+=result_list
         return samples
 
-    def denoise_batch(self, batch, guidance_scale, timesteps, log_all_timesteps, temp:float=1.0):
+    def denoise_batch(
+            self, 
+            batch, 
+            guidance_scale, 
+            timesteps, 
+            log_all_timesteps, 
+            temp:float=1.0
+        ):
         batch_list = []
         if timesteps is None:
             timesteps = torch.arange(self.scheduler.t_init, self.scheduler.t_final+1, 1).flip(dims=(0,))
@@ -351,16 +374,22 @@ class DiffusionModel(LightningModule):
                 batch_list.append(batch.clone())
             else:
                 batch_list = [batch.clone()]
-            xs_denoised = self.single_denoise_step(
+            self.single_denoise_step(
                 batch=batch, 
                 time=timestep, 
                 guidance_scale=guidance_scale,
                 temp=temp
             )
-            batch.x = xs_denoised
         return batch_list
     
-    def single_denoise_step(self, batch, time, guidance_scale:float=2.0, temp:float=1.0):
+    def single_denoise_step(
+            self, 
+            batch, 
+            time, 
+            guidance_scale:float=2.0,
+            masking_sites:torch.tensor=None, 
+            temp:float=1.0
+        ):
         ts = time*torch.ones(size=(batch.batch_size,), dtype=torch.long)
         probs = self.get_reverse_transition_probabilities(
             batch=batch, 
@@ -369,10 +398,16 @@ class DiffusionModel(LightningModule):
             temp=temp
         )
         if time == self.scheduler.t_init and self.noiser.absorbing_state:
-            probs[:,self.noiser.absorbing_state_index] = 0.0
-            probs/=probs.sum(dim=1, keepdim=True)
-        xs_denoised = self.noiser.sample_transition(probabilities=probs)
-        return xs_denoised
+                probs[:,self.noiser.absorbing_state_index] = 0.0
+                probs/=probs.sum(dim=1, keepdim=True)
+
+        if masking_sites is not None:
+            xs_denoised = batch.x
+            denoised_sites = self.noiser.sample_transition(probabilities=probs[masking_sites])
+            xs_denoised[masking_sites] = denoised_sites
+        else:
+            xs_denoised = self.noiser.sample_transition(probabilities=probs)
+        batch.x = xs_denoised
 
     def get_reverse_transition_probabilities(self, batch, time, guidance_scale:float=2.0, temp:float=1.0):
         guided_logits = self.get_guided_logits(
@@ -411,7 +446,6 @@ class DiffusionModel(LightningModule):
             guided_logits+=drop_dict[drop_condition]*logits
         return guided_logits/temp
 
-
     def convert_denoised_batches_to_traj(self, denoised_batch_list, batch_size, return_as_atoms_list:bool=False):
         num_timesteps = len(denoised_batch_list)
         result_list = []
@@ -426,6 +460,87 @@ class DiffusionModel(LightningModule):
                 denoise_traj.append(sample)
             result_list.append(denoise_traj)
         return result_list
+    
+    def gibbs_sample(
+            self,
+            n_samples:int,
+            template_atoms:Atoms,
+            block_iterations:int=1,
+            block_size:int=4,
+            conditioning_dicts:dict={},
+            condition_key:str=None,
+            guidance_scale:float=2.0,
+            return_as_atoms_list:bool=False, 
+            batch_size:int=40,
+            timesteps:torch.tensor=None,
+            log_all_timesteps:bool=False,
+            temp:float=1.0,
+            dataset_kwargs:dict={}
+        ):
+        noised_atoms = self.noiser.sample_atoms_from_stationary(
+            n_samples=n_samples, 
+            template_atoms=template_atoms
+        )
+        for atoms, condition_dict in zip(noised_atoms, conditioning_dicts):
+            atoms.info.update(condition_dict)
+        
+        sample_loader = self.logit_predictor.get_sample_loader(
+            atoms_list=noised_atoms,
+            element_pool=self.element_pool,
+            batch_size=batch_size,
+            condition_key=condition_key,
+            dataset_kwargs=dataset_kwargs
+        )
+        samples = []
+        for batch in sample_loader:
+            denoised_batch_list = self.denoise_batch_gibbs(
+                batch=batch,
+                guidance_scale=guidance_scale,
+                block_iterations=block_iterations,
+                block_size=block_size,
+                timesteps=timesteps,
+                log_all_timesteps=log_all_timesteps,
+                temp=temp
+            )
+            result_list = self.convert_denoised_batches_to_traj(
+                denoised_batch_list=denoised_batch_list,
+                batch_size=batch.batch_size,
+                return_as_atoms_list=return_as_atoms_list
+            )
+            samples+=result_list
+        return samples
+
+    def denoise_batch_gibbs(
+            self,
+            batch, 
+            guidance_scale,
+            block_iterations,
+            block_size, 
+            timesteps, 
+            log_all_timesteps, 
+            temp:float=1.0
+        ):
+        batch_list = []
+        if timesteps is None:
+            timesteps = torch.arange(self.scheduler.t_init, self.scheduler.t_final+1, 1).flip(dims=(0,))
+        for timestep in timesteps:
+            if log_all_timesteps:
+                batch_list.append(batch.clone())
+            else:
+                batch_list = [batch.clone()]
+            for _ in range(block_iterations):
+                if timestep >= 10:
+                    masking_sites = torch.hstack([torch.randperm(21)[:block_size]+i*21 for i in range(batch.batch_size)])
+                else:
+                    masking_sites = None
+                self.single_denoise_step(
+                    batch=batch, 
+                    time=timestep, 
+                    guidance_scale=guidance_scale,
+                    masking_sites=masking_sites,
+                    temp=temp
+                )
+        return batch_list
     
 
     def get_const_state_dict(self):
