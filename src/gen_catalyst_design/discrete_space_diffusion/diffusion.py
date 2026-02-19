@@ -176,10 +176,9 @@ class DiffusionModel(LightningModule):
             time_batch=time[batch.batch]
         )
 
-        q_forward = self.noiser.get_transition_probabilities(
-            x_t_batch=batch.x*1.0,
-            time_batch=time[batch.batch],
-            scheduler=self.scheduler
+        q_forward = self.noiser.get_accum_transition_probabilities(
+            x0_batch=batch.x*1.0,
+            time_batch=time[batch.batch]
         )
 
         logits = self.logit_predictor.get_logits(
@@ -197,7 +196,7 @@ class DiffusionModel(LightningModule):
                 batch=batch,
                 time=time
             )
-            return self.get_cross_entropy(p_dist=q_forward, q_dist=denoise_probs, batch=batch_1).mean()
+            return self.get_kl_divergence(p_dist=q_forward, q_dist=denoise_probs, batch=batch_1).mean()
         else:
             return self.cross_entropy_logits(logits, q_forward)
 
@@ -428,9 +427,9 @@ class DiffusionModel(LightningModule):
             return self.logit_predictor.get_probs_from_logits(logits=guided_logits)
 
     def get_guided_logits(self, batch, time, guidance_scale, temp):
-        drop_dict = {True:(1.0-guidance_scale), False:guidance_scale}
-        guided_logits = 0.0
-        for drop_condition in drop_dict:
+        #drop_dict = {True:(1.0-guidance_scale), False:guidance_scale}
+        guided_logits_list = []
+        for drop_condition in [True, False]:
             embedded_condition = self.conditioning.get_condition_embedding(
                 condition=batch.y,
                 batch_size=batch.batch_size,
@@ -443,7 +442,8 @@ class DiffusionModel(LightningModule):
                 time=time,
                 embedded_condition=embedded_condition
             )
-            guided_logits+=drop_dict[drop_condition]*logits
+            guided_logits_list.append(logits)
+        guided_logits= guided_logits_list[0] + guidance_scale*(guided_logits_list[1]-guided_logits_list[0])
         return guided_logits/temp
 
     def convert_denoised_batches_to_traj(self, denoised_batch_list, batch_size, return_as_atoms_list:bool=False):

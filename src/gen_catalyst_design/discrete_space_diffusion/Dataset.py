@@ -116,6 +116,7 @@ def get_graph_from_atoms(
         atoms:Atoms,
         element_pool:list,
         condition_key:str=None,
+        use_fully_connected_graph:bool=False,
         add_active_site_connectivity:bool=False
     ):
     x = embed_cluster_as_onehots(atoms=atoms, element_pool=element_pool)
@@ -123,11 +124,11 @@ def get_graph_from_atoms(
     site_indices = atoms.info["indices_site"]
     
     active_site_dists = get_active_site_dists(atoms=atoms, site_indices=site_indices)
-    connectivity = np.ones_like(connectivity) - np.identity(len(connectivity))
-    #print(connectivity)
-    #exit()    
-    #if add_active_site_connectivity:
-    #    add_site_connections(connectivity=connectivity, site_indices=site_indices)
+    if use_fully_connected_graph:
+        connectivity = np.ones_like(connectivity) - np.identity(len(connectivity))
+    if add_active_site_connectivity and use_fully_connected_graph is False:
+        add_site_connections(connectivity=connectivity, site_indices=site_indices)
+
     edges_list = get_edges_list_from_connectivity(connectivity=connectivity)
     edge_index = torch.tensor(edges_list, dtype=torch.long).reshape(2,-1)
 
@@ -200,6 +201,7 @@ def get_dataset_from_atoms_list(
         element_pool:list,
         condition_key:str=None,
         add_active_site_connectivity:bool=False,
+        use_fully_connected_graph:bool=False,
         graph_kwargs:dict={}
     ):
     graph_list = [
@@ -208,6 +210,7 @@ def get_dataset_from_atoms_list(
             element_pool=element_pool, 
             condition_key=condition_key,
             add_active_site_connectivity=add_active_site_connectivity,
+            use_fully_connected_graph=use_fully_connected_graph,
             **graph_kwargs
         )
         for atoms in atoms_list
@@ -261,6 +264,7 @@ def get_dataloaders_from_atoms_list(
         condition_key:str="class", 
         train_val_split:float=0.1,
         add_active_site_connectivity:bool=False,
+        use_fully_connected_graph:bool=False,
         do_initial_shuffling:bool=True,
         do_train_shuffling:bool=True,
         random_seed:int=42,
@@ -271,10 +275,12 @@ def get_dataloaders_from_atoms_list(
         random.seed(random_seed)
         random.shuffle(atoms_list)
     split_index = int((1-train_val_split)*len(atoms_list))
+    
     train_dataset = get_dataset_from_atoms_list(
         atoms_list=atoms_list[:split_index],
         element_pool=element_pool,
         condition_key=condition_key,
+        use_fully_connected_graph=use_fully_connected_graph,
         add_active_site_connectivity=add_active_site_connectivity,
         graph_kwargs=graph_kwargs
     )
@@ -283,6 +289,7 @@ def get_dataloaders_from_atoms_list(
         atoms_list=atoms_list[split_index:],
         element_pool=element_pool,
         condition_key=condition_key,
+        use_fully_connected_graph=use_fully_connected_graph,
         add_active_site_connectivity=add_active_site_connectivity,
         graph_kwargs=graph_kwargs
     )

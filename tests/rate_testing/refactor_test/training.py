@@ -32,8 +32,8 @@ def main():
 
     noiser_type = "Absorbing" # Absorbing | Uniform
     element_pool = ["Rh", "Cu", "Au", "Pd"]
-    add_active_site_connectivity = True
-    miller_index = "100"
+    #add_active_site_connectivity = True
+    #miller_index = "100"
     
     
     if "Absorbing" in noiser_type:
@@ -59,7 +59,7 @@ def main():
     )
 
     #NoneConditioning()
-    hidden_dim = 32
+    hidden_dim = 64
     conditioning = RateConditioning(embedding_dim=hidden_dim)
     #Applying none as conditioning making it unconditional 
     logit_predictor = MPNNLogitPredictor(
@@ -68,7 +68,7 @@ def main():
         embedding_dim=hidden_dim,
         time_embedding_dim=32,
         hidden_rep_dim=hidden_dim,
-        n_interaction_blocks=3,
+        n_interaction_blocks=5,
         message_dim=hidden_dim
     )
 
@@ -87,18 +87,19 @@ def main():
         conditioning=conditioning,
         drop_prob=0.1,
         use_x0_reparam=True,
-        d3pm_auxillary_weight=0.1,
+        d3pm_auxillary_weight=0.01,
         auxillary_rate_weight=None,
         num_kl_div_estimates=1,
         lr=1e-3
     )
     
     train_loader, val_loader = get_dataloaders_from_atoms_list(
-        atoms_list=read("../GeneticAlgorithm.traj", index=":"),
+        atoms_list=read("../high_rate_structs.traj", index=":"),
         element_pool=element_pool,
         condition_key="rate",
-        add_active_site_connectivity=add_active_site_connectivity,
-        batch_size=100
+        add_active_site_connectivity=False,
+        use_fully_connected_graph=False,
+        batch_size=40
     )
   
     trainer_kwargs={
@@ -112,7 +113,7 @@ def main():
 
     trainer = setup_trainer_and_logger(
         project_name="refactor",
-        model_name="all_structs",
+        model_name="5mpl_high_rates",
         accelerator="gpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,

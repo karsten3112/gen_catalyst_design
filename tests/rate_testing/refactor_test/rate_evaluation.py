@@ -40,12 +40,12 @@ def main():
     )
     
     models = [
-        "film_message",
+        "5mpl_no_aux_no_duplicates/regular_8",
     ]
-    temps = [1.0]
+    temps = [0.5, 1.0]
     for model in models:
         for temp in temps:
-            filename = os.path.join(model, f"gibbs_samples_{temp}.traj")
+            filename = os.path.join(model, f"samples_{temp}.traj")
             atoms_list = read(filename=filename, index=load_indices)
             filtered_atoms_list = [atoms for atoms in atoms_list if "O" not in atoms.symbols]
             elements_list = [atoms.get_chemical_symbols() for atoms in filtered_atoms_list]
@@ -58,7 +58,7 @@ def main():
                 features_gas=features_gas
             )
             database = Database.establish_connection(
-                filename=f"gibbs_rate_evals_{temp}.db",
+                filename=f"rate_evals_{temp}.db",
                 miller_index="100",
                 pth_header=model
             )

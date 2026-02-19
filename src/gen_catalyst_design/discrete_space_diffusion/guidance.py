@@ -48,7 +48,6 @@ class SingleMessageLayer(MessagePassing):
     
     def message(self, x_i, x_j, index):
         concatenated_x = torch.hstack([x_i, x_j])
-        attn_score = self.attn_network(concatenated_x)
         message = self.psi_network(concatenated_x)
         return message
 

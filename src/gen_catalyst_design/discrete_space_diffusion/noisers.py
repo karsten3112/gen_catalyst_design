@@ -173,8 +173,8 @@ class UniformTransitionsNoiser(DiscreteSpaceNoiser):
     def __call__(self, beta_t_batch:torch.tensor):
         n_classes = self.n_classes
         beta_t_reshaped = beta_t_batch[:, None, None]
-        t1 = (1.0-beta_t_reshaped)*torch.eye(n=n_classes,dtype=torch.long, device=self.device)
-        t2 = beta_t_reshaped/n_classes*torch.ones(size=(n_classes,n_classes),dtype=torch.long, device=self.device)
+        t1 = (1.0-beta_t_reshaped)*torch.eye(n=n_classes, dtype=torch.float, device=self.device)
+        t2 = beta_t_reshaped/n_classes*torch.ones(size=(n_classes,n_classes),dtype=torch.float, device=self.device)
         return t1 + t2
     
     def get_stationary_dist(self):
@@ -222,12 +222,12 @@ class AbsorbingStateNoiser(DiscreteSpaceNoiser):
     def __call__(self, beta_t_batch):
         n_classes = self.n_classes
         beta_t_reshaped = beta_t_batch[:, None, None]
-        t1 = (1.0-beta_t_reshaped)*torch.eye(n=n_classes,dtype=torch.long, device=self.device)
-        e_m = (F.one_hot(torch.tensor(self.absorbing_state_index, device=self.device), num_classes=n_classes)*1.0).unsqueeze(0)
-        t2 = beta_t_reshaped*(torch.ones(size=(n_classes,1), device=self.device) @ e_m)
+        t1 = (1.0-beta_t_reshaped)*torch.eye(n=n_classes,dtype=torch.float, device=self.device)
+        e_m = F.one_hot(torch.tensor(self.absorbing_state_index, device=self.device), num_classes=n_classes).float().unsqueeze(0)
+        t2 = beta_t_reshaped*(torch.ones(size=(n_classes,1), device=self.device, dtype=torch.float) @ e_m)
         return t1 + t2
     
     def sample_reverse_transition(self, probabilities, time:torch.tensor):
         if time == 1:
             probabilities[:,self.absorbing_state_index] = 0.0 #enforce 0 probability for absorbing state at initial time-step
-        return super().sample_transition(pprobabilities)
+        return super().sample_transition(probabilities)

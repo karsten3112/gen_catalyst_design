@@ -40,9 +40,10 @@ def main():
     )
     
     models = [
-        "model_021",
+        "class_0",
+        "class_1"
     ]
-    temps = [0.5]
+    temps = [1.0,0.5]
     for model in models:
         for temp in temps:
             filename = os.path.join(model, f"samples_{temp}.traj")

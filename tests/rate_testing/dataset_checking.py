@@ -12,7 +12,10 @@ def main():
     write("saved.traj", atoms_filtered)
     min_index, max_index = np.argmin(rates), np.argmax(rates)
     print(min_index, max_index)
-    write("min_max.traj", [atoms_list[min_index],atoms_list[max_index]])
+    min_max_structs = [atoms_list[min_index],atoms_list[max_index]]
+    min_max_rates = [struct.info["rate"] for struct in min_max_structs]
+    print(min_max_rates)
+    write("min_max.traj", min_max_structs)
 
 
 

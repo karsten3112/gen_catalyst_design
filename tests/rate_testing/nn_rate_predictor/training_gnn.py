@@ -32,7 +32,7 @@ def main():
     )
 
     train_loader, test_loader = get_dataloaders_from_atoms_list(
-        atoms_list=read("../high_rate_structs.traj", index=":"),
+        atoms_list=read("../high_rates_no_duplicates.traj", index=":"),
         element_pool=element_pool,
         condition_key="rate",
         add_active_site_connectivity=add_active_site_connectivity,
@@ -58,8 +58,8 @@ def main():
 
     trainer = setup_trainer_and_logger(
         project_name="gnn_rate_pred",
-        model_name="3mpl2",
-        accelerator="cpu",
+        model_name="3mpl_no_dup",
+        accelerator="gpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,
         gradient_clip_val=1.0,

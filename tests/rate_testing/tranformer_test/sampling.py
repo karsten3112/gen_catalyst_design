@@ -15,18 +15,14 @@ def main():
     ckpt_file_type = "last"
     models = [
         #"class_0",
-        "model_021"
+        "class_0",
+        "class_1"
     ]
-    temps = [0.5]#[0.2,0.5, 1.0]
+    temps = [0.5,1.0]#[0.2,0.5, 1.0]
 
     db = connect(f"../../../databases/templates/{miller_index}/{miller_index}_templates.db")
     template_atoms = get_atoms_list_from_db(db_ase=db)[0]
-    connectivity = template_atoms.info["connectivity"]*1.0
-    add_site_connections(connectivity=connectivity, site_indices=template_atoms.info["indices_site"])
-    template_atoms.info["connectivity"] = connectivity
-    #print(template_atoms.info["connectivity"])
-    #exit()
-
+    
     #template_atoms = read("../isolated_active_sites.traj", index=0)
     for model in models:
         ckpt_dir = os.path.join(model, "checkpoints")

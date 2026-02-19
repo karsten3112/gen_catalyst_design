@@ -88,14 +88,14 @@ def main():
         conditioning=conditioning,
         drop_prob=1.0,
         use_x0_reparam=True,
-        d3pm_auxillary_weight=0.1,
+        d3pm_auxillary_weight=None,
         auxillary_rate_weight=None,
         num_kl_div_estimates=1,
         lr=1e-3
     )
     
     train_loader, val_loader = get_dataloaders_from_atoms_list(
-        atoms_list=read("../class_1.traj", index=":"),
+        atoms_list=read("../class_0.traj", index=":"),
         element_pool=element_pool,
         condition_key=None,
         add_active_site_connectivity=add_active_site_connectivity,
@@ -113,7 +113,7 @@ def main():
 
     trainer = setup_trainer_and_logger(
         project_name="transformer",
-        model_name=None,
+        model_name="class_0",
         accelerator="gpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,

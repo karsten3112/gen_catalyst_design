@@ -15,7 +15,7 @@ def main():
     ckpt_file_type = "last"
     models = [
         #"class_0",
-        "film_message"
+        "all_structs_medium"
     ]
     temps = [1.0]#[0.2,0.5, 1.0]
 
@@ -42,7 +42,7 @@ def main():
             torch.manual_seed(random_seed)
             torch.cuda.manual_seed_all(random_seed)
             result_samples = diff_model.gibbs_sample(
-                conditioning_dicts=[{"rate":28.0} for _ in range(n_samples)],
+                conditioning_dicts=[{"rate":18.0} for _ in range(n_samples)],
                 block_iterations=2,
                 block_size=4,
                 guidance_scale=0.8,
