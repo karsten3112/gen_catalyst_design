@@ -1,8 +1,10 @@
-from gen_catalyst_design.reaction_rates import ReactionMechanism
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, Callback
+from .calculators import GCNNCalculator, GraphCalculator
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.trainer import Trainer
 from catalyst_opt_tools.utilities import preprocess_features, update_atoms_list
+from ase_ml_models.databases import get_atoms_list_from_db
+from ase.db import connect
 import yaml
 import torch
 import wandb
@@ -111,6 +113,25 @@ def setup_trainer_and_logger(
     )
     return trainer
 
+def get_atoms_from_template_db(
+    db_filename:str,
+    pth_header:str=None
+):
+    """
+    Get atoms from template database.
+    """
+    # Read atoms objects from templates database.
+    if pth_header is not None:
+        db_filename = os.path.join(pth_header, db_filename)
+    db_ase = connect(db_filename)
+    atoms_list = get_atoms_list_from_db(db_ase=db_ase)
+    # Get number of atoms in the surface.
+    n_atoms_surf = len([
+        atoms for atoms in atoms_list if atoms.info["species"] == "clean"
+    ][0])
+    # Return the list of atoms objects.
+    return atoms_list, n_atoms_surf
+
 
 def get_features_bulk_and_gas(
         bulk_filename:str="features_bulk.yaml", 
@@ -135,9 +156,7 @@ def get_features_bulk_and_gas(
         # Return parameters.
         return features_bulk, features_gas
 
-
 def get_calculator(model, miller_index):
-    from gen_catalyst_design.calculators import GCNNCalculator, GraphCalculator
     if model == "WWL-GPR":
         calculator = GraphCalculator(
              miller_index=miller_index,
@@ -172,28 +191,3 @@ def get_calculator(model, miller_index):
     else:
          raise Exception(f"calculator of type: {model} has not been implemented yet")
     return calculator, train_kwargs
-
-
-def reaction_rate_of_RDS_from_symbols(
-    reaction_mechanism:ReactionMechanism,
-    symbols: list,
-    template_atoms_list: list,
-    features_bulk: dict,
-    features_gas: dict,
-    n_atoms_surf: int,
-):
-    """
-    Get reaction rate of the RDS from the surface symbols.
-    """
-    # Update elements and features of atoms for predictions.
-    update_atoms_list(
-        atoms_list=template_atoms_list,
-        features_bulk=features_bulk,
-        features_gas=features_gas,
-        symbols=symbols,
-        n_atoms_surf=n_atoms_surf,
-    )
-    # Predict formation energies with a calculator.
-    # Calculate reaction rate from reaction mechanism.
-    score_dict = reaction_mechanism(atoms_list=template_atoms_list)
-    return score_dict

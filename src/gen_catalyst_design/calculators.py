@@ -21,6 +21,7 @@ class Calculator:
             self, 
             miller_index:str
         ):
+        self.is_trained = False
         self.model_params = None
         self.model = None
         self.bep_relation = self.get_bep_relation(miller_index=miller_index)
@@ -65,20 +66,25 @@ class Calculator:
             db_filename = os.path.join(db_pth_header, db_filename)
         db_ase = connect(name=db_filename)
         atoms_list = get_atoms_list_from_db(db_ase=db_ase)
-        self.train_model(atoms_train=atoms_list, 
-                         features_bulk=features_bulk, 
-                         features_gas=features_gas,
-                         train_kwargs=train_kwargs
-                         )
+        self.train_model(
+            atoms_train=atoms_list, 
+            features_bulk=features_bulk, 
+            features_gas=features_gas,
+            train_kwargs=train_kwargs
+        )
+        self.is_trained = True
     
     def train_model(self, atoms_train:list, features_bulk:dict, features_gas:dict, train_kwargs:dict):
         raise Exception("Must be implemtented by sub-class")
 
 
 class GraphCalculator(Calculator):
-    def __init__(self, miller_index, kernel, 
-                 preproc:object = None
-                 ):
+    def __init__(
+            self, 
+            miller_index:str, 
+            kernel:str="GPR", 
+            preproc:object = None
+        ):
         super().__init__(miller_index)
         self.model_params = {
                 "target": "E_form",
@@ -94,9 +100,10 @@ class GraphCalculator(Calculator):
 
 
     def train_model(self, atoms_train:list, features_bulk:dict, features_gas:dict, train_kwargs:dict={}):
-        update_atoms_list(atoms_list=atoms_train, 
-                          features_bulk=features_bulk, 
-                          features_gas=features_gas
+        update_atoms_list(
+            atoms_list=atoms_train, 
+            features_bulk=features_bulk, 
+            features_gas=features_gas
         )
         graph_preprocess(
             atoms_list=atoms_train,
@@ -242,3 +249,25 @@ def pyg_train_with_early_stopping(
     # Return the trained PyTorch Geometric model.
     return model, torch.tensor(train_losses), torch.tensor(val_losses), lr_state
 
+def get_features_bulk_and_gas(
+        bulk_filename:str="features_bulk.yaml", 
+        gas_filename:str="features_gas.yaml", 
+        pth_header:str=None
+        ) -> tuple:
+        """
+        Get features for bulk and gas phase.
+        """
+        if pth_header is not None:
+            bulk_filename = os.path.join(pth_header, bulk_filename)
+            gas_filename = os.path.join(pth_header, gas_filename)
+        # Read features from yaml files.
+        with open(bulk_filename, "r") as fileobj:
+            features_bulk = yaml.safe_load(fileobj)
+
+        with open(gas_filename, "r") as fileobj:
+            features_gas = yaml.safe_load(fileobj)
+        # Preprocess features.
+        features_bulk = preprocess_features(features_dict=features_bulk)
+        features_gas = preprocess_features(features_dict=features_gas)
+        # Return parameters.
+        return features_bulk, features_gas

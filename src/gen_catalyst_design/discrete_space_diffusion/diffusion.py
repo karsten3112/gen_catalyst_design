@@ -69,8 +69,17 @@ class DiffusionModel(LightningModule):
         self.cross_entropy_logits = nn.CrossEntropyLoss()
         self.mse_loss = nn.MSELoss()
     
+    
+    def on_sample_start(self):
+        device = self.device
+        self.noiser.set_device(device=device)
+        self.scheduler.set_device(device=device)
+        self.logit_predictor.set_device(device=device)
+        if self.conditioning is not None:
+            self.conditioning.set_device(device=device)
 
     def on_fit_start(self):
+        self.train()
         device = self.device
         self.noiser.set_device(device=device)
         self.scheduler.set_device(device=device)
@@ -186,7 +195,7 @@ class DiffusionModel(LightningModule):
             time=time,
             embedded_condition=embedded_condition  
         )
-
+        
         #Apply the x0 reparameterization as outlined in D3PM if desired
         #Return the cross-entropy between the forward noising step and the predicted reversal.
         if self.use_x0_reparam:
@@ -196,7 +205,7 @@ class DiffusionModel(LightningModule):
                 batch=batch,
                 time=time
             )
-            return self.get_kl_divergence(p_dist=q_forward, q_dist=denoise_probs, batch=batch_1).mean()
+            return self.get_cross_entropy(p_dist=batch.x*1.0, q_dist=denoise_probs, batch=batch).mean()#self.get_kl_divergence(p_dist=q_forward, q_dist=denoise_probs, batch=batch_1).mean()
         else:
             return self.cross_entropy_logits(logits, q_forward)
 
@@ -211,8 +220,6 @@ class DiffusionModel(LightningModule):
                 drop_condition=True
             )[batch.batch]
         )
-        #print(torch.log(batch.y))
-        #print(x0_rates.squeeze(-1))
         return F.mse_loss(x0_rates.squeeze(-1), torch.log(batch.y))
 
     def calculate_loss_terms(self, batch, batch_idx):
@@ -270,7 +277,6 @@ class DiffusionModel(LightningModule):
             batch=batch,
             embedded_condition=embedded_condition
         )
-        
         return denoise_matching_term, reconstruction_term, aux_loss, aux_rate_loss
 
 
@@ -309,7 +315,7 @@ class DiffusionModel(LightningModule):
             'interval': 'epoch',    #monitor at epoch level
             'frequency': 1              #with frequency 1
         }
-        return {"optimizer":optimizer, "lr_scheduler":scheduler}
+        return {"optimizer":optimizer}#, "lr_scheduler":scheduler}
 
 
     def sample(
@@ -326,13 +332,15 @@ class DiffusionModel(LightningModule):
             temp:float=1.0,
             dataset_kwargs:dict={}
         ):
+        self.eval()
+        self.on_sample_start()
         noised_atoms = self.noiser.sample_atoms_from_stationary(
             n_samples=n_samples, 
             template_atoms=template_atoms
         )
         for atoms, condition_dict in zip(noised_atoms, conditioning_dicts):
             atoms.info.update(condition_dict)
-        
+
         sample_loader = self.logit_predictor.get_sample_loader(
             atoms_list=noised_atoms,
             element_pool=self.element_pool,
@@ -367,7 +375,7 @@ class DiffusionModel(LightningModule):
         ):
         batch_list = []
         if timesteps is None:
-            timesteps = torch.arange(self.scheduler.t_init, self.scheduler.t_final+1, 1).flip(dims=(0,))
+            timesteps = torch.arange(self.scheduler.t_init, self.scheduler.t_final+1, 1, device=self.device).flip(dims=(0,))
         for timestep in timesteps:
             if log_all_timesteps:
                 batch_list.append(batch.clone())
@@ -389,7 +397,7 @@ class DiffusionModel(LightningModule):
             masking_sites:torch.tensor=None, 
             temp:float=1.0
         ):
-        ts = time*torch.ones(size=(batch.batch_size,), dtype=torch.long)
+        ts = time*torch.ones(size=(batch.batch_size,), dtype=torch.long, device=self.device)
         probs = self.get_reverse_transition_probabilities(
             batch=batch, 
             time=ts, 

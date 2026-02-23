@@ -1,4 +1,7 @@
+from catalyst_opt_tools.utilities import update_atoms_list
 from .calculators import Calculator
+from .utils import get_atoms_from_template_db, get_features_bulk_and_gas
+from ase.atoms import Atoms
 from mikimoto.thermodynamics import ThermoNASA7
 from mikimoto.microkinetics import Species
 from mikimoto import units
@@ -9,12 +12,27 @@ import os
 class ReactionMechanism:
     def __init__(
             self,
-            mechanism_file:str="mechanism.yaml", 
+            mechanism_file:str="mechanism.yaml",
+            template_atoms_list:list=None,
+            features_bulk:dict=None,
+            features_gas:dict=None, 
             mechanism_pth_header:str=None,
             temperature_celsius:float=500.0,
             pressure:float=1.0,
             calculator:Calculator=None
         ):
+        self.template_atoms_list = template_atoms_list
+        if template_atoms_list is not None:
+            for atoms in template_atoms_list:
+                if atoms.info["species"] == "clean":
+                    self.n_atoms_surf = len(atoms)
+                    self.clean_surface = atoms.copy()
+                    self.clean_surface.info = atoms.info.copy()
+        else:
+            self.n_atoms_surf = None
+            self.clean_surface = None
+        self.features_bulk = features_bulk
+        self.features_gas = features_gas
         self.calculator = calculator
         self.pressure = pressure
         self.temperature_celsius = temperature_celsius
@@ -32,6 +50,35 @@ class ReactionMechanism:
             "CO": 0.02,
             "N2": 0.40,
         }
+
+    def set_template_atoms_list(
+            self,
+            db_filename:str,
+            pth_header:str=None
+        ):
+        self.template_atoms_list, self.n_atoms_surf = get_atoms_from_template_db(
+            db_filename=db_filename,
+            pth_header=pth_header
+        )
+        
+        for atoms in self.template_atoms_list:
+            if atoms.info["species"] == "clean":
+                self.clean_surface = atoms.copy()
+                self.clean_surface.info = atoms.info.copy()
+        
+
+    def set_features(
+            self,
+            bulk_filename:str="features_bulk.yaml",
+            gas_filename:str="features_gas.yaml",
+            pth_header:str=None
+        ):
+        self.features_bulk, self.features_gas = get_features_bulk_and_gas(
+            bulk_filename=bulk_filename,
+            gas_filename=gas_filename,
+            pth_header=pth_header
+        )
+        
 
     def set_calculator(self, calculator:Calculator):
         self.calculator = calculator
@@ -51,7 +98,7 @@ class ReactionMechanism:
                 spec_dict[spec.name] = spec
         return spec_dict
 
-    def get_rate_from_RDS(self, e_form_dict:dict, bep_relation:callable):
+    def get_rate_RDS_from_e_form_dict(self, e_form_dict:dict, bep_relation:callable):
         temperature = units.Celsius_to_Kelvin(self.temperature_celsius) # [K]
         pressure = self.pressure * units.atm # [Pa]
 
@@ -107,6 +154,64 @@ class ReactionMechanism:
         # Return the reaction rate.
         return float(rate)
     
+
+    def get_e_form_scoredict_from_symbols(
+            self,
+            symbols:list,
+        ):
+        if self.calculator is None:
+            raise Exception("No calculator has been assigned, so energies cannot be calculated")
+        if self.template_atoms_list is None:
+            raise Exception("No template atoms have been provided yet, so no calculation can be performed")
+        if len(symbols) != self.n_atoms_surf:
+            raise Exception("Amount of elements provided do not match amount of elements in template surfaces")
+        if self.features_bulk is None or self.features_gas is None:
+            raise Exception("No features have been provided yet, so no calculation can be performed")
+        
+        update_atoms_list(
+            atoms_list=self.template_atoms_list,
+            features_bulk=self.features_bulk,
+            features_gas=self.features_gas,
+            symbols=symbols,
+            n_atoms_surf=self.n_atoms_surf,
+        )
+        score_dict = self.calculator(atoms_list=self.template_atoms_list)
+        return score_dict
+
+    def get_e_form_scoredict_from_atoms(
+            self,
+            atoms:Atoms
+        ):
+        symbols = atoms.get_chemical_symbols()
+        score_dict = self.get_e_form_scoredict_from_symbols(
+            symbols=symbols
+        )
+        return score_dict
+
+    def get_rate_of_RDS_from_symbols(
+            self,
+            symbols:list
+        ):
+        score_dict = self.get_e_form_scoredict_from_symbols(
+            symbols=symbols
+        )
+        rate = self.get_rate_RDS_from_e_form_dict(
+            e_form_dict=score_dict["e_form_info"],
+            bep_relation=self.calculator.bep_relation
+        )
+        score_dict.update({"rate":rate})
+        return score_dict
+
+    def get_rate_RDS_from_atoms(
+            self,
+            atoms:Atoms 
+        ):
+        symbols = atoms.get_chemical_symbols()
+        score_dict = self.get_rate_of_RDS_from_symbols(
+            symbols=symbols
+        )
+        return score_dict
+
     def __call__(self, atoms_list):
         if self.calculator is None:
             raise Exception("No calculator has been assigned, so energies cannot be calculated")

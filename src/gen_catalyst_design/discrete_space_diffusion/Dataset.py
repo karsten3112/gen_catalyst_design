@@ -35,7 +35,10 @@ class Graph(Data):
         updated_elements = ["O" if elem == "(X)" else elem for elem in elements]
         atom_list = []
         for element, position in zip(updated_elements, self.pos):
-            atom = Atom(symbol=element, position=position.numpy())
+            if position.device != "cpu":
+                atom = Atom(symbol=element, position=position.cpu().numpy())
+            else:
+                atom = Atom(symbol=element, position=position.numpy())
             atom_list.append(atom)
         atoms = Atoms(atom_list)
         atoms.set_constraint(FixAtoms(indices=[atom.index for atom in atoms if atom.symbol == 'O']))
@@ -83,18 +86,18 @@ def get_elements_from_onehots(x:torch.tensor, element_pool:list):
     else:
         return [element_pool[index] for index in indices]
 
-def embed_elements_as_onehot(elements:list, element_pool:list):
+def embed_elements_as_onehot(elements:list, element_pool:list, device:str=None):
     mapping_dict = {element:i for i, element in enumerate(element_pool)}
-    return torch.stack([get_onehot(element=element, mapping_dict=mapping_dict) for element in elements])
+    return torch.stack([get_onehot(element=element, mapping_dict=mapping_dict, device=device) for element in elements])
 
-def embed_cluster_as_onehots(atoms:Atoms, element_pool:list):
+def embed_cluster_as_onehots(atoms:Atoms, element_pool:list, device:str=None):
     elements = atoms.get_chemical_symbols()
     if "(X)" in element_pool:
         elements = ['(X)' if elem == 'O' else elem for elem in elements]
-    return embed_elements_as_onehot(elements=elements, element_pool=element_pool)
+    return embed_elements_as_onehot(elements=elements, element_pool=element_pool, device=device)
 
-def get_onehot(element:str, mapping_dict:dict):
-    onehot = F.one_hot(torch.tensor(mapping_dict[element]), len(mapping_dict))
+def get_onehot(element:str, mapping_dict:dict, device:str=None):
+    onehot = F.one_hot(torch.tensor(mapping_dict[element], device=device), len(mapping_dict))
     return onehot
 
 def add_site_connections(connectivity, site_indices):
@@ -117,9 +120,10 @@ def get_graph_from_atoms(
         element_pool:list,
         condition_key:str=None,
         use_fully_connected_graph:bool=False,
-        add_active_site_connectivity:bool=False
+        add_active_site_connectivity:bool=False,
+        device:str=None,
     ):
-    x = embed_cluster_as_onehots(atoms=atoms, element_pool=element_pool)
+    x = embed_cluster_as_onehots(atoms=atoms, element_pool=element_pool, device=device)
     connectivity = atoms.info["connectivity"]
     site_indices = atoms.info["indices_site"]
     
@@ -130,28 +134,28 @@ def get_graph_from_atoms(
         add_site_connections(connectivity=connectivity, site_indices=site_indices)
 
     edges_list = get_edges_list_from_connectivity(connectivity=connectivity)
-    edge_index = torch.tensor(edges_list, dtype=torch.long).reshape(2,-1)
+    edge_index = torch.tensor(edges_list, dtype=torch.long, device=device).reshape(2,-1)
 
     #embed coordination numbers
-    coord_nums = torch.tensor(connectivity.sum(axis=-1), dtype=torch.long)
+    coord_nums = torch.tensor(connectivity.sum(axis=-1), dtype=torch.long, device=device)
 
     #embed whether a site is active or not
-    active_sites = torch.zeros((len(atoms),), dtype=torch.long)   # 21 atoms
-    #active_sites[site_indices]+=1
+    active_sites = torch.zeros((len(atoms),), dtype=torch.long, device=device)   # 21 atoms
+    active_sites[site_indices]+=1
     #Construct the graph
     graph = Graph(
         x=x,
         edge_index=edge_index,
-        pos=torch.tensor(atoms.positions, dtype=torch.float),
+        pos=torch.tensor(atoms.positions, dtype=torch.float, device=device),
         edge_attr=None,
         active_sites=active_sites,
-        active_site_dists=torch.tensor(active_site_dists, dtype=torch.float)
+        active_site_dists=torch.tensor(active_site_dists, dtype=torch.float, device=device)
     )
 
     #Assign condition to graph
     if condition_key is not None:
         if condition_key in atoms.info:
-            graph.y = torch.tensor(atoms.info[condition_key])
+            graph.y = torch.tensor(atoms.info[condition_key], device=device)
         else:
             raise Exception(f"condition key {condition_key} is not available in datadict, having: {atoms.info.keys()}")
     return graph
@@ -202,6 +206,7 @@ def get_dataset_from_atoms_list(
         condition_key:str=None,
         add_active_site_connectivity:bool=False,
         use_fully_connected_graph:bool=False,
+        device:str=None,
         graph_kwargs:dict={}
     ):
     graph_list = [
@@ -211,6 +216,7 @@ def get_dataset_from_atoms_list(
             condition_key=condition_key,
             add_active_site_connectivity=add_active_site_connectivity,
             use_fully_connected_graph=use_fully_connected_graph,
+            device=device,
             **graph_kwargs
         )
         for atoms in atoms_list
@@ -267,6 +273,7 @@ def get_dataloaders_from_atoms_list(
         use_fully_connected_graph:bool=False,
         do_initial_shuffling:bool=True,
         do_train_shuffling:bool=True,
+        device:str=None,
         random_seed:int=42,
         loader_kwargs:dict={},
         graph_kwargs:dict={} 
@@ -282,6 +289,7 @@ def get_dataloaders_from_atoms_list(
         condition_key=condition_key,
         use_fully_connected_graph=use_fully_connected_graph,
         add_active_site_connectivity=add_active_site_connectivity,
+        device=device,
         graph_kwargs=graph_kwargs
     )
 
@@ -291,6 +299,7 @@ def get_dataloaders_from_atoms_list(
         condition_key=condition_key,
         use_fully_connected_graph=use_fully_connected_graph,
         add_active_site_connectivity=add_active_site_connectivity,
+        device=device,
         graph_kwargs=graph_kwargs
     )
     train_loader = DataLoader(

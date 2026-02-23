@@ -15,7 +15,7 @@ def main():
     ckpt_file_type = "last"
     models = [
         #"class_0",
-        "5mpl_no_aux_no_duplicates"
+        "5mpl_true_no_lr_sched"
     ]
     temps = [0.5,1.0]#[0.2,0.5, 1.0]
 
@@ -33,14 +33,14 @@ def main():
             if ckpt_file_type in file:
                 ckpt_file = file
         diff_model = DiffusionModel.load_from_checkpoint(os.path.join(ckpt_dir, ckpt_file))
-        diff_model = diff_model.to(device=torch.device("cpu"))
+        diff_model = diff_model.to(device=torch.device("cuda"))
         diff_model.noiser.label_smoothing = 0.0
         for temp in temps:
             random.seed(random_seed)
             torch.manual_seed(random_seed)
             torch.cuda.manual_seed_all(random_seed)
             result_samples = diff_model.sample(
-                conditioning_dicts=[{"rate":8.0} for _ in range(n_samples)],
+                conditioning_dicts=[{"rate":23.0} for _ in range(n_samples)],
                 guidance_scale=2.0,
                 n_samples=n_samples, 
                 condition_key="rate",

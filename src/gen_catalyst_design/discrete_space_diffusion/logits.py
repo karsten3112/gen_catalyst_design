@@ -582,6 +582,7 @@ class MPNNLogitPredictor(LogitPredictor):
             atoms_list=atoms_list,
             element_pool=element_pool,
             condition_key=condition_key,
+            device=self.device,
             **dataset_kwargs
         )
         return DataLoader(dataset=sample_data, batch_size=batch_size, shuffle=False)

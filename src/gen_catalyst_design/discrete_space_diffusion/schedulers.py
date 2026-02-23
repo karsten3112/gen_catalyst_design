@@ -77,7 +77,6 @@ class DiscreteTimeScheduler(nn.Module):
 # LINEAR SCHEDULER
 # -------------------------------------------------------------------------------------
 
-
 class LinearScheduler(DiscreteTimeScheduler):
     def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, time_sample_method = "uniform"):
         super().__init__(t_init, t_final, beta_max, beta_min, time_sample_method)
@@ -108,11 +107,15 @@ class CosineScheduler(DiscreteTimeScheduler):
         state_dict.update({"scheduler_type":"CosineScheduler"})
         return state_dict
 
+    def set_device(self, device):
+        self.reg = self.reg.to(device=device)
+        return super().set_device(device)
+
     def cos(self, t:torch.tensor):
         return torch.cos((t/self.t_final+self.reg)/(1.0+self.reg)*torch.pi/2.0)**2
 
     def alpha_t(self, t):
-        return self.cos(t)/self.cos(torch.tensor(0))
+        return self.cos(t)/self.cos(torch.tensor(0, device=self.device))
 
     def __call__(self, t):
         return 1.0 - self.alpha_t(t=t)/self.alpha_t(t=(t-1))
@@ -121,7 +124,6 @@ class CosineScheduler(DiscreteTimeScheduler):
 # -------------------------------------------------------------------------------------
 # EXPONENTIAL SCHEDULER
 # -------------------------------------------------------------------------------------  
-
 
 class ExponentialScheduler(DiscreteTimeScheduler):
     def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, time_sample_method = "uniform"):
@@ -135,4 +137,6 @@ class ExponentialScheduler(DiscreteTimeScheduler):
 
     def __call__(self, t):
         return self.beta_min*torch.pow(self.beta_max/self.beta_min, (t-1.0)/(self.t_final-1.0))
-    
+
+
+
