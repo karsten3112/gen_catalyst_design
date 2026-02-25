@@ -303,7 +303,8 @@ class DiffusionModel(LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        params = [p for _, p in sorted(self.named_parameters(), key=lambda x: x[0])]
+        optimizer = torch.optim.AdamW(params, lr=self.lr, weight_decay=self.weight_decay)
         scheduler = {
             'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer,
@@ -574,7 +575,7 @@ class DiffusionModel(LightningModule):
         return const_state_dict
     
     def load_modules_from_checkpoint(self, parameter_dict):
-        module_list = ["noiser", "scheduler", "logit_predictor", "conditioning"]
+        module_list = ["scheduler", "noiser", "logit_predictor", "conditioning"]
         modules = {}
         for module_type in module_list:
             info_key = module_type+"_info"
@@ -593,6 +594,7 @@ class DiffusionModel(LightningModule):
         return super().on_save_checkpoint(checkpoint)
 
     def on_load_checkpoint(self, checkpoint):
+        
         cfg = checkpoint["diffusion_parameters"]
         self.element_pool = cfg.pop("element_pool")
         self.drop_prob = cfg.pop("drop_prob")
@@ -604,8 +606,8 @@ class DiffusionModel(LightningModule):
         self.log_regularization = cfg.pop("log_regularization")
         self.lr = cfg.pop("lr")
         modules = self.load_modules_from_checkpoint(parameter_dict=cfg)
-        self.noiser = modules.pop("noiser")
         self.scheduler = modules.pop("scheduler")
+        self.noiser = modules.pop("noiser")
         if self.noiser.accumulated_q_matrices is None:
             self.noiser.pre_compute_accum_q_matrices(self.scheduler)
         self.logit_predictor = modules.pop("logit_predictor")

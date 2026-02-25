@@ -91,7 +91,7 @@ def main():
         d3pm_auxillary_weight=None,
         auxillary_rate_weight=None,
         num_kl_div_estimates=1,
-        lr=1e-5
+        lr=1e-3
     )
 
     
@@ -105,7 +105,7 @@ def main():
     )
   
     trainer_kwargs={
-        "max_epochs":-1,
+        "max_epochs":2000,
         "log_every_n_steps":1, 
         "enable_progress_bar":True, 
         "enable_model_summary":True
@@ -114,8 +114,8 @@ def main():
     logger_kwargs = {}
 
     trainer = setup_trainer_and_logger(
-        project_name="quick_test_adamw",
-        model_name="test_adamw3",
+        project_name="testing",
+        model_name="5mpl_final_no_lr_sched",
         accelerator="gpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,

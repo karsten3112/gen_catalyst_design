@@ -25,7 +25,7 @@ parser.add_argument(
     "-model_ckpt",
     type=str,
     required=False,
-    default="iter_0/checkpoints/epoch=epoch=103-val=val_loss=0.5470.ckpt"#"../rate_testing/refactor_test/test_adamw/checkpoints/epoch=epoch=141-val=val_loss=0.8169.ckpt",
+    default="test_ordered/checkpoints/last.ckpt"
 )
 
 parser.add_argument(
@@ -126,7 +126,7 @@ def run_active_learning(
         pre_estimated_samples:list=None,
         n_learning_loops:int=5, 
         num_samples:int=600, 
-        project_name:str="quick_test_adamw",
+        project_name:str="test_active",
         trainer_kwargs:dict={},
         logger_kwargs:dict={},
         sampling_kwargs:dict={}
@@ -173,7 +173,8 @@ def run_active_learning(
         trainer.fit(
             model=diff_model,
             train_dataloaders=train_loader,
-            val_dataloaders=val_loader
+            val_dataloaders=val_loader,
+            ckpt_path=diff_model_ckpt
         )
         wandb.finish()
         diff_model_ckpt = get_next_diff_model_ckpt(
@@ -181,6 +182,20 @@ def run_active_learning(
         )
         loop_iter+=1
 
+
+def error_check(diff_model_ckpt:str):
+    import torch
+    ckpt = torch.load(diff_model_ckpt, map_location="cpu")
+    opt = ckpt["optimizer_states"][0]["state"]  # Lightning stores a list (one per optimizer)
+
+    # Find any tensors in optimizer state with suspicious shapes
+    bad = []
+    for k, v in opt.items():
+        for name, t in v.items():
+            if torch.is_tensor(t):
+                if 5 in t.shape or 192 in t.shape:
+                    bad.append((k, name, tuple(t.shape)))
+    print(bad[:50])
 
 def get_next_diff_model_ckpt(
         model_name:str,
