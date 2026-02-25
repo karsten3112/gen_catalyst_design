@@ -126,7 +126,7 @@ class CosineScheduler(DiscreteTimeScheduler):
 # -------------------------------------------------------------------------------------  
 
 class ExponentialScheduler(DiscreteTimeScheduler):
-    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, time_sample_method = "uniform"):
+    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, time_sample_method = "stratified"):
         super().__init__(t_init, t_final, beta_max, beta_min, time_sample_method)
 
     @property

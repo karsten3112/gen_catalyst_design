@@ -25,7 +25,7 @@ parser.add_argument(
     "-model_ckpt",
     type=str,
     required=False,
-    default="init_model/checkpoints/epoch=epoch=72-val=val_loss=0.8990.ckpt",
+    default="iter_0/checkpoints/epoch=epoch=103-val=val_loss=0.5470.ckpt"#"../rate_testing/refactor_test/test_adamw/checkpoints/epoch=epoch=141-val=val_loss=0.8169.ckpt",
 )
 
 parser.add_argument(
@@ -33,7 +33,7 @@ parser.add_argument(
     "-n_loops",
     type=int,
     required=False,
-    default=2,
+    default=1,
 )
 
 parser.add_argument(
@@ -88,13 +88,13 @@ def main():
         features_pth=os.path.join(yaml_file_pth, "features"),
         db_train_pth_header=os.path.join(db_file_pth,"DFT_database"),
         mechanism_pth_header=os.path.join(yaml_file_pth, "reaction_mechanism"),
-        template_db_pth=os.path.join(db_file_pth, "templates", miller_index),
+        template_db_pth=os.path.join(db_file_pth, "cluster_templates", miller_index),
         template_db_name=f"{miller_index}_templates.db",
         miller_index=miller_index
     )
 
     trainer_kwargs={
-        "max_epochs": 5,
+        "max_epochs": -1,
         "log_every_n_steps":1, 
         "enable_progress_bar":True, 
         "enable_model_summary":True
@@ -110,7 +110,7 @@ def main():
         init_training_atoms_list=read("no_duplicates.traj", index=":"),
         diff_model_ckpt=parsed_args.pretrained_model_ckpt,
         reaction_mechanism=reaction_mechanism,
-        pre_estimated_samples=None,
+        pre_estimated_samples=[],
         n_learning_loops=n_learning_loops,
         num_samples=num_samples,
         trainer_kwargs=trainer_kwargs,
@@ -126,7 +126,7 @@ def run_active_learning(
         pre_estimated_samples:list=None,
         n_learning_loops:int=5, 
         num_samples:int=600, 
-        project_name:str="active_learning_test",
+        project_name:str="quick_test_adamw",
         trainer_kwargs:dict={},
         logger_kwargs:dict={},
         sampling_kwargs:dict={}
@@ -134,7 +134,7 @@ def run_active_learning(
     loop_iter = 0
     training_samples = init_training_atoms_list
     while loop_iter < n_learning_loops:
-        diff_model = DiffusionModel.load_from_checkpoint(diff_model_ckpt).to(device=torch.device("cuda"))
+        diff_model = DiffusionModel.load_from_checkpoint(diff_model_ckpt).to(device=torch.device("cpu"))
         #diff_model = diff_model.to(device=torch.device("cpu"))
         if loop_iter == 0 and pre_estimated_samples is not None:
             training_samples+=pre_estimated_samples
@@ -163,7 +163,7 @@ def run_active_learning(
 
         trainer = setup_trainer_and_logger(
             project_name=project_name,
-            model_name=f"iter_{loop_iter}",
+            model_name=f"iter_{loop_iter+1}",
             accelerator="gpu",
             trainer_kwargs=trainer_kwargs,
             logger_kwargs=logger_kwargs,
@@ -177,7 +177,7 @@ def run_active_learning(
         )
         wandb.finish()
         diff_model_ckpt = get_next_diff_model_ckpt(
-            model_name=f"iter_{loop_iter}"
+            model_name=f"iter_{loop_iter+1}"
         )
         loop_iter+=1
 

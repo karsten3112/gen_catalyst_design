@@ -191,3 +191,21 @@ def get_calculator(model, miller_index):
     else:
          raise Exception(f"calculator of type: {model} has not been implemented yet")
     return calculator, train_kwargs
+
+def get_periodic_surface(miller_index:str, vacuum:float=10.0, n_layers_z:int=4) -> tuple:
+    if miller_index == "100":
+        from ase.build import fcc100
+        atoms_periodic = fcc100(symbol="Au", size=(3, 3, n_layers_z), vacuum=vacuum)
+        indices_site = [27, 28, 30, 31]
+    elif miller_index == "111":
+        from ase.build import fcc111
+        atoms_periodic = fcc111(symbol="Au", size=(3, 3, n_layers_z), vacuum=vacuum)
+        indices_site = [27, 28, 30, 31]
+    elif miller_index == "211":
+        from ase.build import fcc211
+        atoms_periodic = fcc211(symbol="Au", size=(6, 3, n_layers_z), vacuum=vacuum)
+        indices_site = [0, 1, 7, 10, 15, 16]
+    # Highlight site atoms.
+    for ii in indices_site:
+        atoms_periodic[ii].symbol = "Cu"
+    return atoms_periodic, indices_site

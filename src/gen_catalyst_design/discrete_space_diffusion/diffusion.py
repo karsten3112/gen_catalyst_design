@@ -303,7 +303,7 @@ class DiffusionModel(LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         scheduler = {
             'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer,

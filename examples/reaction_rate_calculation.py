@@ -22,6 +22,7 @@ def main():
     model = "WWL-GPR"
     # Parameters.
     miller_index = "100" # 100 | 111
+    
     elements = ["Rh", "Cu", "Au"] # Elements of the surface.
     random_seed = 42 # Random seed for reproducibility.
     np.random.seed(random_seed)

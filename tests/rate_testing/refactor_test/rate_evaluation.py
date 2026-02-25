@@ -14,9 +14,6 @@ import os
 
 
 def main():
-    db = connect("../../../databases/templates/100/100_templates.db")
-    template_atoms_list = get_atoms_list_from_db(db_ase=db)
-    n_atoms_surf = len(template_atoms_list[0])
     miller_index = "100"
     universal_pth_header = "../../.."
     load_indices = ":"
@@ -45,13 +42,14 @@ def main():
 
     reaction_mechanism.set_template_atoms_list(
         db_filename=f"{miller_index}_templates.db",
-        pth_header=f"../../../databases/templates/{miller_index}"
+        pth_header=f"../../../databases/cluster_templates/{miller_index}"
     )
     
     models = [
-        "5mpl_true_no_lr_sched",
+        "../../active_learning/iter_0",
+        "../../active_learning/iter_1"
     ]
-    temps = [0.5, 1.0]
+    temps = [1.0]
     for model in models:
         for temp in temps:
             filename = os.path.join(model, f"samples_{temp}.traj")

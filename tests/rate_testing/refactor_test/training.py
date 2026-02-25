@@ -52,10 +52,10 @@ def main():
     else:
         raise Exception(f"noiser of type {noiser_type} is not implemented")
 
-    scheduler = CosineScheduler(
+    scheduler = ExponentialScheduler(
         beta_max=5e-2, 
         beta_min=1e-4,
-        reg=1e-1,
+        #reg=1e-1,
         time_sample_method="stratified"
     )
 
@@ -88,11 +88,12 @@ def main():
         conditioning=conditioning,
         drop_prob=0.1,
         use_x0_reparam=True,
-        d3pm_auxillary_weight=0.00,
+        d3pm_auxillary_weight=None,
         auxillary_rate_weight=None,
         num_kl_div_estimates=1,
-        lr=1e-3
+        lr=1e-5
     )
+
     
     train_loader, val_loader = get_dataloaders_from_atoms_list(
         atoms_list=read("../no_duplicates.traj", index=":"),
@@ -113,8 +114,8 @@ def main():
     logger_kwargs = {}
 
     trainer = setup_trainer_and_logger(
-        project_name="refactor",
-        model_name="5mpl_cos_recon_fix_2",
+        project_name="quick_test_adamw",
+        model_name="test_adamw3",
         accelerator="gpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,
