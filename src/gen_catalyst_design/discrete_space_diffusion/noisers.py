@@ -16,14 +16,12 @@ class DiscreteSpaceNoiser(nn.Module):
             self, 
             element_pool:list, 
             accumulated_q_matrices:torch.tensor=None, 
-            active_site_freezing:int=600,
-            label_smoothing:float=0.0,
-            random_state:int=42
+            active_site_freezing:int=0,
+            label_smoothing:float=0.0
         ):
         super().__init__()
         self.element_pool = element_pool
         self.accumulated_q_matrices = accumulated_q_matrices
-        self.random_state = random_state
         self.n_classes = len(element_pool)
         self.stationary_dist = None
         self.device = None
@@ -35,7 +33,11 @@ class DiscreteSpaceNoiser(nn.Module):
 
     @property
     def const_state_dict(self):
-        return {}
+        state_dict = {
+            "label_smoothing":self.label_smoothing,
+            "active_site_freezing":self.active_site_freezing
+        }
+        return state_dict
 
     def set_device(self, device):
         self.device = device
@@ -160,9 +162,10 @@ class DiscreteSpaceNoiser(nn.Module):
 
 
 class UniformTransitionsNoiser(DiscreteSpaceNoiser):
-    def __init__(self, element_pool, accumulated_q_matrices = None, random_state = 42):
-        super().__init__(element_pool, accumulated_q_matrices, random_state)
+    def __init__(self, element_pool, accumulated_q_matrices = None, active_site_freezing = 0, label_smoothing = 0):
+        super().__init__(element_pool, accumulated_q_matrices, active_site_freezing, label_smoothing)
         self.stationary_dist = self.get_stationary_dist()
+
     
     @property
     def const_state_dict(self):
@@ -195,12 +198,11 @@ class AbsorbingStateNoiser(DiscreteSpaceNoiser):
             element_pool, 
             accumulated_q_matrices = None,
             active_site_freezing = 0,
-            label_smoothing:float=1e-3, 
-            random_state = 42
+            label_smoothing:float=0.0
             ):
         if "(X)" not in element_pool:
             raise Exception(f"Absorbing state (X) not found in element pool being: {element_pool}")
-        super().__init__(element_pool, accumulated_q_matrices, active_site_freezing, label_smoothing, random_state)
+        super().__init__(element_pool, accumulated_q_matrices, active_site_freezing, label_smoothing)
         for i, elem in enumerate(element_pool):
             if elem == "(X)":
                 self.absorbing_state_index = i

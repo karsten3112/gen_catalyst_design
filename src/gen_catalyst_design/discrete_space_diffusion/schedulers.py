@@ -31,7 +31,8 @@ class DiscreteTimeScheduler(nn.Module):
             "t_init":self.t_init,
             "t_final":self.t_final,
             "beta_max":self.beta_max.item(),
-            "beta_min":self.beta_min.item()
+            "beta_min":self.beta_min.item(),
+            "time_sample_method":self.time_sample_method
         }
         return state_dict
 

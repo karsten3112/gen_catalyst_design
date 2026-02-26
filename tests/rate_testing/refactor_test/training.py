@@ -32,8 +32,7 @@ def main():
 
     noiser_type = "Absorbing" # Absorbing | Uniform
     element_pool = ["Rh", "Cu", "Au", "Pd"]
-    #add_active_site_connectivity = True
-    #miller_index = "100"
+    ckpt_file = "5mpl_final_no_lr_sched/checkpoints/epoch=epoch=224-val=val_loss=0.8073.ckpt"
     
     
     if "Absorbing" in noiser_type:
@@ -80,20 +79,22 @@ def main():
     #rate_guidance = ReactionRateModule.load_from_checkpoint(path_model)
         
     #Also setting drop_prob to zero for training purposes.
-    diff_model = DiffusionModel(
-        element_pool=element_pool,
-        scheduler=scheduler,
-        noiser=noiser,
-        logit_predictor=logit_predictor,
-        conditioning=conditioning,
-        drop_prob=0.1,
-        use_x0_reparam=True,
-        d3pm_auxillary_weight=None,
-        auxillary_rate_weight=None,
-        num_kl_div_estimates=1,
-        lr=1e-3
-    )
-
+    if ckpt_file is None:
+        diff_model = DiffusionModel(
+            element_pool=element_pool,
+            scheduler=scheduler,
+            noiser=noiser,
+            logit_predictor=logit_predictor,
+            conditioning=conditioning,
+            drop_prob=0.1,
+            use_x0_reparam=True,
+            d3pm_auxillary_weight=None,
+            auxillary_rate_weight=None,
+            num_kl_div_estimates=1,
+            lr=1e-3
+        )
+    else:
+        diff_model = DiffusionModel.load_from_checkpoint(ckpt_file).to("cpu")
     
     train_loader, val_loader = get_dataloaders_from_atoms_list(
         atoms_list=read("../no_duplicates.traj", index=":"),
@@ -115,8 +116,8 @@ def main():
 
     trainer = setup_trainer_and_logger(
         project_name="testing",
-        model_name="5mpl_final_no_lr_sched",
-        accelerator="gpu",
+        model_name="5mpl_final_retrain",
+        accelerator="cpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,
         gradient_clip_val=1.0,
@@ -126,7 +127,8 @@ def main():
     trainer.fit(
         model=diff_model,
         train_dataloaders=train_loader,
-        val_dataloaders=val_loader
+        val_dataloaders=val_loader,
+        ckpt_path=ckpt_file
     )
     wandb.finish()
     

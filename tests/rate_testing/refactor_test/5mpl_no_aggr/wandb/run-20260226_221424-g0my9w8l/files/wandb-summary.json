@@ -1,0 +1,1 @@
+{"train_loss_step":1.064160943031311,"_runtime":5,"_timestamp":1.772140471407449e+09,"_wandb":{"runtime":5},"train_loss/d3pm_aux_term_step":0,"epoch":225,"train_loss/aux_rate_term_step":0,"trainer/global_step":24358,"train_loss/denoise_step":1.0623059272766113,"train_loss/recon_step":0.0018550672102719545,"_step":58}

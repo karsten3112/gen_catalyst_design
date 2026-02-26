@@ -281,6 +281,7 @@ def get_dataloaders_from_atoms_list(
     if do_initial_shuffling:
         random.seed(random_seed)
         random.shuffle(atoms_list)
+
     split_index = int((1-train_val_split)*len(atoms_list))
     
     train_dataset = get_dataset_from_atoms_list(

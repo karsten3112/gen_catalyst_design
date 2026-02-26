@@ -46,8 +46,9 @@ def main():
     )
     
     models = [
-        "../../active_learning/iter_0",
-        "../../active_learning/iter_1"
+        "5mpl_final_no_lr_sched"
+        #"../../active_learning/iter_0",
+        #"../../active_learning/iter_1"
     ]
     temps = [1.0]
     for model in models:

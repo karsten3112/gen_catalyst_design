@@ -12,11 +12,12 @@ def main():
     random_seed = 42
     n_samples = 100
     miller_index = "100"
-    ckpt_file_type = "last"
+    ckpt_file_type = "epoch"
     models = [
         #"class_0",
-        "../../active_learning/iter_1",
-        "../../active_learning/iter_0"
+        "5mpl_final_no_lr_sched"
+        #"../../active_learning/iter_1",
+        #"../../active_learning/iter_0"
     ]
     temps = [1.0]#[0.2,0.5, 1.0]
 
@@ -35,14 +36,13 @@ def main():
                 ckpt_file = file
         diff_model = DiffusionModel.load_from_checkpoint(os.path.join(ckpt_dir, ckpt_file))
         diff_model = diff_model.to(device=torch.device("cpu"))
-        ckpt = torch.load(os.path.join(ckpt_dir, ckpt_file), map_location="cpu")
         diff_model.noiser.label_smoothing = 0.0
         for temp in temps:
             random.seed(random_seed)
             torch.manual_seed(random_seed)
             torch.cuda.manual_seed_all(random_seed)
             result_samples = diff_model.sample(
-                conditioning_dicts=[{"rate":23.0} for _ in range(n_samples)],
+                conditioning_dicts=[{"rate":25.0} for _ in range(n_samples)],
                 guidance_scale=2.0,
                 n_samples=n_samples, 
                 condition_key="rate",
