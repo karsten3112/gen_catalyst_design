@@ -96,14 +96,23 @@ class Table:
 # -------------------------------------------------------------------------------------
 
 class ElementTable(Table):
-    def __init__(self, miller_index:str):
+    def __init__(self, miller_index:str, surface_type:str="cluster", add_e_form:bool=False):
         table_name = "Elements"
         abbreviation = "elems"
-        self.num_surface_atoms_dict = {"100":21, "111":22, "211":29}
-        entries_dict = {"struct_ID":(int, PrimaryKey(add_auto_increment=True)),
-                    "batch":(int, None),
-                    "rate":(float, None)
-                    }
+        self.add_e_form = add_e_form
+        if surface_type == "cluster":
+            self.num_surface_atoms_dict = {"100":21, "111":22, "211":29}
+        elif surface_type == "surface":
+            self.num_surface_atoms_dict = {"100":36, "111":36, "211":72}
+        else:
+            raise Exception
+        entries_dict = {
+            "struct_ID":(int, PrimaryKey(add_auto_increment=True)),
+            "batch":(int, None),
+            "rate":(float, None)
+        }
+        if self.add_e_form:
+            entries_dict.update({"e_form":(float, None)})
         if miller_index in self.num_surface_atoms_dict:
             idx_dict = {f"idx{i}":(str, None) for i in range(self.num_surface_atoms_dict[miller_index])}
         else:
@@ -116,7 +125,11 @@ class ElementTable(Table):
         entries_list.remove("struct_ID")
         init_string = super().get_insertion_command(entries_list)
         rate = score_dict["rate"]
-        datalist = [str(batch), str(rate)] + ['"'+'","'.join(elements)+'"']
+        if self.add_e_form:
+            e_form = score_dict["e_form"]
+            datalist = [str(batch), str(rate), str(e_form)] + ['"'+'","'.join(elements)+'"']
+        else:
+            datalist = [str(batch), str(rate)] + ['"'+'","'.join(elements)+'"']
         return init_string+f""" ({self.convert_list_to_str(datalist)})"""
 
     def insert_data_to_table(self, cursor:Cursor, data_dict:dict) -> Cursor:
@@ -231,7 +244,9 @@ class Database:
     def __init__(
             self, 
             filename:str, 
-            miller_index:str, 
+            miller_index:str,
+            surface_type:str="cluster",
+            add_e_form:bool=False, 
             use_tempdir:bool=False, 
             pth_header:str=None, 
             include_bond_info:bool=False, 
@@ -250,7 +265,11 @@ class Database:
         self.connection.execute("PRAGMA locking_mode=EXCLUSIVE;")
         
         self.cursor = self.connection.cursor()
-        self.element_table = ElementTable(miller_index=miller_index)
+        self.element_table = ElementTable(
+            miller_index=miller_index, 
+            surface_type=surface_type, 
+            add_e_form=add_e_form
+        )
         self.table_list = [self.element_table]
         if include_bond_info:
             self.table_list.append(BondInfoTable(element_table=self.element_table))
@@ -309,7 +328,7 @@ class Database:
         if selection is None:
             n_prev = 0
             for table in self.table_list:
-                coloumn_splits[table.table_name] = (n_prev, table.n_coloums) #Have to look into this, because it is not right as of now
+                coloumn_splits[table.table_name] = (n_prev, table.n_coloums)
                 n_prev+=table.n_coloums
         else:
             pass #Code something here
@@ -356,14 +375,18 @@ class Database:
     @staticmethod
     def establish_connection(
         filename:str, 
-        miller_index:str, 
+        miller_index:str,
+        surface_type:str="cluster",
+        add_e_form:bool=False, 
         pth_header:str=None, 
         use_tempdir:bool=False, 
         database_kwargs:dict={}
         ):
         database = Database(
             filename=filename, 
-            miller_index=miller_index, 
+            miller_index=miller_index,
+            surface_type=surface_type,
+            add_e_form=add_e_form, 
             use_tempdir=use_tempdir, 
             pth_header=pth_header, 
             **database_kwargs

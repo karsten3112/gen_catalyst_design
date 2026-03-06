@@ -10,6 +10,7 @@ sys.path.insert(0, "../")
 from gen_catalyst_design.reaction_rates import ReactionMechanism
 from gen_catalyst_design.utils import get_atoms_from_template_db, get_calculator, get_features_bulk_and_gas
 from gen_catalyst_design.db import Database
+from ase_ml_models.utilities import plot_connectivity
 import torch
 from ase.io import read, write
 
@@ -51,12 +52,20 @@ def main():
     
     reaction_mechanism = setup_reaction_mechanism(
         miller_index=miller_index,
-        surface_type="bulk",
+        surface_type="surface",
         calculator=calculator,
         features_bulk=features_bulk,
         features_gas=features_gas
     )
-
+    connectivity = reaction_mechanism.clean_surface.info["connectivity"]
+    ax = plot_connectivity(
+        atoms=reaction_mechanism.clean_surface,
+        connectivity=connectivity
+    )
+    
+    print(connectivity)
+    print(connectivity[27])
+    exit()
     data_dicts = []
     print("EVALUATING RATE FOR RANDOM BULK-SURFACES")
     for _ in range(n_samples):
@@ -115,7 +124,7 @@ def setup_reaction_mechanism(
     ) -> ReactionMechanism:
     template_atoms_list, n_atoms_surf = get_atoms_from_template_db(
          db_filename=f"{miller_index}_templates.db", 
-         pth_header=f"../databases/{surface_type}_templates/{miller_index}"
+         pth_header=f"../databases/{surface_type}_templates"
     )
    
     #setup reaction mechanism for calculating rate of RDS

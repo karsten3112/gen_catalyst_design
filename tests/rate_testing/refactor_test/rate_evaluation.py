@@ -42,15 +42,15 @@ def main():
 
     reaction_mechanism.set_template_atoms_list(
         db_filename=f"{miller_index}_templates.db",
-        pth_header=f"../../../databases/cluster_templates/{miller_index}"
+        pth_header=f"../../../databases/cluster_templates"
     )
     
     models = [
-        "5mpl_final_no_lr_sched"
+        "5mpl_rand"
         #"../../active_learning/iter_0",
         #"../../active_learning/iter_1"
     ]
-    temps = [1.0]
+    temps = [1.0, 0.5]
     for model in models:
         for temp in temps:
             filename = os.path.join(model, f"samples_{temp}.traj")

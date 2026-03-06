@@ -88,13 +88,13 @@ class GraphCalculator(Calculator):
         super().__init__(miller_index)
         self.model_params = {
                 "target": "E_form",
-                "model_name": kernel, #"KRR", #Are we sure about this?
+                "model_name": kernel,
                 "kwargs_kernel": {"length_scale": 30},
                 "kwargs_model": {"alpha": 1e-4},
         }
         self.preproc_params = {
-                "node_weight_dict": {"A0": 1.00, "S1": 0.80, "S2": 0.20},
-                "edge_weight_dict": {"AA": 0.50, "AS": 1.00, "SS": 0.50},
+                "node_weight_dict": {"A0": 1.00, "S1": 0.80,"S2": 0.20},
+                "edge_weight_dict": {"AA": 0.50, "AS": 1.00, "SS": 0.5},
                 "preproc": preproc,
         }
 

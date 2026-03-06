@@ -8,7 +8,7 @@ import numpy as np
 
 def main():
     miller_index = "100"
-    opt_method = "GeneticAlgorithm"
+    opt_method = "random_search"
     pth_header = f"../../results/{opt_method}/results/Rh_Cu_Au_Pd/miller_index_{miller_index}"
     assign_no_class = False
     rate_min = 1.0
@@ -32,7 +32,7 @@ def main():
     )
 
     atoms_list = []
-    db = connect("../../databases/templates/100/100_templates.db")
+    db = connect("../../databases/cluster_templates/100_templates.db")
     template_atoms = get_atoms_list_from_db(db_ase=db)[0]
 
     for datadict in filtered_dicts:

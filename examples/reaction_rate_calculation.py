@@ -20,6 +20,7 @@ def main():
 
     # Control.
     model = "WWL-GPR"
+    surface_type = "surface" # cluster | surface
     # Parameters.
     miller_index = "100" # 100 | 111
     
@@ -50,9 +51,8 @@ def main():
     #get template atoms list from database
     template_atoms_list, n_atoms_surf = get_atoms_from_template_db(
          db_filename=f"{miller_index}_templates.db", 
-         pth_header=f"../databases/templates/{miller_index}"
+         pth_header=f"../databases/{surface_type}_templates"
     )
-   
     #setup reaction mechanism for calculating rate of RDS
     reaction_mechanism = ReactionMechanism(
         template_atoms_list=template_atoms_list,
@@ -88,7 +88,7 @@ def main():
             print(f"Reaction rate = {rate:+7.3e} [1/s]")
     #rates = [datadict["score_dict"]["rate"] for datadict in data_dicts]
 
-    database = Database.establish_connection(filename="test_pred.db", miller_index=miller_index)
+    database = Database.establish_connection(filename="test_pred.db", surface_type=surface_type, miller_index=miller_index)
     database.write_data_to_tables(data_dicts=data_dicts, append=False)
 
 

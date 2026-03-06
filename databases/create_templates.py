@@ -15,13 +15,13 @@ from catalyst_opt_tools.adsorption import (
     adsorption_bidentate,
     get_adsorption_sites,
     get_bidentate_sites,
-    get_surface_edges
+    get_surface_edges,
+    get_cluster_from_surface
 )
-from ase_ml_models.utilities import (
-    get_connectivity,
-    get_edges_list_from_connectivity,
-)
-from catalyst_opt_tools.adsorption import get_cluster_from_surface
+from ase.data import atomic_numbers, reference_states
+from ase_ml_models.utilities import get_connectivity
+from ase.io import write
+from gen_catalyst_design.stability import get_connectivity_inverted_slab, inversion_symmetry_repeat, center_slab
 from ase.atoms import Atoms
 
 # -------------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ def main():
     # Control.
     show_atoms = False
     write_to_db = True
-    surface_type = "cluster" # cluster | bulk
+    surface_type = "surface" # cluster | surface
     miller_indices = ["100", "111", "211"] # 100 | 111 | 211
 
     species_list = ["CO*", "H*", "O*", "OH*", "H2O*", "CO2**"]
@@ -59,35 +59,37 @@ def main():
                 remove_pbc=True,
                 skin=0.20
             )
-        if surface_type == "bulk":
+        if surface_type == "surface":
             atoms_surf = atoms_periodic
-            atoms_surf.info["indices_site"] = indices_site
-            connectivity = get_connectivity(
-                    atoms=atoms_periodic,
-                    method="ase",
-                    skin=0.20,
+            n_atoms = len(atoms_surf)
+            #print(miller_index, n_atoms)
+            expanded_surface = apply_inversion_symmetry(
+                atoms=atoms_surf.copy(),
+                miller_index=miller_index,
+                vacuum=100.0
             )
+            connectivity = get_connectivity_inverted_slab(
+                atoms=expanded_surface,
+                method="ase",
+                bond_cutoff=1,
+                skin=0.20,
+                remove_pbc=True
+            )[:n_atoms,:n_atoms]
             atoms_surf.info["connectivity"] = connectivity
-            print(connectivity[0])
-            print(connectivity[2])
-            exit()
+            atoms_surf.info["indices_site"] = indices_site
         atoms_surf.info["species"] = "clean"
         atoms_surf.info["indices_ads"] = []
         atoms_surf.info["scores"] = {}
         atoms_surf.info["miller_index"] = miller_index
         indices_surf = atoms_surf.info["indices_site"]
-        # Get edges from connectivity.
-        # Place adsorbates
+
         atoms_surfads_list = adsorbate_placer(atoms_surface=atoms_surf, indices_site=indices_surf)
-        #for atoms in atoms_surfads_list:
-        #    print(atoms.info["species"])
-        # Show atoms in GUI.
-        #exit()
+        
         if show_atoms is True:
             gui = GUI(atoms_surfads_list)
             gui.run()
 
-        out_dir = f"{surface_type}_templates/{miller_index}"
+        out_dir = f"{surface_type}_templates"
         # Write atoms to database.
         if write_to_db is True:
             if os.path.exists(out_dir):
@@ -103,22 +105,32 @@ def main():
 # CONSTRUCT PERIODIC SURFACE
 # -------------------------------------------------------------------------------------
 
-#def get_bulk_from_periodic(
-#    
-#    ):
 
-def get_periodic_surface(miller_index) -> tuple:
+def apply_inversion_symmetry(atoms:Atoms, miller_index:str, vacuum:float=10.0):
+    if miller_index == "100":
+        pass
+    atoms = center_slab(atoms=atoms)
+    z = atomic_numbers["Au"]
+    a_lat = reference_states[z]["a"]
+    interlayer_dist = a_lat / 2
+    atoms.center(vacuum=interlayer_dist / 2, axis=2)
+    atoms = inversion_symmetry_repeat(atoms=atoms)
+    atoms.center(vacuum=vacuum, axis=2)
+    return atoms
+
+
+def get_periodic_surface(miller_index, vacuum:float=10.0) -> tuple:
     if miller_index == "100":
         from ase.build import fcc100
-        atoms_periodic = fcc100(symbol="Au", size=(3, 3, 4), vacuum=10.0)
+        atoms_periodic = fcc100(symbol="Au", size=(3, 3, 4), vacuum=vacuum)
         indices_site = [27, 28, 30, 31]
     elif miller_index == "111":
         from ase.build import fcc111
-        atoms_periodic = fcc111(symbol="Au", size=(3, 3, 4), vacuum=10.0)
+        atoms_periodic = fcc111(symbol="Au", size=(3, 3, 4), vacuum=vacuum)
         indices_site = [27, 28, 30, 31]
     elif miller_index == "211":
         from ase.build import fcc211
-        atoms_periodic = fcc211(symbol="Au", size=(6, 3, 4), vacuum=10.0)
+        atoms_periodic = fcc211(symbol="Au", size=(6, 3, 4), vacuum=vacuum)
         indices_site = [0, 1, 7, 10, 15, 16]
     # Highlight site atoms.
     for ii in indices_site:
@@ -140,7 +152,8 @@ class AdsorbatePlacer:
             result_atoms_list = []
         
         sites_dict = self.get_sites_dict(atoms_surface=atoms_surface, indices_site=indices_site)
-
+        #print(sites_dict)
+       # exit()
         for species in self.atoms_mol_dict:
             atoms_mol = self.atoms_mol_dict[species]
             surf_bound = atoms_mol.info["surf_bound"]
@@ -166,9 +179,10 @@ class AdsorbatePlacer:
                     result_atoms_list.append(atoms_surfads)
                     atoms_surfads.info.update({"species": atoms_mol.info["species"]})
                     
-                    atoms_surfads.info["bond_info"] = {"site_name": site_name,
-                                                       "sites_conf": site_indices
-                                                       }
+                    atoms_surfads.info["bond_info"] = {
+                        "site_name": site_name,
+                        "sites_conf": site_indices
+                    }
         return result_atoms_list
 
     def get_sites_dict(self, atoms_surface:Atoms, indices_site:list) -> dict:
@@ -195,7 +209,6 @@ class AdsorbatePlacer:
         else:
             atoms_list = []
         bond_info_dict = atoms_surface.info["bond_info"]
-        print(bond_info_dict.keys())
         for species in bond_info_dict:
             if species == "clean":
                 pass

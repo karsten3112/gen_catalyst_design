@@ -32,7 +32,7 @@ def main():
 
     noiser_type = "Absorbing" # Absorbing | Uniform
     element_pool = ["Rh", "Cu", "Au", "Pd"]
-    ckpt_file = "5mpl_final_no_lr_sched/checkpoints/epoch=epoch=224-val=val_loss=0.8073.ckpt"
+    ckpt_file = None#"5mpl_final_no_lr_sched/checkpoints/epoch=epoch=224-val=val_loss=0.8073.ckpt"
     
     
     if "Absorbing" in noiser_type:
@@ -97,7 +97,7 @@ def main():
         diff_model = DiffusionModel.load_from_checkpoint(ckpt_file).to("cpu")
     
     train_loader, val_loader = get_dataloaders_from_atoms_list(
-        atoms_list=read("../no_duplicates.traj", index=":"),
+        atoms_list=read("../random_search.traj", index=":"),
         element_pool=element_pool,
         condition_key="rate",
         add_active_site_connectivity=False,
@@ -115,8 +115,8 @@ def main():
     logger_kwargs = {}
 
     trainer = setup_trainer_and_logger(
-        project_name="testing",
-        model_name="5mpl_final_retrain",
+        project_name="testing_rand_search",
+        model_name="5mpl_rand",
         accelerator="cpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,
