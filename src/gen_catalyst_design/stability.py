@@ -185,5 +185,5 @@ class Stabilizer:
             atoms=atoms,
             energies_ref=self.ref_energy_dict
         )/2.0
-        return e_form, atoms
+        return {"e_form":e_form, "atoms":atoms}
     

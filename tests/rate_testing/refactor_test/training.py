@@ -1,5 +1,5 @@
 from gen_catalyst_design.discrete_space_diffusion import (
-    DiffusionModel, MPNNLogitPredictor, CosineScheduler, ExponentialScheduler,
+    DiffusionModel, MPNNLogitPredictor, CosineScheduler, ExponentialBetaScheduler,
     AbsorbingStateNoiser, UniformTransitionsNoiser, NoneConditioning, RateConditioning
 )
 
@@ -26,6 +26,7 @@ import os
 
 def main():
     random_seed = 42
+    np.random.seed(random_seed)
     random.seed(random_seed)
     torch.manual_seed(random_seed)
     torch.cuda.manual_seed_all(random_seed)
@@ -51,10 +52,9 @@ def main():
     else:
         raise Exception(f"noiser of type {noiser_type} is not implemented")
 
-    scheduler = ExponentialScheduler(
+    scheduler = ExponentialBetaScheduler(
         beta_max=5e-2, 
         beta_min=1e-4,
-        #reg=1e-1,
         time_sample_method="stratified"
     )
 
@@ -85,7 +85,7 @@ def main():
             scheduler=scheduler,
             noiser=noiser,
             logit_predictor=logit_predictor,
-            conditioning=conditioning,
+            rate_conditioning=conditioning,
             drop_prob=0.1,
             use_x0_reparam=True,
             d3pm_auxillary_weight=None,
@@ -95,11 +95,11 @@ def main():
         )
     else:
         diff_model = DiffusionModel.load_from_checkpoint(ckpt_file).to("cpu")
-    
+
     train_loader, val_loader = get_dataloaders_from_atoms_list(
-        atoms_list=read("../random_search.traj", index=":"),
+        atoms_list=read("../no_duplicates.traj", index=":"),
         element_pool=element_pool,
-        condition_key="rate",
+        condition_keys=["rate"],
         add_active_site_connectivity=False,
         use_fully_connected_graph=False,
         batch_size=40
@@ -109,14 +109,15 @@ def main():
         "max_epochs":2000,
         "log_every_n_steps":1, 
         "enable_progress_bar":True, 
-        "enable_model_summary":True
+        "enable_model_summary":True,
+        "deterministic":True
     }
 
     logger_kwargs = {}
 
     trainer = setup_trainer_and_logger(
-        project_name="testing_rand_search",
-        model_name="5mpl_rand",
+        project_name="reproduce",
+        model_name="fix_1",
         accelerator="cpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,

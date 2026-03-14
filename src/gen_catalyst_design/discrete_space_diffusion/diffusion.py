@@ -1,4 +1,4 @@
-from .schedulers import DiscreteTimeScheduler, ExponentialScheduler, CosineScheduler, LinearScheduler
+from .schedulers import DiscreteTimeScheduler, ExponentialBetaScheduler, CosineScheduler, LinearBetaScheduler
 from .noisers import DiscreteSpaceNoiser, UniformTransitionsNoiser, AbsorbingStateNoiser
 from .logits import MPNNLogitPredictor, LogitPredictor, TransformerLogitPredictor
 from .conditioning import Conditioning, NoneConditioning, RateConditioning
@@ -18,9 +18,9 @@ implemented_modules = {
         "UniformTransitionsNoiser":UniformTransitionsNoiser
     },
     "scheduler":{
-        "ExponentialScheduler":ExponentialScheduler,
+        "ExponentialBetaScheduler":ExponentialBetaScheduler,
         "CosineScheduler":CosineScheduler,
-        "LinearScheduler":LinearScheduler
+        "LinearBetaScheduler":LinearBetaScheduler
     },
     "logit_predictor":{
         "MPNNLogitPredictor":MPNNLogitPredictor,
@@ -40,7 +40,8 @@ class DiffusionModel(LightningModule):
             scheduler:DiscreteTimeScheduler=None,
             noiser:DiscreteSpaceNoiser=None,
             logit_predictor:LogitPredictor=None,
-            conditioning:Conditioning=NoneConditioning(),
+            rate_conditioning:Conditioning=NoneConditioning(),
+            e_form_conditining:Conditioning=NoneConditioning(),
             drop_prob:float=0.1,
             lr:float=1e-3,
             weight_decay:float=0.0,
@@ -48,17 +49,32 @@ class DiffusionModel(LightningModule):
             use_x0_reparam:bool=True,
             d3pm_auxillary_weight:float=None,
             auxillary_rate_weight:float=None,
-            log_regularization:float=1e-12
+            log_regularization:float=1e-12,
         ):
         super().__init__()
         self.element_pool = element_pool
         self.scheduler = scheduler
         self.noiser = noiser
         self.logit_predictor = logit_predictor
-        self.conditioning = conditioning
+        self.rate_conditioning = rate_conditioning
+        self.e_form_conditioning = e_form_conditining
+
         if self.noiser is not None and self.noiser.accumulated_q_matrices is None:
             self.noiser.pre_compute_accum_q_matrices(scheduler=self.scheduler)
+        
         self.drop_prob = drop_prob
+        self.drop_pattern_matrix = [
+            [False, False], #Drop no condition
+            [False, True],  #Drop only e_form
+            [True, False],  #Drop only rate
+            [True, True]    #Drop both conditions
+            ]
+        self.drop_prob_vector = self.get_drop_prob_vector()
+        self.drop_scenarios_dict = {
+            "uncond": self.drop_pattern_matrix[-1],
+            "rate": self.drop_pattern_matrix[1],
+            "e_form":self.drop_pattern_matrix[2]
+        }
         self.lr = lr
         self.weight_decay = weight_decay
         self.num_kl_div_estimates = num_kl_div_estimates
@@ -68,15 +84,38 @@ class DiffusionModel(LightningModule):
         self.log_regularization = log_regularization
         self.cross_entropy_logits = nn.CrossEntropyLoss()
         self.mse_loss = nn.MSELoss()
-    
-    
+
+    def get_drop_prob_vector(self):
+        if type(self.rate_conditioning) != NoneConditioning and type(self.e_form_conditioning) != NoneConditioning:
+            keep_rate_prob = (1.0 - self.drop_prob)/4.0
+            keep_e_form_prob = keep_rate_prob
+        elif type(self.rate_conditioning) == NoneConditioning and type(self.e_form_conditioning) != NoneConditioning:
+            keep_rate_prob = 0.0
+            keep_e_form_prob = 2.0*(1.0 - self.drop_prob)/4.0
+        elif type(self.rate_conditioning) != NoneConditioning and type(self.e_form_conditioning) == NoneConditioning:
+            keep_rate_prob = 2.0*(1.0 - self.drop_prob)/4.0
+            keep_e_form_prob = 0.0
+        else:
+            keep_rate_prob = 0.0
+            keep_e_form_prob = 0.0
+            
+        drop_prob_vector = torch.tensor([
+            keep_rate_prob+keep_e_form_prob, #prob. for kepping both conditionings
+            keep_rate_prob, #prob. for keeping rate-condition alone
+            keep_e_form_prob, #prob. for keeping e_form-condition alone
+            self.drop_prob] #prob. for dropping both conditinings
+        ) 
+        #if drop_prob_matrix.sum() != 1.0:
+        #    raise Exception(f"matrix entries are not normalized {drop_prob_matrix} perhaps set p_drop to zero when no condition is available")
+        return drop_prob_vector
+
     def on_sample_start(self):
         device = self.device
         self.noiser.set_device(device=device)
         self.scheduler.set_device(device=device)
         self.logit_predictor.set_device(device=device)
-        if self.conditioning is not None:
-            self.conditioning.set_device(device=device)
+        self.rate_conditioning.set_device(device=device)
+        self.e_form_conditioning.set_device(device=device)
 
     def on_fit_start(self):
         self.train()
@@ -84,8 +123,8 @@ class DiffusionModel(LightningModule):
         self.noiser.set_device(device=device)
         self.scheduler.set_device(device=device)
         self.logit_predictor.set_device(device=device)
-        if self.conditioning is not None:
-            self.conditioning.set_device(device=device)
+        self.rate_conditioning.set_device(device=device)
+        self.e_form_conditioning.set_device(device=device)
 
     def perform_x0_reparam(
             self, 
@@ -209,7 +248,6 @@ class DiffusionModel(LightningModule):
         else:
             return self.cross_entropy_logits(logits, q_forward)
 
-
     def get_auxillary_rate_loss(self, batch, time, embedded_condition=None):
         x0_rates = self.logit_predictor.get_x0_rate_prediction(
             batch=batch,
@@ -222,16 +260,38 @@ class DiffusionModel(LightningModule):
         )
         return F.mse_loss(x0_rates.squeeze(-1), torch.log(batch.y))
 
+    def get_joint_embedded_condition(self, batch, drop_scenario):
+        resulting_condition = 0.0
+        not_none_condition = False
+        for drop_condition, embedder, condition in zip(
+                drop_scenario, 
+                [self.rate_conditioning, self.e_form_conditioning], 
+                [batch.rate if "rate" in batch else None, batch.e_form if "e_form" in batch else None]
+            ):
+            embedded_condition = embedder.get_condition_embedding(
+                condition=condition,
+                batch_size=batch.batch_size,
+                drop_condition=drop_condition
+            )
+            if embedded_condition is not None:
+                resulting_condition += embedded_condition
+                not_none_condition = True
+        if not_none_condition:
+            return resulting_condition
+        else:
+            return None
+            
     def calculate_loss_terms(self, batch, batch_idx):
-        #Determining whether conditioning should be dropped
-        drop_condition = True if torch.rand(1) <= self.drop_prob else False
+        idx = torch.multinomial(self.drop_prob_vector, 1).squeeze(-1)
+        drop_scenario = self.drop_pattern_matrix[idx]
+        embedded_condition = self.get_joint_embedded_condition(batch=batch, drop_scenario=drop_scenario)
+        #drop_condition = True if torch.rand(1) <= self.drop_prob else False
+        #embedded_condition = self.rate_conditioning.get_condition_embedding(
+        #        condition=batch.rate,
+        #        batch_size=batch.batch_size,
+        #        drop_condition=drop_condition
+        #    )
         
-        #Embed condition, maybe make this more flexible, i.e. have more than one here
-        embedded_condition = self.conditioning.get_condition_embedding(
-            condition=batch.y,
-            batch_size=batch.batch_size,
-            drop_condition=drop_condition
-        )
         if embedded_condition is not None:
             embedded_condition = embedded_condition[batch.batch]
 
@@ -324,8 +384,8 @@ class DiffusionModel(LightningModule):
             n_samples:int,
             template_atoms:Atoms, 
             conditioning_dicts:dict={},
-            condition_key:str="class",
-            guidance_scale:float=2.0,
+            condition_keys:list=["rate"],
+            guidance_scale_dict:dict={"rate":2.0},
             return_as_atoms_list:bool=False, 
             batch_size:int=40,
             timesteps:torch.tensor=None,
@@ -341,19 +401,19 @@ class DiffusionModel(LightningModule):
         )
         for atoms, condition_dict in zip(noised_atoms, conditioning_dicts):
             atoms.info.update(condition_dict)
-
+        
         sample_loader = self.logit_predictor.get_sample_loader(
             atoms_list=noised_atoms,
             element_pool=self.element_pool,
             batch_size=batch_size,
-            condition_key=condition_key,
+            condition_keys=condition_keys,
             dataset_kwargs=dataset_kwargs
         )
         samples = []
         for batch in sample_loader:
             denoised_batch_list = self.denoise_batch(
                 batch=batch, 
-                guidance_scale=guidance_scale, 
+                guidance_scale_dict=guidance_scale_dict, 
                 timesteps=timesteps,
                 log_all_timesteps=log_all_timesteps,
                 temp=temp
@@ -369,7 +429,7 @@ class DiffusionModel(LightningModule):
     def denoise_batch(
             self, 
             batch, 
-            guidance_scale, 
+            guidance_scale_dict, 
             timesteps, 
             log_all_timesteps, 
             temp:float=1.0
@@ -385,7 +445,7 @@ class DiffusionModel(LightningModule):
             self.single_denoise_step(
                 batch=batch, 
                 time=timestep, 
-                guidance_scale=guidance_scale,
+                guidance_scale_dict=guidance_scale_dict,
                 temp=temp
             )
         return batch_list
@@ -394,7 +454,7 @@ class DiffusionModel(LightningModule):
             self, 
             batch, 
             time, 
-            guidance_scale:float=2.0,
+            guidance_scale_dict:dict={"rate":2.0},
             masking_sites:torch.tensor=None, 
             temp:float=1.0
         ):
@@ -402,7 +462,7 @@ class DiffusionModel(LightningModule):
         probs = self.get_reverse_transition_probabilities(
             batch=batch, 
             time=ts, 
-            guidance_scale=guidance_scale,
+            guidance_scale_dict=guidance_scale_dict,
             temp=temp
         )
         if time == self.scheduler.t_init and self.noiser.absorbing_state:
@@ -417,11 +477,11 @@ class DiffusionModel(LightningModule):
             xs_denoised = self.noiser.sample_transition(probabilities=probs)
         batch.x = xs_denoised
 
-    def get_reverse_transition_probabilities(self, batch, time, guidance_scale:float=2.0, temp:float=1.0):
+    def get_reverse_transition_probabilities(self, batch, time, guidance_scale_dict:dict={"rate":2.0}, temp:float=1.0):
         guided_logits = self.get_guided_logits(
             batch=batch,
             time=time,
-            guidance_scale=guidance_scale,
+            guidance_scale_dict=guidance_scale_dict,
             temp=temp
         )
         if self.use_x0_reparam:
@@ -435,14 +495,12 @@ class DiffusionModel(LightningModule):
         else:
             return self.logit_predictor.get_probs_from_logits(logits=guided_logits)
 
-    def get_guided_logits(self, batch, time, guidance_scale, temp):
-        #drop_dict = {True:(1.0-guidance_scale), False:guidance_scale}
-        guided_logits_list = []
-        for drop_condition in [True, False]:
-            embedded_condition = self.conditioning.get_condition_embedding(
-                condition=batch.y,
-                batch_size=batch.batch_size,
-                drop_condition=drop_condition
+    def get_guided_logits(self, batch, time, guidance_scale_dict:dict={"rate":2.0}, temp:float=1.0):
+        guided_logits_dict = {}
+        for kw in ["uncond"]+list(guidance_scale_dict.keys()):
+            embedded_condition = self.get_joint_embedded_condition(
+                batch=batch,
+                drop_scenario=self.drop_scenarios_dict[kw]
             )
             if embedded_condition is not None:
                 embedded_condition = embedded_condition[batch.batch]
@@ -451,8 +509,11 @@ class DiffusionModel(LightningModule):
                 time=time,
                 embedded_condition=embedded_condition
             )
-            guided_logits_list.append(logits)
-        guided_logits= guided_logits_list[0] + guidance_scale*(guided_logits_list[1]-guided_logits_list[0])
+            guided_logits_dict[kw] = logits
+        guided_logits = guided_logits_dict["uncond"]
+        for kw in guidance_scale_dict:
+            guidance_scale = guidance_scale_dict[kw]
+            guided_logits += guidance_scale*(guided_logits_dict[kw]-guided_logits_dict["uncond"])
         return guided_logits/temp
 
     def convert_denoised_batches_to_traj(self, denoised_batch_list, batch_size, return_as_atoms_list:bool=False):
@@ -552,8 +613,8 @@ class DiffusionModel(LightningModule):
         return batch_list
     
 
-    def get_const_state_dict(self):
-        const_state_dict = {
+    def get_state_dict(self):
+        state_dict = {
             "element_pool":self.element_pool,
             "drop_prob":self.drop_prob,
             "lr":self.lr,
@@ -568,33 +629,43 @@ class DiffusionModel(LightningModule):
             "scheduler_info":self.scheduler,
             "noiser_info":self.noiser,
             "logit_predictor_info":self.logit_predictor, 
-            "conditioning_info":self.conditioning
+            "rate_conditioning_info":self.rate_conditioning,
+            "e_form_conditioning_info":self.e_form_conditioning
         }
         for module_type in modules:
-            const_state_dict[module_type] = modules[module_type].const_state_dict
-        return const_state_dict
+            state_dict[module_type] = modules[module_type].get_state_dict()
+        return state_dict
     
     def load_modules_from_checkpoint(self, parameter_dict):
-        module_list = ["scheduler", "noiser", "logit_predictor", "conditioning"]
+        module_dict = {
+            "scheduler":"scheduler",
+            "noiser":"noiser",
+            "logit_predictor":"logit_predictor",
+            "rate_conditioning":"conditioning",
+            "e_form_conditioning":"conditioning"
+        }
+        #module_list = ["scheduler", "noiser", "logit_predictor"]
         modules = {}
-        for module_type in module_list:
+        for module_type in module_dict:
             info_key = module_type+"_info"
             if info_key not in parameter_dict:
                 raise Exception(f"Module of type: {module_type} is not found in parameter dict, being {parameter_dict}")
             else:
+                module_key = module_dict[module_type]
                 module_params = parameter_dict[info_key]
-                module_instance = module_params.pop(f"{module_type}_type")
+                module_instance = module_params.pop(f"{module_key}_type")
                 if module_type == "noiser":
-                    modules[module_type] = implemented_modules[module_type][module_instance](element_pool=self.element_pool, **module_params)
+                    modules[module_type] = implemented_modules[module_key][module_instance](element_pool=self.element_pool, **module_params)
                 else:
-                    modules[module_type] = implemented_modules[module_type][module_instance](**module_params)
+                    modules[module_type] = implemented_modules[module_key][module_instance](**module_params)
+        
         return modules
+    
     def on_save_checkpoint(self, checkpoint):
-        checkpoint["diffusion_parameters"] = self.get_const_state_dict()
+        checkpoint["diffusion_parameters"] = self.get_state_dict()
         return super().on_save_checkpoint(checkpoint)
 
     def on_load_checkpoint(self, checkpoint):
-        
         cfg = checkpoint["diffusion_parameters"]
         self.element_pool = cfg.pop("element_pool")
         self.drop_prob = cfg.pop("drop_prob")
@@ -611,7 +682,9 @@ class DiffusionModel(LightningModule):
         if self.noiser.accumulated_q_matrices is None:
             self.noiser.pre_compute_accum_q_matrices(self.scheduler)
         self.logit_predictor = modules.pop("logit_predictor")
-        self.conditioning = modules.pop("conditioning")
+        self.rate_conditioning = modules.pop("rate_conditioning")
+        self.e_form_conditioning = modules.pop("e_form_conditioning")
+        self.drop_prob_vector = self.get_drop_prob_vector()
         return super().on_load_checkpoint(checkpoint)
 
     def load_state_dict(self, state_dict, strict = True, assign = False):

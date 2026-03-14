@@ -1,0 +1,55 @@
+_wandb:
+    value:
+        cli_version: 0.23.0
+        e:
+            rqu3afksy2q0b0f4e2kolz7n6a9tj25u:
+                codePath: tests/rate_testing/refactor_test/training.py
+                codePathLocal: training.py
+                email: karsten.walz.jensen@gmail.com
+                executable: /opt/anaconda3/envs/cat_opt/bin/python
+                git:
+                    commit: c14d6e820e8b6e9cc37965ab90b414f71a45fb5f
+                    remote: https://github.com/karsten3112/gen_catalyst_design.git
+                host: MacBook-Pro-tilhrende-Karsten.local
+                os: macOS-15.6.1-arm64-arm-64bit
+                program: /Users/karsten/Desktop/speciale/gen_catalyst_design/tests/rate_testing/refactor_test/training.py
+                python: CPython 3.10.19
+                root: 5mpl_rand
+                startedAt: "2026-03-12T16:45:27.305974Z"
+                writerId: rqu3afksy2q0b0f4e2kolz7n6a9tj25u
+        m:
+            - "1": trainer/global_step
+              "6":
+                - 3
+              "7": []
+            - "2": '*'
+              "5": 1
+              "6":
+                - 1
+              "7": []
+        python_version: 3.10.19
+        t:
+            "1":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+                - 105
+            "2":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+                - 105
+            "3":
+                - 7
+                - 13
+                - 66
+            "4": 3.10.19
+            "5": 0.23.0
+            "12": 0.23.0
+            "13": darwin-arm64

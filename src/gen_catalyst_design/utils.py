@@ -156,11 +156,13 @@ def get_features_bulk_and_gas(
         # Return parameters.
         return features_bulk, features_gas
 
+
 def get_calculator(model, miller_index):
     if model == "WWL-GPR":
         calculator = GraphCalculator(
              miller_index=miller_index,
-             kernel="GPR"
+             kernel="GPR",
+             S2=0.2
         )
         train_kwargs = {}
     elif model == "GCNN":
@@ -192,6 +194,8 @@ def get_calculator(model, miller_index):
          raise Exception(f"calculator of type: {model} has not been implemented yet")
     return calculator, train_kwargs
 
+
+
 def get_periodic_surface(miller_index:str, vacuum:float=10.0, n_layers_z:int=4) -> tuple:
     if miller_index == "100":
         from ase.build import fcc100
@@ -209,3 +213,25 @@ def get_periodic_surface(miller_index:str, vacuum:float=10.0, n_layers_z:int=4) 
     for ii in indices_site:
         atoms_periodic[ii].symbol = "Cu"
     return atoms_periodic, indices_site
+
+def exclude_species(
+        elements:list,
+        species_exclude:list
+    ):
+    result_list = []
+    for element in elements:
+        if element not in species_exclude:
+            result_list.append(element)
+    return result_list
+
+def get_full_element_pool(
+        species_exclude:list=None
+    ):
+    result_list = ["Rh", "Pt", "Pd", "Co", "Ga", "Cu", "Zn", "Au", "Ag", 'Mn', 'Fe', 'Os', 'Mo', 'Ir', 'Ru', "Ni"]
+    if species_exclude is not None:
+        result_list = exclude_species(
+            elements=result_list,
+            species_exclude=species_exclude
+        )
+    return result_list
+    

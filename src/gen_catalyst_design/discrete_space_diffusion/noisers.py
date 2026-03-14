@@ -31,13 +31,14 @@ class DiscreteSpaceNoiser(nn.Module):
         self.label_smoothing = label_smoothing
         self.active_sites = torch.tensor([0,1,2,3])
 
-    @property
-    def const_state_dict(self):
+
+    def get_state_dict(self):
         state_dict = {
             "label_smoothing":self.label_smoothing,
             "active_site_freezing":self.active_site_freezing
         }
         return state_dict
+
 
     def set_device(self, device):
         self.device = device
@@ -57,8 +58,14 @@ class DiscreteSpaceNoiser(nn.Module):
             self.accumulated_q_matrices = torch.stack(accum_matrices)
 
     def get_alpha_bar_t(self, time):
-        return self.accumulated_q_matrices[time].diagonal(offset=0, dim1=-1, dim2=-2).sum(-1)/len(self.element_pool)
-
+        diags = self.accumulated_q_matrices[time].diagonal(offset=0, dim1=-1, dim2=-2)
+        if self.absorbing_state:
+            mask = torch.ones(diags.shape[-1], dtype=torch.bool)
+            mask[self.absorbing_state_index] = False
+            return diags[:,mask].mean(-1)
+        else:
+            return diags.mean(-1)
+    
     def get_snr_t(self, time):
         alpha_bar_t = self.get_alpha_bar_t(time=time)
         return alpha_bar_t/(1.0-alpha_bar_t)
@@ -166,10 +173,9 @@ class UniformTransitionsNoiser(DiscreteSpaceNoiser):
         super().__init__(element_pool, accumulated_q_matrices, active_site_freezing, label_smoothing)
         self.stationary_dist = self.get_stationary_dist()
 
-    
-    @property
-    def const_state_dict(self):
-        state_dict = super().const_state_dict
+
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
         state_dict.update({"noiser_type":"UniformTransitionsNoiser"})
         return state_dict
 
@@ -210,11 +216,11 @@ class AbsorbingStateNoiser(DiscreteSpaceNoiser):
         self.stationary_dist = self.get_stationary_dist()
         self.absorbing_state = True
 
-    @property
-    def const_state_dict(self):
-        state_dict = super().const_state_dict
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
         state_dict.update({"noiser_type":"AbsorbingStateNoiser"})
         return state_dict
+        
 
     def get_stationary_dist(self):
         probs = torch.zeros(self.n_classes)

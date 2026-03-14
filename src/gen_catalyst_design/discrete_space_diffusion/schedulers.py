@@ -5,33 +5,25 @@ import torch.nn as nn
 # DISCRETE TIME SCHEDULER BASE CLASS
 # -------------------------------------------------------------------------------------
 
-
 class DiscreteTimeScheduler(nn.Module):
     def __init__(
             self, 
             t_init:int=1, 
             t_final:int=1000, 
-            beta_max:float=1.0,
-            beta_min:float=1e-3,
-            time_sample_method:str="uniform"
+            time_sample_method:str="stratified"
         ):
         super().__init__()
         if t_init < 1:
             raise Exception(f"initial time stamp t_init, cannot be less than 1; given was:{t_init}")
         self.t_init = t_init
         self.t_final = t_final
-        self.beta_max = torch.tensor(beta_max, dtype=torch.float64)
-        self.beta_min = torch.tensor(beta_min, dtype=torch.float64)
         self.device = None
         self.time_sample_method = time_sample_method
 
-    @property
-    def const_state_dict(self):
+    def get_state_dict(self):
         state_dict = {
             "t_init":self.t_init,
             "t_final":self.t_final,
-            "beta_max":self.beta_max.item(),
-            "beta_min":self.beta_min.item(),
             "time_sample_method":self.time_sample_method
         }
         return state_dict
@@ -75,39 +67,73 @@ class DiscreteTimeScheduler(nn.Module):
 
 
 # -------------------------------------------------------------------------------------
-# LINEAR SCHEDULER
+# SCHEDULES DERIVED FROM EVOLUTION OF BETA
 # -------------------------------------------------------------------------------------
 
-class LinearScheduler(DiscreteTimeScheduler):
-    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, time_sample_method = "uniform"):
-        super().__init__(t_init, t_final, beta_max, beta_min, time_sample_method)
+class DiscreteBetaScheduler(DiscreteTimeScheduler):
+    def __init__(
+            self,
+            beta_min:float=1e-3,
+            beta_max:float=1.0, 
+            t_init = 1, 
+            t_final = 1000, 
+            time_sample_method = "stratified"
+        ):
+        super().__init__(t_init, t_final, time_sample_method)
+        self.beta_min = torch.tensor(beta_min, dtype=torch.float64)
+        self.beta_max = torch.tensor(beta_max, dtype=torch.float64)
 
-    @property
-    def const_state_dict(self):
-        state_dict = super().const_state_dict
-        state_dict.update({"scheduler_type":"LinearScheduler"})
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
+        state_dict.update({"beta_min":self.beta_min.item(), "beta_max":self.beta_max.item()})
+        return state_dict
+
+
+class LinearBetaScheduler(DiscreteBetaScheduler):
+    def __init__(self, beta_min = 0.001, beta_max = 1, t_init=1, t_final=1000, time_sample_method="stratified"):
+        super().__init__(beta_min, beta_max, t_init, t_final, time_sample_method)
+
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
+        state_dict.update({"scheduler_type":"LinearBetaScheduler"})
         return state_dict
 
     def __call__(self, t:torch.tensor):
         return self.beta_min + (t - self.t_init)/(self.t_final-self.t_init)*(self.beta_max - self.beta_min)
 
 
-# -------------------------------------------------------------------------------------
-# COSINE SCHEDULER
-# -------------------------------------------------------------------------------------
+class ExponentialBetaScheduler(DiscreteBetaScheduler):
+    def __init__(self, beta_min = 0.001, beta_max = 1, t_init=1, t_final=1000, time_sample_method="stratified"):
+        super().__init__(beta_min, beta_max, t_init, t_final, time_sample_method)
 
-
-class CosineScheduler(DiscreteTimeScheduler):
-    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, reg:float=1e-3, time_sample_method = "uniform"):
-        super().__init__(t_init, t_final, beta_max, beta_min, time_sample_method)
-        self.reg = torch.tensor(reg)
-    
-    @property
-    def const_state_dict(self):
-        state_dict = super().const_state_dict
-        state_dict.update({"scheduler_type":"CosineScheduler"})
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
+        state_dict.update({"scheduler_type":"ExponentialBetaScheduler"})
         return state_dict
 
+    def __call__(self, t):
+        return self.beta_min*torch.pow(self.beta_max/self.beta_min, (t-1.0)/(self.t_final-1.0))
+
+
+# -------------------------------------------------------------------------------------
+# SCHEDULES DERIVED FROM EVOLUTION OF ALPHA
+# -------------------------------------------------------------------------------------
+
+class DiscreteAlphaScheduler(DiscreteTimeScheduler):
+    def __init__(self, t_init = 1, t_final = 1000, time_sample_method = "stratified"):
+        super().__init__(t_init, t_final, time_sample_method)
+
+
+class CosineScheduler(DiscreteAlphaScheduler):
+    def __init__(self, reg:float=1e-1, t_init=1, t_final=1000, time_sample_method="stratified"):
+        super().__init__(t_init, t_final, time_sample_method)
+        self.reg = torch.tensor(reg)
+    
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
+        state_dict.update({"scheduler_type":"CosineScheduler", "reg":self.reg.item()})
+        return state_dict
+   
     def set_device(self, device):
         self.reg = self.reg.to(device=device)
         return super().set_device(device)
@@ -120,24 +146,15 @@ class CosineScheduler(DiscreteTimeScheduler):
 
     def __call__(self, t):
         return 1.0 - self.alpha_t(t=t)/self.alpha_t(t=(t-1))
+    
+class LinearAlphaScheduler(DiscreteAlphaScheduler):
+    def __init__(self, t_init=1, t_final=1000, time_sample_method="stratified"):
+        super().__init__(t_init, t_final, time_sample_method)
+        self.alpha_t_final = torch.tensor(0.0)
+        self.alpha_t_init = torch.tensor(1.0)
 
-
-# -------------------------------------------------------------------------------------
-# EXPONENTIAL SCHEDULER
-# -------------------------------------------------------------------------------------  
-
-class ExponentialScheduler(DiscreteTimeScheduler):
-    def __init__(self, t_init = 1, t_final = 1000, beta_max = 1, beta_min = 0.001, time_sample_method = "stratified"):
-        super().__init__(t_init, t_final, beta_max, beta_min, time_sample_method)
-
-    @property
-    def const_state_dict(self):
-        state_dict = super().const_state_dict
-        state_dict.update({"scheduler_type":"ExponentialScheduler"})
-        return state_dict
-
+    def alpha_t(self, t):
+        return self.alpha_t_init + t/self.t_final*(self.alpha_t_final-self.alpha_t_init)
+    
     def __call__(self, t):
-        return self.beta_min*torch.pow(self.beta_max/self.beta_min, (t-1.0)/(self.t_final-1.0))
-
-
-
+        return 1.0 - self.alpha_t(t=t)/self.alpha_t(t=(t-1))

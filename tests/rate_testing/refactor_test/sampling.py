@@ -15,11 +15,11 @@ def main():
     ckpt_file_type = "epoch"
     models = [
         #"class_0",
-        "5mpl_rand"
+        "old_conf"
         #"../../active_learning/iter_1",
         #"../../active_learning/iter_0"
     ]
-    temps = [1.0, 0.5]#[0.2,0.5, 1.0]
+    temps = [1.0]
     db = connect(f"../../../databases/cluster_templates/{miller_index}_templates.db")
     template_atoms = get_atoms_list_from_db(db_ase=db)[0]
     dataset_kwargs = {
@@ -40,10 +40,10 @@ def main():
             torch.manual_seed(random_seed)
             torch.cuda.manual_seed_all(random_seed)
             result_samples = diff_model.sample(
-                conditioning_dicts=[{"rate":5.0} for _ in range(n_samples)],
-                guidance_scale=2.0,
+                conditioning_dicts=[{"rate":15.0} for _ in range(n_samples)],
+                guidance_scale_dict={"rate":2.0},
                 n_samples=n_samples, 
-                condition_key="rate",
+                condition_keys=["rate"],
                 template_atoms=template_atoms, 
                 batch_size=50, 
                 timesteps=None, 

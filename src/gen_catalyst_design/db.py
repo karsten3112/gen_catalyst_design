@@ -1,6 +1,7 @@
 from sqlite3 import Connection, Cursor
+from ase_ml_models.databases import write_atoms_to_db, get_atoms_from_db
+from ase.db import connect
 from ase.atoms import Atoms
-import tempfile
 import sqlite3
 import os
 
@@ -42,7 +43,7 @@ class Table:
     def insert_data_to_table(self, cursor:Cursor, data_dict:dict) -> Cursor:
         raise Exception("Must be implemented by sub-class")
     
-    def convert_data(self, *data_elems):
+    def convert_data_to_dict(self, *data_elems):
         raise Exception("Must be implemented by sub-class")
 
     def select_data_from_table(self, cursor:Cursor, selection:str):
@@ -50,7 +51,7 @@ class Table:
 
     @staticmethod
     def get_datatype_str(dataype:object):
-        supported_types = {int: "INTEGER", str: "VARCHAR(20)", float:"REAL"}
+        supported_types = {int: "INTEGER", str: "VARCHAR(20)", float:"REAL", bool:"BOOLEAN"}
         if dataype in supported_types:
             return supported_types[dataype]
         else:
@@ -96,47 +97,37 @@ class Table:
 # -------------------------------------------------------------------------------------
 
 class ElementTable(Table):
-    def __init__(self, miller_index:str, surface_type:str="cluster", add_e_form:bool=False):
+    def __init__(self, num_elements:int):
+        self.num_elements = num_elements
         table_name = "Elements"
         abbreviation = "elems"
-        self.add_e_form = add_e_form
-        if surface_type == "cluster":
-            self.num_surface_atoms_dict = {"100":21, "111":22, "211":29}
-        elif surface_type == "surface":
-            self.num_surface_atoms_dict = {"100":36, "111":36, "211":72}
-        else:
-            raise Exception
         entries_dict = {
             "struct_ID":(int, PrimaryKey(add_auto_increment=True)),
-            "batch":(int, None),
-            "rate":(float, None)
+            "gen_iter":(int, None),
+            "rate":(float, None),
+            "e_form":(float, None)
         }
-        if self.add_e_form:
-            entries_dict.update({"e_form":(float, None)})
-        if miller_index in self.num_surface_atoms_dict:
-            idx_dict = {f"idx{i}":(str, None) for i in range(self.num_surface_atoms_dict[miller_index])}
-        else:
-            raise Exception(f"No is known with miller_index: {miller_index}")
+        idx_dict = {f"idx{i}":(str, None) for i in range(self.num_elements)}
         entries_dict.update(idx_dict)
         super().__init__(table_name, entries_dict, abbreviation)
     
-    def get_insertion_command(self, elements:list, score_dict:dict, batch:int):
+    def get_insertion_command(self, elements:list, score_dict:dict, gen_iter:int):
         entries_list = list(self.entries_dict.keys())
         entries_list.remove("struct_ID")
         init_string = super().get_insertion_command(entries_list)
-        rate = score_dict["rate"]
-        if self.add_e_form:
-            e_form = score_dict["e_form"]
-            datalist = [str(batch), str(rate), str(e_form)] + ['"'+'","'.join(elements)+'"']
-        else:
-            datalist = [str(batch), str(rate)] + ['"'+'","'.join(elements)+'"']
+        rate, e_form = score_dict["rate"], score_dict["e_form"] if "e_form" in score_dict else "NULL"
+        datalist = [str(gen_iter), str(rate), str(e_form)] + ['"'+'","'.join(elements)+'"']
         return init_string+f""" ({self.convert_list_to_str(datalist)})"""
 
     def insert_data_to_table(self, cursor:Cursor, data_dict:dict) -> Cursor:
-        insert_command = self.get_insertion_command(elements=data_dict["elements"], score_dict=data_dict["score_dict"], batch=data_dict["batch"])
+        if "gen_iter" in data_dict:
+            gen_iter = data_dict["gen_iter"]
+        else:
+            gen_iter = "NULL"
+        insert_command = self.get_insertion_command(elements=data_dict["elements"], score_dict=data_dict["score_dict"], gen_iter=gen_iter)
         return cursor.execute(insert_command)
     
-    def convert_data(self, *data_elems):
+    def convert_data_to_dict(self, *data_elems):
         elements_list = []
         result_dict = {}
         for entry, data_elem in zip(self.entries_dict, data_elems):
@@ -144,7 +135,10 @@ class ElementTable(Table):
                 elements_list.append(data_elem)
             else:
                 dtype, _ = self.entries_dict[entry]
-                result_dict[entry] = dtype(data_elem)
+                if data_elem is not None:
+                    result_dict[entry] = dtype(data_elem)
+                else:
+                    result_dict[entry] = None
         result_dict.update({"elements":elements_list})
         return result_dict
 
@@ -171,10 +165,21 @@ class EformInfoTable(Table):
     def __init__(self, element_table:ElementTable, species_list:list=species_list):
         table_name = "EformInfo"
         abbreviation = "e_form"
-        entries_dict = {"struct_ID":(int, BothPrimaryForeignKey(foreign_key=ForeignKey(entry="struct_ID", ref_table=element_table.table_name, ref_entry="struct_ID")))}
+        entries_dict = {
+            "struct_ID":
+            (int, BothPrimaryForeignKey(
+                foreign_key=ForeignKey(
+                    entry="struct_ID", 
+                    ref_table=element_table.table_name, 
+                    ref_entry="struct_ID"
+                    )
+                )
+            )
+        }
         species_entry_dict = {species:(float, None) for species in species_list}
         entries_dict.update(species_entry_dict)
         super().__init__(table_name, entries_dict, abbreviation)
+
 
 # -------------------------------------------------------------------------------------
 # KEY CLASSES
@@ -242,33 +247,22 @@ class Selection:
 
 class Database:
     def __init__(
-            self, 
+            self,
+            template_atoms_surf:Atoms, 
             filename:str, 
-            miller_index:str,
-            surface_type:str="cluster",
-            add_e_form:bool=False, 
-            use_tempdir:bool=False, 
-            pth_header:str=None, 
+            append:bool=True,
+            pth_header:str=None,
             include_bond_info:bool=False, 
             include_eform_info:bool=False
         ) -> None:
-        self.use_tempdir = use_tempdir
+        self.append = append
         self.filename = filename
         self.pth_header = pth_header
-
-        if use_tempdir is True:
-            tempdir = tempfile.gettempdir()
-            self.connection = sqlite3.connect(database=os.path.join(tempdir, filename))
-        else:
-            self.connection = sqlite3.connect(database=self.join_pth_header_filename)
-        
-        self.connection.execute("PRAGMA locking_mode=EXCLUSIVE;")
-        
+        self.template_atoms_surf = template_atoms_surf
+        self.connection = sqlite3.connect(database=self.join_pth_header_filename)
         self.cursor = self.connection.cursor()
         self.element_table = ElementTable(
-            miller_index=miller_index, 
-            surface_type=surface_type, 
-            add_e_form=add_e_form
+            num_elements=len(template_atoms_surf)
         )
         self.table_list = [self.element_table]
         if include_bond_info:
@@ -337,7 +331,7 @@ class Database:
             result_dict = {}
             for table in self.table_list:
                 i,j = coloumn_splits[table.table_name]
-                result_dict.update(table.convert_data(*data_row[i:j]))
+                result_dict.update(table.convert_data_to_dict(*data_row[i:j]))
             result_list.append(result_dict)
         return result_list
 
@@ -346,10 +340,7 @@ class Database:
         result_list = self.convert_selection_to_data(selection=selection)
         return result_list
     
-    def write_data_to_tables(self, data_dicts:list, append:bool=True):
-        if append is False:
-            self.drop_tables_db_file()
-        self.initialize_db_file()
+    def write_data_to_tables(self, data_dicts:list):
         try:
             self.cursor.execute("BEGIN")
             for data_dict in data_dicts:
@@ -358,8 +349,6 @@ class Database:
         except Exception:
             self.cursor.execute("ROLLBACK")
             raise
-        if self.use_tempdir is True:
-            self.copy_sqlite_db(filename=self.filename, pth_header=self.pth_header)
     
     def copy_sqlite_db(self, filename:str, pth_header:str=None):
         if pth_header is not None:
@@ -375,39 +364,58 @@ class Database:
     @staticmethod
     def establish_connection(
         filename:str, 
-        miller_index:str,
-        surface_type:str="cluster",
-        add_e_form:bool=False, 
-        pth_header:str=None, 
-        use_tempdir:bool=False, 
+        pth_header:str=None,
         database_kwargs:dict={}
         ):
+        append = database_kwargs.pop("append", True)
+        db_ase = connect(filename, append=append)
+        template_atoms_surf = get_atoms_from_db(db_ase, none_ok=True)
+        if template_atoms_surf is None:
+            if "template_atoms_surf" in database_kwargs:
+                template_atoms_surf = database_kwargs.pop("template_atoms_surf")
+                write_atoms_to_db(atoms=template_atoms_surf, db_ase=db_ase)
+            else:
+                raise RuntimeError("No template atoms not found in existing database, and not provided initially")
+        if template_atoms_surf is not None:
+            if "template_atoms_surf" in database_kwargs:
+                database_kwargs.pop("template_atoms_surf")
+                RuntimeWarning("template_atoms_surf were provided initially, but stored atom object found: using stored version")
         database = Database(
-            filename=filename, 
-            miller_index=miller_index,
-            surface_type=surface_type,
-            add_e_form=add_e_form, 
-            use_tempdir=use_tempdir, 
+            template_atoms_surf=template_atoms_surf,
+            filename=filename,
             pth_header=pth_header, 
             **database_kwargs
         )
+        if append is False:
+            database.drop_tables_db_file()
+            database.initialize_db_file()
         return database
     
     
-def load_data_from_db(database:Database, selection:str=None):
+def load_datadicts_from_db(database:Database, selection:str=None):
     result_list = database.select_data_from_db(selection=selection)
     database.close_connection()
     return result_list
 
-def get_atoms_list_db(database:Database, template_surface:Atoms, selection:str=None):
-    result_list = load_data_from_db(database=database, selection=selection)
+def load_atoms_list_from_db(database:Database, selection:str=None, template_atoms_surf:Atoms=None):
+    result_list = load_datadicts_from_db(
+        database=database, 
+        selection=selection
+    )
+    if database.template_atoms_surf is None:
+        if template_atoms_surf is None:
+            raise RuntimeError("No template surface has been found in db or provided initiallly")
+    else:
+        template_atoms_surf = database.template_atoms_surf
     atoms_list = []
-    for result_dict in result_list:
-        atoms = template_surface.copy()
-        elements = result_dict["elements"]
-        rate = result_dict["rate"]
-        atoms.symbols = elements
-        atoms.info["rate"] = rate
+    for datadict in result_list:
+        atoms = template_atoms_surf.copy()
+        for key in datadict:
+            if key == "elements":
+                atoms.symbols = datadict["elements"]
+            else:
+                atoms.info[key] = datadict[key]
         atoms_list.append(atoms)
     return atoms_list
+
 

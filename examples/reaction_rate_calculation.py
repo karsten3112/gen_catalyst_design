@@ -20,11 +20,9 @@ def main():
 
     # Control.
     model = "WWL-GPR"
-    surface_type = "surface" # cluster | surface
-    # Parameters.
+    template_type = "surface" # cluster | surface
     miller_index = "100" # 100 | 111
-    
-    elements = ["Rh", "Cu", "Au"] # Elements of the surface.
+    elements = ["Rh", "Pt", "Pd", "Co", "Ga", "Cu", "Zn", "Au", "Ag", 'Mn', 'Fe', 'Os', 'Mo', 'Ir', 'Ru', "Ni"] # Elements of the surface.
     random_seed = 42 # Random seed for reproducibility.
     np.random.seed(random_seed)
     torch.manual_seed(random_seed)
@@ -35,13 +33,12 @@ def main():
     n_samples = 4
     # Get features.
     features_bulk, features_gas = get_features_bulk_and_gas(pth_header="../yaml_files/features")
-    
     #Get calculator of model type and training parameters
     calculator, train_kwargs = get_calculator(model=model, miller_index=miller_index)
     
     #Train calculator on database
     calculator.train_model_from_db(
-         db_filename=f"atoms_adsorbates_{miller_index}_DFT.db", 
+         db_filename=f"atoms_adsorbates_{miller_index}_DFT_all.db", 
          features_bulk=features_bulk, 
          features_gas=features_gas, 
          db_pth_header="../databases/DFT_database",
@@ -51,7 +48,7 @@ def main():
     #get template atoms list from database
     template_atoms_list, n_atoms_surf = get_atoms_from_template_db(
          db_filename=f"{miller_index}_templates.db", 
-         pth_header=f"../databases/{surface_type}_templates"
+         pth_header=f"../databases/{template_type}_templates"
     )
     #setup reaction mechanism for calculating rate of RDS
     reaction_mechanism = ReactionMechanism(
@@ -62,6 +59,11 @@ def main():
         mechanism_pth_header="../yaml_files/reaction_mechanism"
     )
 
+    database = Database.establish_connection(
+        filename="test_pred.db",
+        database_kwargs={"template_atoms_surf":template_atoms_list[0], "append":False},
+    )
+
     data_dicts = []
     if atoms_traj_file is None:
         for _ in range(n_samples):
@@ -69,11 +71,12 @@ def main():
             result_dict = reaction_mechanism.get_rate_of_RDS_from_symbols(
                 symbols=symbols
             )
-            data_dict = {"elements":symbols, "batch":1, "score_dict":result_dict}
+            data_dict = {"elements":symbols, "gen_iter":1, "score_dict":result_dict}
             data_dicts.append(data_dict)
             print(f"Symbols =", ",".join(symbols))
             rate = result_dict["rate"]
             print(f"Reaction rate = {rate:+7.3e} [1/s]")
+            #database.write_data_to_tables(data_dicts=data_dicts)
     else:
         atoms_list = read(filename=atoms_traj_file, index=":")
         for atoms in atoms_list:
@@ -81,15 +84,14 @@ def main():
             result_dict = reaction_mechanism.get_rate_of_RDS_from_symbols(
                 symbols=symbols
             )
-            data_dict = {"elements":symbols, "batch":1, "score_dict":result_dict}
+            data_dict = {"elements":symbols, "gen_iter":1, "score_dict":result_dict}
             data_dicts.append(data_dict)
             print(f"Symbols =", ",".join(symbols))
             rate = result_dict["rate"]
             print(f"Reaction rate = {rate:+7.3e} [1/s]")
+    database.write_data_to_tables(data_dicts=data_dicts)
     #rates = [datadict["score_dict"]["rate"] for datadict in data_dicts]
 
-    database = Database.establish_connection(filename="test_pred.db", surface_type=surface_type, miller_index=miller_index)
-    database.write_data_to_tables(data_dicts=data_dicts, append=False)
 
 
 

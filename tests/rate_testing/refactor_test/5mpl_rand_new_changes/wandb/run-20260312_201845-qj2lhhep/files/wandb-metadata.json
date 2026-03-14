@@ -1,0 +1,37 @@
+{
+  "os": "macOS-15.6.1-arm64-arm-64bit",
+  "python": "CPython 3.10.19",
+  "startedAt": "2026-03-12T19:18:45.327469Z",
+  "program": "/Users/karsten/Desktop/speciale/gen_catalyst_design/tests/rate_testing/refactor_test/training.py",
+  "codePath": "tests/rate_testing/refactor_test/training.py",
+  "codePathLocal": "training.py",
+  "git": {
+    "remote": "https://github.com/karsten3112/gen_catalyst_design.git",
+    "commit": "c14d6e820e8b6e9cc37965ab90b414f71a45fb5f"
+  },
+  "email": "karsten.walz.jensen@gmail.com",
+  "root": "5mpl_rand_new_changes",
+  "host": "MacBook-Pro-tilhrende-Karsten.local",
+  "executable": "/opt/anaconda3/envs/cat_opt/bin/python",
+  "cpu_count": 10,
+  "cpu_count_logical": 10,
+  "disk": {
+    "/": {
+      "total": "494384795648",
+      "used": "205590925312"
+    }
+  },
+  "memory": {
+    "total": "17179869184"
+  },
+  "apple": {
+    "name": "Apple M4",
+    "ecpuCores": 6,
+    "pcpuCores": 4,
+    "gpuCores": 10,
+    "memoryGb": 16,
+    "swapTotalBytes": "4294967296",
+    "ramTotalBytes": "17179869184"
+  },
+  "writerId": "1pmx4jfm9hdaxsfb7imeqrlepqkltgfa"
+}

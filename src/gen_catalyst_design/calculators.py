@@ -83,7 +83,8 @@ class GraphCalculator(Calculator):
             self, 
             miller_index:str, 
             kernel:str="GPR", 
-            preproc:object = None
+            preproc:object = None,
+            S2:float=0.0,
         ):
         super().__init__(miller_index)
         self.model_params = {
@@ -93,7 +94,7 @@ class GraphCalculator(Calculator):
                 "kwargs_model": {"alpha": 1e-4},
         }
         self.preproc_params = {
-                "node_weight_dict": {"A0": 1.00, "S1": 0.80,"S2": 0.20},
+                "node_weight_dict": {"A0": 1.00, "S1": 0.80, "S2": S2},
                 "edge_weight_dict": {"AA": 0.50, "AS": 1.00, "SS": 0.5},
                 "preproc": preproc,
         }

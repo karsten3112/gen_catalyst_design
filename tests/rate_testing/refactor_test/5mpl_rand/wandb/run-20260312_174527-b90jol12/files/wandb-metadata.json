@@ -1,0 +1,17 @@
+{
+  "os": "macOS-15.6.1-arm64-arm-64bit",
+  "python": "CPython 3.10.19",
+  "startedAt": "2026-03-12T16:45:27.305974Z",
+  "program": "/Users/karsten/Desktop/speciale/gen_catalyst_design/tests/rate_testing/refactor_test/training.py",
+  "codePath": "tests/rate_testing/refactor_test/training.py",
+  "codePathLocal": "training.py",
+  "git": {
+    "remote": "https://github.com/karsten3112/gen_catalyst_design.git",
+    "commit": "c14d6e820e8b6e9cc37965ab90b414f71a45fb5f"
+  },
+  "email": "karsten.walz.jensen@gmail.com",
+  "root": "5mpl_rand",
+  "host": "MacBook-Pro-tilhrende-Karsten.local",
+  "executable": "/opt/anaconda3/envs/cat_opt/bin/python",
+  "writerId": "rqu3afksy2q0b0f4e2kolz7n6a9tj25u"
+}

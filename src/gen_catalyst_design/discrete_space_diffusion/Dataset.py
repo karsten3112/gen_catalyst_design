@@ -16,15 +16,26 @@ class Graph(Data):
             self,
             x = None, 
             edge_index = None, 
-            edge_attr = None, 
-            y = None,
+            edge_attr = None,
+            rate = None,
+            e_form = None, 
             pos = None,
             active_sites = None,
-            active_site_dists = None
+            active_site_dists = None,
+            **kwargs
         ):
-        super().__init__(x, edge_index, edge_attr, y, pos)
-        self.active_sites = active_sites
-        self.active_site_dists = active_site_dists
+        super().__init__(
+            x=x, 
+            edge_index=edge_index, 
+            edge_attr=edge_attr, 
+            pos=pos,
+            active_sites = active_sites,
+            active_site_dists = active_site_dists,
+            rate = rate,
+            e_form = e_form,
+            **kwargs
+        )
+        
     
     def to_elems(self, element_pool:list):
         indices = torch.argmax(self.x, dim=-1)
@@ -118,7 +129,7 @@ def get_active_site_dists(atoms:Atoms, site_indices:list):
 def get_graph_from_atoms(
         atoms:Atoms,
         element_pool:list,
-        condition_key:str=None,
+        condition_keys:list=None,
         use_fully_connected_graph:bool=False,
         add_active_site_connectivity:bool=False,
         device:str=None,
@@ -146,18 +157,13 @@ def get_graph_from_atoms(
     graph = Graph(
         x=x,
         edge_index=edge_index,
+        rate=torch.tensor(atoms.info["rate"], device=device) if "rate" in condition_keys else None,
+        e_form=torch.tensor(atoms.info["e_form"], device=device) if "e_form" in condition_keys else None,
         pos=torch.tensor(atoms.positions, dtype=torch.float, device=device),
         edge_attr=None,
         active_sites=active_sites,
         active_site_dists=torch.tensor(active_site_dists, dtype=torch.float, device=device)
     )
-
-    #Assign condition to graph
-    if condition_key is not None:
-        if condition_key in atoms.info:
-            graph.y = torch.tensor(atoms.info[condition_key], device=device)
-        else:
-            raise Exception(f"condition key {condition_key} is not available in datadict, having: {atoms.info.keys()}")
     return graph
 
 def get_graph_from_datadict(
@@ -203,7 +209,7 @@ def get_dataset_from_datadicts(
 def get_dataset_from_atoms_list(
         atoms_list:list,
         element_pool:list,
-        condition_key:str=None,
+        condition_keys:list=None,
         add_active_site_connectivity:bool=False,
         use_fully_connected_graph:bool=False,
         device:str=None,
@@ -213,7 +219,7 @@ def get_dataset_from_atoms_list(
         get_graph_from_atoms(
             atoms=atoms, 
             element_pool=element_pool, 
-            condition_key=condition_key,
+            condition_keys=condition_keys,
             add_active_site_connectivity=add_active_site_connectivity,
             use_fully_connected_graph=use_fully_connected_graph,
             device=device,
@@ -267,7 +273,7 @@ def get_dataloaders_from_atoms_list(
         atoms_list:list, 
         element_pool:list,
         batch_size:int=42,
-        condition_key:str="class", 
+        condition_keys:list=["rate"], 
         train_val_split:float=0.1,
         add_active_site_connectivity:bool=False,
         use_fully_connected_graph:bool=False,
@@ -287,7 +293,7 @@ def get_dataloaders_from_atoms_list(
     train_dataset = get_dataset_from_atoms_list(
         atoms_list=atoms_list[:split_index],
         element_pool=element_pool,
-        condition_key=condition_key,
+        condition_keys=condition_keys,
         use_fully_connected_graph=use_fully_connected_graph,
         add_active_site_connectivity=add_active_site_connectivity,
         device=device,
@@ -297,7 +303,7 @@ def get_dataloaders_from_atoms_list(
     val_dataset = get_dataset_from_atoms_list(
         atoms_list=atoms_list[split_index:],
         element_pool=element_pool,
-        condition_key=condition_key,
+        condition_keys=condition_keys,
         use_fully_connected_graph=use_fully_connected_graph,
         add_active_site_connectivity=add_active_site_connectivity,
         device=device,

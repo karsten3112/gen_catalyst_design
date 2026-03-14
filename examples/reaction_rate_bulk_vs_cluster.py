@@ -57,15 +57,12 @@ def main():
         features_bulk=features_bulk,
         features_gas=features_gas
     )
-    connectivity = reaction_mechanism.clean_surface.info["connectivity"]
-    ax = plot_connectivity(
-        atoms=reaction_mechanism.clean_surface,
-        connectivity=connectivity
-    )
+    #connectivity = reaction_mechanism.clean_surface.info["connectivity"]
+    #ax = plot_connectivity(
+    #    atoms=reaction_mechanism.clean_surface,
+    #    connectivity=connectivity
+    #)
     
-    print(connectivity)
-    print(connectivity[27])
-    exit()
     data_dicts = []
     print("EVALUATING RATE FOR RANDOM BULK-SURFACES")
     for _ in range(n_samples):

@@ -46,11 +46,11 @@ def main():
     )
     
     models = [
-        "5mpl_rand"
+        "old_conf"
         #"../../active_learning/iter_0",
         #"../../active_learning/iter_1"
     ]
-    temps = [1.0, 0.5]
+    temps = [1.0]
     for model in models:
         for temp in temps:
             filename = os.path.join(model, f"samples_{temp}.traj")
@@ -68,13 +68,12 @@ def main():
             
             database = Database.establish_connection(
                 filename=f"rate_evals_{temp}.db",
-                miller_index="100",
-                pth_header=model
+                database_kwargs={"append":False, "template_atoms_surf":reaction_mechanism.clean_surface}
             )
             data_dicts = []
             for elements, score_dict in zip(elements_list, score_dicts):
-                data_dicts.append({"elements":elements, "score_dict":score_dict, "batch":0})
-            database.write_data_to_tables(data_dicts=data_dicts, append=False)
+                data_dicts.append({"elements":elements, "score_dict":score_dict, "gen_iter":0})
+            database.write_data_to_tables(data_dicts=data_dicts)
             database.close_connection()
             print(f"done evaluating: model {model}, temp: {temp}")
 

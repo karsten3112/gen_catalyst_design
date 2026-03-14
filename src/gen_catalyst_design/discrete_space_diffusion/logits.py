@@ -47,8 +47,7 @@ class LogitPredictor(nn.Module):
     def set_device(self, device):
         self.device = device
 
-    @property
-    def const_state_dict(self):
+    def get_state_dict(self):
         state_dict = {
             "num_elements":self.num_elements,
             "conditioning_dim":self.conditioning_dim,
@@ -79,7 +78,7 @@ class LogitPredictor(nn.Module):
         else:
             return self.logit_head(x_t)
 
-    def get_sample_loader(self, atoms_list:list, element_pool:list, batch_size:int, condition_key:str=None, dataset_kwargs:dict={}):
+    def get_sample_loader(self, atoms_list:list, element_pool:list, batch_size:int, condition_keys:list=None, dataset_kwargs:dict={}):
         raise NotImplementedError("sample loader must be implemented by sub-class")
 
     def get_probs_from_logits(self, logits):
@@ -398,83 +397,6 @@ class MessagePassingBlock(MessagePassing):
             embeddded_condition=conds_embedded_i
         )
         return modulated_message
-    
-#class TransformerBlock(MessagePassingBlock):
-#    def __init__(
-#            self,
-#            input_dim = 32, 
-#            output_dim = 32, 
-#            message_dim = 32,
-#            rbf_dim = 32 ,
-#            n_heads:int=4, 
-#            conditioning_dim = 32, 
-#            time_embedding_dim = 32, 
-#            activation_func=nn.ReLU(), 
-#            aggr='sum'
-#        ):
-#        super().__init__(input_dim, output_dim, message_dim, conditioning_dim, time_embedding_dim, activation_func, aggr)
-#        self.n_heads = n_heads
-#        self.d_head = int(input_dim/n_heads)
-#        self.head_dim = torch.tensor([self.d_head], dtype=torch.float)
-#        self.q_proj = nn.Linear(input_dim, input_dim, bias=False)
-#        self.k_proj = nn.Linear(input_dim, input_dim, bias=False)
-#        self.v_proj = nn.Linear(input_dim, input_dim, bias=False)
-#        #self.out_proj = nn.Linear(input_dim, n_heads*output_dim, bias=False)
-#        
-#        self.centers = nn.Parameter(torch.linspace(0.0, 12.0, rbf_dim))
-#        self.width = nn.Parameter(torch.tensor(1.0))
-#        self.edge_mlp = nn.Sequential(
-#            nn.Linear(rbf_dim, input_dim),
-#            activation_func,
-#            nn.Linear(input_dim, 1)   # scalar bias per (i,j)
-#        )
-#
-#
-#        self.head_mlp = nn.Sequential(
-#            nn.Linear(input_dim, input_dim),
-#            activation_func,
-#            nn.Linear(input_dim, input_dim),
-#            activation_func,
-#            nn.Linear(input_dim, input_dim)
-#        )
-#
-#        self.phi_network = nn.Sequential(
-#            nn.Linear(input_dim+time_embedding_dim, output_dim),
-#            activation_func,
-#            nn.Linear(output_dim, output_dim),
-#            activation_func,
-#            nn.Linear(output_dim, output_dim),
-#        )
-#    
-#    def rbf(self, d):
-#        diff = d[..., None] - self.centers[None, ...]
-#        return torch.exp(-(diff**2) / (self.width.abs() + 1e-6))
-#
-#    def forward(self, x_t, pos, edge_index, conds_embedded, time_embedded):
-#        aggregated_messages = self.propagate(
-#            edge_index=edge_index, 
-#            x=x_t,
-#            pos=pos,
-#            conds_embedded=conds_embedded
-#        )
-#        x_new = self.layer_norm(x_t + aggregated_messages)
-#        x_t_updated = self.phi_network(torch.hstack([x_new, time_embedded]))
-#        return self.layer_norm(x_new + x_t_updated)
-#    
-#    def message(self, x_i, x_j, pos_i, pos_j, conds_embedded_i, index):
-#        M, D = x_i.shape
-#        Wq_xi = self.q_proj(x_i).view(M, self.n_heads, self.d_head)
-#        Wk_xj = self.k_proj(x_j).view(M, self.n_heads, self.d_head)
-#        Wv_xj = self.v_proj(x_j).view(M, self.n_heads, self.d_head)
-#        dot_prod = (Wq_xi*Wk_xj).sum(dim=-1)/torch.sqrt(self.head_dim)
-#
-#        dists = torch.norm(pos_i - pos_j, dim=1)
-#        rbf_dists = self.rbf(dists)
-#        dist_bias = self.edge_mlp(rbf_dists)
-#        alpha = pyg_softmax(dot_prod+dist_bias, index)
-#        final_prod = (alpha[:,:,None]*Wv_xj).view(M, self.n_heads*self.d_head)
-#        return self.head_mlp(final_prod)
-
 
 class MPNNLogitPredictor(LogitPredictor):
     def __init__(
@@ -538,9 +460,8 @@ class MPNNLogitPredictor(LogitPredictor):
         super().set_device(device)
         self.embedding_block.set_device(device=device)
 
-    @property
-    def const_state_dict(self):
-        state_dict = super().const_state_dict
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
         extra_info = {
             "logit_predictor_type":"MPNNLogitPredictor",
             "time_embedding_dim":self.time_embedding_dim,
@@ -574,14 +495,13 @@ class MPNNLogitPredictor(LogitPredictor):
             return self.logit_head(torch.hstack([x_t, ctx, embedded_condition]))
         else:
             return self.logit_head(torch.hstack([x_t, ctx]))
-        
-
-    def get_sample_loader(self, atoms_list:list, element_pool:list, batch_size:int, condition_key:str=None, dataset_kwargs:dict={}):
+    
+    def get_sample_loader(self, atoms_list, element_pool, batch_size, condition_keys = None, dataset_kwargs = {}):
         from torch_geometric.loader import DataLoader
         sample_data = get_dataset_from_atoms_list(
             atoms_list=atoms_list,
             element_pool=element_pool,
-            condition_key=condition_key,
+            condition_keys=condition_keys,
             device=self.device,
             **dataset_kwargs
         )
@@ -666,9 +586,8 @@ class TransformerLogitPredictor(LogitPredictor):
         #for block in self.interaction_blocks:
         #    self.interaction_blocks[block].head_dim = self.interaction_blocks[block].head_dim.to(device)
 
-    @property
-    def const_state_dict(self):
-        state_dict = super().const_state_dict
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
         extra_info = {
             "logit_predictor_type":"TransformerLogitPredictor",
             "time_embedding_dim":self.time_embedding_dim,
