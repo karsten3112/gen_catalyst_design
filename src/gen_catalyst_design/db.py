@@ -368,7 +368,10 @@ class Database:
         database_kwargs:dict={}
         ):
         append = database_kwargs.pop("append", True)
-        db_ase = connect(filename, append=append)
+        if pth_header is not None:
+            db_ase = connect(os.path.join(pth_header,filename), append=append)
+        else:
+            db_ase = connect(filename, append=append)
         template_atoms_surf = get_atoms_from_db(db_ase, none_ok=True)
         if template_atoms_surf is None:
             if "template_atoms_surf" in database_kwargs:
@@ -380,6 +383,7 @@ class Database:
             if "template_atoms_surf" in database_kwargs:
                 database_kwargs.pop("template_atoms_surf")
                 RuntimeWarning("template_atoms_surf were provided initially, but stored atom object found: using stored version")
+                
         database = Database(
             template_atoms_surf=template_atoms_surf,
             filename=filename,

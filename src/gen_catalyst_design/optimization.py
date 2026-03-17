@@ -138,7 +138,7 @@ def setup_optimization_objective(
     
     #Train calculator on database
     calculator.train_model_from_db(
-         db_filename=f"atoms_adsorbates_{miller_index}_DFT_all.db", 
+         db_filename=f"atoms_adsorbates_{miller_index}_DFT_all.db", #Change this back
          features_bulk=features_bulk, 
          features_gas=features_gas, 
          db_pth_header=os.path.join(database_pth_header, "DFT_database"),

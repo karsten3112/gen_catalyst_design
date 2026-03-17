@@ -139,16 +139,17 @@ def get_graph_from_atoms(
     site_indices = atoms.info["indices_site"]
     
     active_site_dists = get_active_site_dists(atoms=atoms, site_indices=site_indices)
-    if use_fully_connected_graph:
-        connectivity = np.ones_like(connectivity) - np.identity(len(connectivity))
-    if add_active_site_connectivity and use_fully_connected_graph is False:
-        add_site_connections(connectivity=connectivity, site_indices=site_indices)
+    #if use_fully_connected_graph:
+    #    connectivity = np.ones_like(connectivity) - np.identity(len(connectivity))
+    
+    #if add_active_site_connectivity and use_fully_connected_graph is False:
+    #    add_site_connections(connectivity=connectivity, site_indices=site_indices)
 
     edges_list = get_edges_list_from_connectivity(connectivity=connectivity)
     edge_index = torch.tensor(edges_list, dtype=torch.long, device=device).reshape(2,-1)
 
     #embed coordination numbers
-    coord_nums = torch.tensor(connectivity.sum(axis=-1), dtype=torch.long, device=device)
+    #coord_nums = torch.tensor(connectivity.sum(axis=-1), dtype=torch.long, device=device)
 
     #embed whether a site is active or not
     active_sites = torch.zeros((len(atoms),), dtype=torch.long, device=device)   # 21 atoms
@@ -157,7 +158,7 @@ def get_graph_from_atoms(
     graph = Graph(
         x=x,
         edge_index=edge_index,
-        rate=torch.tensor(atoms.info["rate"], device=device) if "rate" in condition_keys else None,
+        rate=torch.log(torch.tensor(atoms.info["rate"], device=device)) if "rate" in condition_keys else None,
         e_form=torch.tensor(atoms.info["e_form"], device=device) if "e_form" in condition_keys else None,
         pos=torch.tensor(atoms.positions, dtype=torch.float, device=device),
         edge_attr=None,

@@ -37,23 +37,31 @@ class Conditioning(nn.Module):
         raise NotImplementedError("Has to be implemented by sub-class")
 
 
-class NoneConditioning(Conditioning):
-    def __init__(self):
-        super().__init__(embedding_dim=0, device=None)
+class NoneConditioning(nn.Module):
+    def __init__(self, embedding_dim=64, device=None):
+        super().__init__()
+        self.device = device
+        self.embedding_dim = embedding_dim
+        self.none_embedding = torch.zeros(size=(self.embedding_dim, ), device=self.device)
+
+    def set_device(self, device):
+        self.device = device
+        self.none_embedding = self.none_embedding.to(device=device)
 
     def get_state_dict(self):
-        state_dict = {"conditioning_type":"None"}
+        state_dict = {
+            "conditioning_type":"None",
+            "embedding_dim":self.embedding_dim
+        }
         return state_dict
 
     def get_condition_embedding(self, condition, batch_size, drop_condition):
-        return None
+        return self.none_embedding.repeat(batch_size,1)
 
 
 class RateClassification(Conditioning):
     def __init__(self, embedding_dim = 32, device=None):
         super().__init__(embedding_dim, device)
-
-
 
 
 class RateConditioning(Conditioning):
@@ -73,3 +81,13 @@ class RateConditioning(Conditioning):
     def embed_condition(self, condition):
         rate_embedded = self.sinusoidal_embedding(pos_encoding=condition)
         return self.ml_layers(rate_embedded)
+    
+
+class EformConditioning(RateConditioning):
+    def __init__(self, embedding_dim=32, activation_func = nn.ReLU(), device=None):
+        super().__init__(embedding_dim, activation_func, device)
+
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
+        state_dict["conditioning_type"] = "EformConditioning"
+        return state_dict

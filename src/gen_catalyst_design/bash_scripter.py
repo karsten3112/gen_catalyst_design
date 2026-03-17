@@ -13,6 +13,7 @@ class Job:
                  walltime="02:00:00",
                  error_out_file="job.err",
                  output_file="job.out",
+                 reserve_gpu:bool=False
                  ) -> None:
         
         default_script_params = {"job-name":job_name,
@@ -22,6 +23,8 @@ class Job:
                                  "time":walltime,
                                  "error":error_out_file,
                                  "output":output_file}
+        if reserve_gpu:
+            default_script_params.update({"gres":"gpu:1"})
 
         self.script_params = {"default": default_script_params}
 
@@ -128,8 +131,8 @@ class Job:
 
 
 class ArrayJob(Job):
-    def __init__(self, job_name, n_jobs:int, partition="qgpu", mem_per_cpu="6G", cpus_per_task=1, walltime="02:00:00", error_out_file="job.err", output_file="job.out"):
-        super().__init__(job_name, partition, mem_per_cpu, cpus_per_task, walltime, error_out_file, output_file)
+    def __init__(self, job_name, n_jobs, partition="qgpu", mem_per_cpu="6G", cpus_per_task=1, walltime="02:00:00", reserve_gpu = False):
+        super().__init__(job_name, partition, mem_per_cpu, cpus_per_task, walltime, r"job-%A_%a.err", r"job-%A_%a.out", reserve_gpu)
         self.script_params["default"]["array"] = f"1-{n_jobs}"
         self.param_file = None
 
@@ -141,9 +144,9 @@ class ArrayJob(Job):
     def write_bash_script(self, bash_file_name, outdir=None, return_file_obj=False):
         fileobj = super().write_bash_script(bash_file_name, outdir, return_file_obj=True)
         if outdir is not None:
-            fileobj.write(f'echo "========= Job started  at `date` ==========" >> {outdir}/{self.script_params["default"]["output"]}\n')
+            fileobj.write(f'echo "========= Job started  at `date` =========="\n')
         else:
-            fileobj.write(f'echo "========= Job started  at `date` ==========" >> {self.script_params["default"]["output"]}\n')
+            fileobj.write(f'echo "========= Job started  at `date` =========="\n')
         fileobj.write("\n")
 
         fileobj.write('echo "My jobid: $SLURM_JOB_ID"\n')
@@ -158,9 +161,9 @@ class ArrayJob(Job):
 
         fileobj.write("\n")
         if outdir is not None:
-            fileobj.write(f'echo "========= Job Finished  at `date` ==========" >> {outdir}/{self.script_params["default"]["output"]}\n')
+            fileobj.write(f'echo "========= Job Finished  at `date` =========="\n')
         else:
-            fileobj.write(f'echo "========= Job Finished  at `date` ==========" >> {self.script_params["default"]["output"]}\n')
+            fileobj.write(f'echo "========= Job Finished  at `date` =========="\n')
 
         if return_file_obj is True:
             return fileobj

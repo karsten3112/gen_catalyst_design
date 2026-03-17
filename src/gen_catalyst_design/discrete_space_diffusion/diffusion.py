@@ -1,7 +1,7 @@
-from .schedulers import DiscreteTimeScheduler, ExponentialBetaScheduler, CosineScheduler, LinearBetaScheduler
+from .schedulers import DiscreteTimeScheduler, ExponentialBetaScheduler, CosineScheduler, LinearBetaScheduler, LinearAlphaScheduler
 from .noisers import DiscreteSpaceNoiser, UniformTransitionsNoiser, AbsorbingStateNoiser
 from .logits import MPNNLogitPredictor, LogitPredictor, TransformerLogitPredictor
-from .conditioning import Conditioning, NoneConditioning, RateConditioning
+from .conditioning import Conditioning, NoneConditioning, RateConditioning, EformConditioning
 from torch_geometric.utils import to_dense_batch
 from .guidance import ReactionRateModule, rateGNN
 from ase.atoms import Atoms
@@ -20,7 +20,8 @@ implemented_modules = {
     "scheduler":{
         "ExponentialBetaScheduler":ExponentialBetaScheduler,
         "CosineScheduler":CosineScheduler,
-        "LinearBetaScheduler":LinearBetaScheduler
+        "LinearBetaScheduler":LinearBetaScheduler,
+        "LinearAlphaScheduler":LinearAlphaScheduler
     },
     "logit_predictor":{
         "MPNNLogitPredictor":MPNNLogitPredictor,
@@ -28,7 +29,8 @@ implemented_modules = {
     },
     "conditioning":{
         "None":NoneConditioning,
-        "RateConditioning":RateConditioning
+        "RateConditioning":RateConditioning,
+        "EformConditioning":EformConditioning
     }
 
 }
@@ -41,11 +43,11 @@ class DiffusionModel(LightningModule):
             noiser:DiscreteSpaceNoiser=None,
             logit_predictor:LogitPredictor=None,
             rate_conditioning:Conditioning=NoneConditioning(),
-            e_form_conditining:Conditioning=NoneConditioning(),
-            drop_prob:float=0.1,
+            e_form_conditioning:Conditioning=NoneConditioning(),
+            drop_prob:float=0.0,
             lr:float=1e-3,
             weight_decay:float=0.0,
-            num_kl_div_estimates:int=5,
+            num_kl_div_estimates:int=1,
             use_x0_reparam:bool=True,
             d3pm_auxillary_weight:float=None,
             auxillary_rate_weight:float=None,
@@ -57,7 +59,7 @@ class DiffusionModel(LightningModule):
         self.noiser = noiser
         self.logit_predictor = logit_predictor
         self.rate_conditioning = rate_conditioning
-        self.e_form_conditioning = e_form_conditining
+        self.e_form_conditioning = e_form_conditioning
 
         if self.noiser is not None and self.noiser.accumulated_q_matrices is None:
             self.noiser.pre_compute_accum_q_matrices(scheduler=self.scheduler)
@@ -71,6 +73,7 @@ class DiffusionModel(LightningModule):
             ]
         self.drop_prob_vector = self.get_drop_prob_vector()
         self.drop_scenarios_dict = {
+            "joint": self.drop_pattern_matrix[0],
             "uncond": self.drop_pattern_matrix[-1],
             "rate": self.drop_pattern_matrix[1],
             "e_form":self.drop_pattern_matrix[2]
@@ -262,7 +265,6 @@ class DiffusionModel(LightningModule):
 
     def get_joint_embedded_condition(self, batch, drop_scenario):
         resulting_condition = 0.0
-        not_none_condition = False
         for drop_condition, embedder, condition in zip(
                 drop_scenario, 
                 [self.rate_conditioning, self.e_form_conditioning], 
@@ -273,27 +275,13 @@ class DiffusionModel(LightningModule):
                 batch_size=batch.batch_size,
                 drop_condition=drop_condition
             )
-            if embedded_condition is not None:
-                resulting_condition += embedded_condition
-                not_none_condition = True
-        if not_none_condition:
-            return resulting_condition
-        else:
-            return None
+            resulting_condition += embedded_condition
+        return resulting_condition[batch.batch]
             
     def calculate_loss_terms(self, batch, batch_idx):
         idx = torch.multinomial(self.drop_prob_vector, 1).squeeze(-1)
         drop_scenario = self.drop_pattern_matrix[idx]
         embedded_condition = self.get_joint_embedded_condition(batch=batch, drop_scenario=drop_scenario)
-        #drop_condition = True if torch.rand(1) <= self.drop_prob else False
-        #embedded_condition = self.rate_conditioning.get_condition_embedding(
-        #        condition=batch.rate,
-        #        batch_size=batch.batch_size,
-        #        drop_condition=drop_condition
-        #    )
-        
-        if embedded_condition is not None:
-            embedded_condition = embedded_condition[batch.batch]
 
         t_span = (2, self.scheduler.t_final)
         denoise_matching_term = 0.0
@@ -385,7 +373,8 @@ class DiffusionModel(LightningModule):
             template_atoms:Atoms, 
             conditioning_dicts:dict={},
             condition_keys:list=["rate"],
-            guidance_scale_dict:dict={"rate":2.0},
+            guidance_scale:float=2.0,
+            #guidance_scale_dict:dict={"rate":2.0},
             return_as_atoms_list:bool=False, 
             batch_size:int=40,
             timesteps:torch.tensor=None,
@@ -395,6 +384,13 @@ class DiffusionModel(LightningModule):
         ):
         self.eval()
         self.on_sample_start()
+
+        guidance_scale_dict = {
+            "joint":guidance_scale,
+            "rate":0.1*guidance_scale,
+            "e_form":0.1*guidance_scale
+        }
+
         noised_atoms = self.noiser.sample_atoms_from_stationary(
             n_samples=n_samples, 
             template_atoms=template_atoms
@@ -424,6 +420,7 @@ class DiffusionModel(LightningModule):
                 return_as_atoms_list=return_as_atoms_list
             )
             samples+=result_list
+            print(f"Done sampling {len(samples)}/{n_samples} ...")
         return samples
 
     def denoise_batch(
@@ -434,20 +431,24 @@ class DiffusionModel(LightningModule):
             log_all_timesteps, 
             temp:float=1.0
         ):
+        
         batch_list = []
+        if log_all_timesteps:
+            batch_list.append(batch.clone())
+
         if timesteps is None:
             timesteps = torch.arange(self.scheduler.t_init, self.scheduler.t_final+1, 1, device=self.device).flip(dims=(0,))
         for timestep in timesteps:
-            if log_all_timesteps:
-                batch_list.append(batch.clone())
-            else:
-                batch_list = [batch.clone()]
             self.single_denoise_step(
                 batch=batch, 
                 time=timestep, 
                 guidance_scale_dict=guidance_scale_dict,
                 temp=temp
             )
+            if log_all_timesteps:
+                batch_list.append(batch.clone())
+            else:
+                batch_list = [batch.clone()]
         return batch_list
     
     def single_denoise_step(
@@ -502,8 +503,6 @@ class DiffusionModel(LightningModule):
                 batch=batch,
                 drop_scenario=self.drop_scenarios_dict[kw]
             )
-            if embedded_condition is not None:
-                embedded_condition = embedded_condition[batch.batch]
             logits = self.logit_predictor.get_logits(
                 batch=batch,
                 time=time,
@@ -689,3 +688,74 @@ class DiffusionModel(LightningModule):
 
     def load_state_dict(self, state_dict, strict = True, assign = False):
         return super().load_state_dict(state_dict, strict, assign)
+    
+
+
+def setup_diffusion_model(
+        element_pool:list,
+        noiser_type:str="AbsorbingStateNoiser",
+        scheduler_type:str="ExponentialbetaScheduler",
+        add_rate_conditioning:bool=False,
+        add_e_form_conditioning:bool=False,
+        scheduler_kwargs:dict={},
+        noiser_kwargs:dict={},
+        logit_predictor_kwargs:dict={},
+        conditioning_kwargs:dict={},
+        diff_model_kwargs:dict={}
+    ):
+    #setup noiser
+    if noiser_type not in implemented_modules["noiser"]:
+        raise Exception(f"noiser of type {noiser_type} is not implemented")
+    else:
+        noiser = implemented_modules["noiser"][noiser_type](element_pool=element_pool, **noiser_kwargs)
+    
+    #setup scheduler
+    if scheduler_type not in implemented_modules["scheduler"]:
+        raise Exception(f"scheduler of type {scheduler_type} is not implemented")
+    else:
+        scheduler = ExponentialBetaScheduler(
+            **scheduler_kwargs
+        )
+    
+    condition_keys = []
+    embedding_cond_dim = conditioning_kwargs.pop("embedding_dim", 64)
+    if add_rate_conditioning:
+        rate_conditioning = RateConditioning(
+            embedding_dim=embedding_cond_dim,
+            **conditioning_kwargs
+        )
+        condition_keys+=["rate"]
+    else:
+        rate_conditioning = NoneConditioning(
+            embedding_dim=embedding_cond_dim,
+            **conditioning_kwargs
+        )
+
+    if add_e_form_conditioning:
+        e_form_conditioning = EformConditioning(
+            embedding_dim=embedding_cond_dim,
+            **conditioning_kwargs    
+        )
+        condition_keys+=["e_form"]
+    else:
+        e_form_conditioning = NoneConditioning(
+            embedding_dim=embedding_cond_dim,
+            **conditioning_kwargs
+        )
+
+    logit_predictor = MPNNLogitPredictor(
+        num_elements=len(element_pool),
+        conditioning_dim=embedding_cond_dim,
+        **logit_predictor_kwargs
+    )
+
+    diff_model = DiffusionModel(
+        element_pool=element_pool,
+        scheduler=scheduler,
+        noiser=noiser,
+        logit_predictor=logit_predictor,
+        rate_conditioning=rate_conditioning,
+        e_form_conditioning=e_form_conditioning,
+        **diff_model_kwargs
+    )
+    return diff_model, condition_keys

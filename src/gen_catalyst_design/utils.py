@@ -52,38 +52,56 @@ class DumpCheckpointDataCallback(Callback):
 def setup_trainer_and_logger(
         project_name:str,
         model_name:str=None,
-        patience:int=10, 
-        gradient_clip_val:float=2.0,
+        patience:int=50, 
+        gradient_clip_val:float=1.0,
         checkpoint_dir:str="checkpoints",
         accelerator:str="gpu",
+        pth_header:str=None,
         trainer_kwargs:dict={},
         logger_kwargs:dict={}
     ) -> Trainer:
 
-    
+    if not os.path.exists(pth_header):
+        os.makedirs(pth_header)
+
     if model_name is None:
         model_name = "model"
-        filenames = os.listdir()
+        if pth_header is not None:
+            filenames = os.listdir(pth_header)
+        else:
+            filenames = os.listdir()
         model_num = 0
         for file in filenames:
-            if os.path.isdir(file) and model_name in file:
+            if pth_header is not None:
+                file_search = os.path.join(pth_header,file)
+            else:
+                file_search = file    
+            if os.path.isdir(file_search) and model_name in file:
                 model_num+=1
         model_num+=1
         model_name = f"{model_name}_{model_num:03d}"
-        os.makedirs(model_name)
+        if pth_header is not None:
+            save_dir = os.path.join(pth_header, model_name)
+        else:
+            save_dir = model_name
     else:
-        if not os.path.exists(model_name):
-            os.makedirs(model_name)
-
+        if pth_header is not None:
+            save_dir = os.path.join(pth_header,model_name)
+        else:
+            save_dir = model_name
+    
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    
     logger = WandbLogger(
         project=project_name,
         name=model_name,
-        save_dir=model_name,
+        save_dir=save_dir,
         **logger_kwargs
     )
     
     checkpoint_callback = ModelCheckpoint(
-        dirpath=os.path.join(model_name, checkpoint_dir),
+        dirpath=os.path.join(save_dir, checkpoint_dir),
         monitor="val_loss",
         mode="min",
         save_top_k=1,      # keep best model
@@ -104,7 +122,7 @@ def setup_trainer_and_logger(
 
     trainer = Trainer(
         logger=logger,
-        default_root_dir=model_name,
+        default_root_dir=save_dir,
         callbacks=[checkpoint_callback, early_stopping, hyper_params_log],
         gradient_clip_val=gradient_clip_val,
         devices=1,
@@ -162,7 +180,7 @@ def get_calculator(model, miller_index):
         calculator = GraphCalculator(
              miller_index=miller_index,
              kernel="GPR",
-             S2=0.2
+             S2=0.0
         )
         train_kwargs = {}
     elif model == "GCNN":

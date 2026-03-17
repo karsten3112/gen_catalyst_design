@@ -1,0 +1,38 @@
+element_pool:
+- (X)
+- Rh
+- Cu
+- Au
+- Pd
+drop_prob: 0.1
+lr: 0.001
+weight_decay: 0.0
+use_x0_reparam: true
+d3pm_auxillary_weight: null
+auxillary_rate_weight: null
+num_kl_div_estimates: 1
+log_regularization: 1.0e-12
+scheduler_info:
+  t_init: 1
+  t_final: 1000
+  time_sample_method: stratified
+  beta_min: 0.0001
+  beta_max: 0.05
+  scheduler_type: ExponentialBetaScheduler
+noiser_info:
+  label_smoothing: 0.0
+  active_site_freezing: 0
+  noiser_type: AbsorbingStateNoiser
+logit_predictor_info:
+  num_elements: 5
+  conditioning_dim: 64
+  hidden_rep_dim: 64
+  logit_predictor_type: MPNNLogitPredictor
+  time_embedding_dim: 64
+  embedding_dim: 64
+  n_interaction_blocks: 5
+  message_dim: 64
+rate_conditioning_info:
+  conditioning_type: None
+e_form_conditioning_info:
+  conditioning_type: None

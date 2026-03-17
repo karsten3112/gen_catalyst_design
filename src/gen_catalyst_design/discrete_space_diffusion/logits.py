@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import MessagePassing, GlobalAttention, global_add_pool, global_mean_pool
+from .conditioning import NoneConditioning
 from .Dataset import get_dataset_from_atoms_list
 from torch_geometric.utils import to_dense_batch
 from torch_geometric.utils import softmax as pyg_softmax
@@ -16,7 +17,7 @@ class LogitPredictor(nn.Module):
             self,
             num_elements:int,
             hidden_rep_dim:int=32,
-            conditioning_dim:int=32,
+            conditioning_dim:int=None,
             activation_func:callable=nn.ReLU(),
             device=None
         ):
@@ -24,7 +25,10 @@ class LogitPredictor(nn.Module):
         self.device = device
         self.num_elements = num_elements
         self.hidden_rep_dim = hidden_rep_dim
-        self.conditioning_dim = conditioning_dim
+        if conditioning_dim is None:
+            self.conditioning_dim = NoneConditioning().embedding_dim
+        else:
+            self.conditioning_dim = conditioning_dim
 
         #head for predicting rates
         self.rate_head = nn.Sequential(
@@ -85,83 +89,16 @@ class LogitPredictor(nn.Module):
         return F.softmax(logits, dim=-1)
 
 
-class InteractionBlock(MessagePassing):
-    def __init__(
-            self,
-            input_dim:int,
-            output_dim:int,
-            message_dim:int=8,
-            conditioning_dim:int=8,
-            activation_func=nn.ReLU(),
-            time_embedding_dim:int=10, 
-            aggr = 'mean'
-        ):
-        super().__init__(aggr)
-
-        self.psi_network = nn.Sequential(
-            nn.Linear(4*input_dim+conditioning_dim, 2*message_dim),
-            activation_func,
-            nn.Linear(2*message_dim, 2*message_dim),
-            activation_func,
-            nn.Linear(2*message_dim, message_dim),
-            activation_func,
-            nn.Linear(message_dim, message_dim),
-            activation_func,
-            nn.Linear(message_dim, message_dim)
-        )
-        self.phi_network = nn.Sequential(
-            nn.Linear(message_dim+input_dim+time_embedding_dim, message_dim+output_dim),
-            activation_func,
-            nn.Linear(message_dim+output_dim, message_dim+output_dim),
-            activation_func,
-            nn.Linear(message_dim+output_dim, output_dim),
-        )
-
-        self.layer_norm = nn.LayerNorm(output_dim)
-
-        self.const_state_dict = {
-            "input_dim":input_dim,
-            "output_dim":output_dim,
-            "message_dim":message_dim,
-            "time_embedding_dim":time_embedding_dim
-        }
-
-    def forward(self, x_t, geom_rep, edge_index, conds_embedded, time_embedded):
-        aggregated_messages = self.propagate(
-            edge_index=edge_index, 
-            x=x_t, 
-            geom_rep=geom_rep,
-            conds_embedded=conds_embedded
-        )
-        #we let the time embedding work on the global aggregation
-        x_t_updated = self.phi_network(torch.hstack([x_t, aggregated_messages, time_embedded])) #time_embedded
-        return self.layer_norm(x_t_updated)
-    
-    def message(self, x_i, x_j, geom_rep_i, geom_rep_j, conds_embedded_i, index):
-        if conds_embedded_i is not None:
-            # geom_rep_i, geom_rep_j
-            concatenated_x = torch.hstack([x_i, x_j, geom_rep_i, geom_rep_j, conds_embedded_i])
-        else:
-            # geom_rep_i, geom_rep_j
-            concatenated_x = torch.hstack([x_i, x_j, geom_rep_i, geom_rep_j])
-        message = self.psi_network(concatenated_x)
-        return message
-
-
 class FiLMNet(nn.Module):
     def __init__(
             self,
             conditining_dim:int,
             output_dim:int,
-            num_interaction_blocks:int,
             embedding_dim:int,
             activation_func:callable=nn.ReLU()
         ):
         super().__init__()
-        self.int_layer_emb = nn.Embedding(
-            num_embeddings=num_interaction_blocks,
-            embedding_dim=embedding_dim
-        )
+    
         self.gamma = nn.Sequential(
             nn.Linear(conditining_dim+embedding_dim, output_dim),
             activation_func,
@@ -183,13 +120,13 @@ class FiLMNet(nn.Module):
         return self.gamma(features), self.beta(features)
 
     def modulate_representation(self, message, embeddded_condition):
-        if embeddded_condition is None:
-            gamma, beta = 1.0, 0.0
-        else:
-            gamma, beta = self.forward(
-                message=message,
-                embedded_condition=embeddded_condition
-            )
+        #if embeddded_condition is None:
+        #    gamma, beta = 1.0, 0.0
+        #else:
+        gamma, beta = self.forward(
+            message=message,
+            embedded_condition=embeddded_condition
+        )
         return (1.0+gamma)*message + beta
 
 class ContentDistanceAttentionPooling(nn.Module):
@@ -259,7 +196,7 @@ class EmbeddingBlock(nn.Module):
     def __init__(
             self, 
             num_elements:int,
-            embedding_dim:int=128,
+            embedding_dim:int=64,
             time_embedding_dim:int=32, 
             activation_func:callable=nn.ReLU(),
             device=None
@@ -367,10 +304,8 @@ class MessagePassingBlock(MessagePassing):
         self.film_net = FiLMNet(
             conditining_dim=conditioning_dim,
             output_dim=message_dim,
-            num_interaction_blocks=1,
             embedding_dim=message_dim
         )
-
 
         self.layer_norm = nn.LayerNorm(output_dim)
         self.const_state_dict = {
@@ -404,8 +339,8 @@ class MPNNLogitPredictor(LogitPredictor):
             num_elements,
             embedding_dim:int=32, 
             hidden_rep_dim = 32, 
-            conditioning_dim = 32,
             time_embedding_dim = 32,
+            conditioning_dim = None,
             n_interaction_blocks:int=3,
             message_dim:int=32, 
             activation_func = nn.ReLU(),
