@@ -183,7 +183,7 @@ class ContentDistanceAttentionPooling(nn.Module):
         attn_logits = attn_logits.masked_fill(eye, -1e9)
 
         attn = F.softmax(attn_logits, dim=-1)  # [B, H, M, M]
-
+        
         # ctx: [B, H, M, d_head] -> [B, M, D]
         ctx = torch.einsum("bhmn,bnhd->bmhd", attn, V).reshape(B, M, D)
         ctx = self.out_proj(ctx)

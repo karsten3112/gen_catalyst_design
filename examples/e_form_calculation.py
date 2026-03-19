@@ -14,7 +14,7 @@ def main():
     miller_index = "100"
     calculator = CHGNetCalculator()
     write_atoms_list = True
-    n_samples = 4
+    n_samples = 1
 
     template_atoms_list, n_atoms_surf = get_atoms_from_template_db(
         db_filename=f"{miller_index}_templates.db",
@@ -31,7 +31,7 @@ def main():
     atoms_list = []
     for _ in range(n_samples):
         symbols = random.choices(population=element_pool, k=n_atoms_surf)
-        e_form, atoms = stabilizer.get_formation_energy_from_symbols(symbols=symbols)
+        e_form, atoms = stabilizer.get_formation_energy_from_symbols(symbols=symbols, trajectory="test_relax.traj")
         atoms.info["e_form"] = e_form
         atoms_list.append(atoms)
         print(f"Formation energy of surface: E_form = {e_form:+7.3e} [eV]")
