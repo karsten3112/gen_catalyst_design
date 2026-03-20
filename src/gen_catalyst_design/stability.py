@@ -20,6 +20,9 @@ def relax_atoms_and_cell(
     fmax: float = 0.05,
     trajectory: str = None,
     relax_z: bool = True,
+    maxsteps:int=1000,
+    interval:int=10,
+    recon_check_func:callable=None
 ):
     """
     Relax slab and (x, y) cell axes.
@@ -33,9 +36,19 @@ def relax_atoms_and_cell(
         atoms=FrechetCellFilter(atoms=atoms, mask=mask),
         trajectory=trajectory,
     )
-    opt.run(fmax=fmax)
+    converged = False
+    has_reconstructed = False
+    while not converged and not has_reconstructed and opt.maxstep < maxsteps:
+        converged = opt.run(
+            fmax=fmax,
+            steps=interval
+        )
+        if recon_check_func is not None:
+            has_reconstructed = recon_check_func(
+                atoms=atoms
+            )
     # Return relaxed atoms.
-    return atoms
+    return atoms, has_reconstructed
 
 # -------------------------------------------------------------------------------------
 # CALCULATE FORMATION ENERGY
@@ -137,6 +150,21 @@ def apply_inversion_symmetry(atoms:Atoms, miller_index:str, vacuum:float=10.0):
     return atoms
 
 
+def reconstruction_check(
+        atoms:Atoms,
+    ):
+    has_reconstructed = False
+    connectivity_kwargs = atoms.info["connectivity_kwargs"]
+    init_connectivity = atoms.info["init_connectivity"]
+    current_connectivity = get_connectivity(atoms=atoms, **connectivity_kwargs)
+    con_diff = np.bool(np.abs(init_connectivity - current_connectivity))
+    print(con_diff[0])
+    print(np.argwhere(con_diff == True))
+    if True in con_diff:
+        has_reconstructed = True
+    return has_reconstructed
+
+
 class Stabilizer:
     def __init__(
             self,
@@ -145,6 +173,8 @@ class Stabilizer:
             ref_energy_file:str,
             vacuum:float=10.0,
             fmax:float=0.05,
+            maxsteps:int=1000,
+            interval:int=10,
             ref_energy_pth_header:str=None
         ):
         self.template_atoms = template_atoms
@@ -155,6 +185,8 @@ class Stabilizer:
         )
         self.vacuum = vacuum
         self.fmax = fmax
+        self.maxsteps = maxsteps
+        self.interval = interval
 
 
     def load_ref_energy_dict(self, filename:str, pth_header:str=None):
@@ -165,7 +197,13 @@ class Stabilizer:
         return data
         
 
-    def get_formation_energy_from_symbols(self, symbols:list, trajectory=None):
+    def get_formation_energy_from_symbols(
+            self, 
+            symbols:list, 
+            trajectory=None, 
+            apply_recon_check:bool=False, 
+            recon_check_kwargs:dict={}
+        ):
         atoms = self.template_atoms.copy()
         atoms.set_chemical_symbols(symbols=symbols)
         atoms = apply_inversion_symmetry(
@@ -173,17 +211,35 @@ class Stabilizer:
             miller_index=self.template_atoms.info["miller_index"],
             vacuum=self.vacuum
         )
+        if apply_recon_check:
+            connectivity_kwargs = recon_check_kwargs.pop("connectivity_kwargs", {})
+            print(connectivity_kwargs)
+            init_connectivity = get_connectivity(
+                atoms=atoms,
+                **connectivity_kwargs
+            )
+            #connectivity_kwargs["skin"] = 0.2
+            atoms.info["init_connectivity"] = init_connectivity
+            atoms.info["connectivity_kwargs"] = connectivity_kwargs
+
         atoms.calc = self.calculator
-        atoms = relax_atoms_and_cell(
+        atoms, has_reconstructed = relax_atoms_and_cell(
             atoms=atoms,
             fmax=self.fmax,
             trajectory=trajectory,
-            relax_z=False
+            relax_z=False,
+            maxsteps=self.maxsteps,
+            interval=self.interval,
+            recon_check_func=reconstruction_check if apply_recon_check else None
         )
-        #Divide by 2 here such that we dont double count?
-        e_form = calculate_formation_energy(
-            atoms=atoms,
-            energies_ref=self.ref_energy_dict
-        )/2.0
-        return {"e_form":e_form, "atoms":atoms}
     
+        if has_reconstructed:
+            e_form = None
+        else:
+            e_form = calculate_formation_energy(
+                atoms=atoms,
+                energies_ref=self.ref_energy_dict
+            )/2.0
+        
+        return {"e_form":e_form, "atoms":atoms}
+        
