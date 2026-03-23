@@ -1,4 +1,4 @@
-from gen_catalyst_design.utils import get_atoms_from_template_db
+from gen_catalyst_design.utils import get_atoms_from_template_db, get_full_element_pool
 from gen_catalyst_design.stability import Stabilizer
 from chgnet.model.dynamics import CHGNetCalculator
 from ase.io import read, write
@@ -8,11 +8,11 @@ import random
 def main():
     random_seed = 42
     random.seed(random_seed)
-    element_pool = ["Rh", "Cu", "Au"]
+    element_pool = get_full_element_pool()#["Rh", "Cu", "Au"]
     miller_index = "100"
     calculator = CHGNetCalculator()
     #write_atoms_list = True
-    n_samples = 5
+    n_samples = 1
 
     template_atoms_list, n_atoms_surf = get_atoms_from_template_db(
         db_filename=f"{miller_index}_templates.db",
@@ -38,15 +38,21 @@ def main():
         symbols = random.choices(population=element_pool, k=n_atoms_surf)
         result_dict = stabilizer.get_formation_energy_from_symbols(
             symbols=symbols, 
-            trajectory=f"test_relax_{i}.traj",
+            trajectory=f"no_elem_swap.traj",
             apply_recon_check=True,
             recon_check_kwargs=dict(connectivity_kwargs=recon_check_kwargs)
         )
         e_form = result_dict["e_form"]
-        if e_form is not None:
-            print(f"Formation energy of surface: E_form = {e_form:+7.3e} [eV]")
-        else:
-            print("reconstruction happened")
+        has_reconstructed = result_dict["recon"]
+        #print(result_dict)
+        #if has_reconstructed:
+        #if has_reconstructed:
+        #    write(f"atoms_recon_{i}.traj", images=[result_dict["atoms"])
+        
+        #if e_form is not None:
+        #    print(f"Formation energy of surface: E_form = {e_form:+7.3e} [eV]")
+        #else:
+        #    print("reconstruction happened")
         #atoms.info["e_form"] = e_form
         #atoms_list.append(atoms)
     

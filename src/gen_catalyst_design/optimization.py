@@ -7,13 +7,9 @@ from .reaction_rates import ReactionMechanism
 from .stability import Stabilizer
 from .utils import get_features_bulk_and_gas, get_calculator, get_atoms_from_template_db
 from chgnet.model.dynamics import CHGNetCalculator
+import numpy as np
 import os
-#from catalyst_opt_tools.optimization import print_search_progress, print_search_results
-#from skopt.optimizer import base_minimize
-#from scipy.optimize import dual_annealing
-#from skopt.space import Categorical
-#from skopt.utils import use_named_args
-#from pygad import GA
+
 
 # -------------------------------------------------------------------------------------
 # LOGGER CLASS
@@ -74,6 +70,7 @@ def evaluate_score_from_symbols(
         stabilizer:Stabilizer=None,
         add_time_stats:bool=False,
         objective_key:str="rate",
+        use_log:bool=False
         ):
         if add_time_stats:
             score_dict = logger.time_function_call(
@@ -100,18 +97,19 @@ def evaluate_score_from_symbols(
         datadict = {"elements":symbols, "score_dict":score_dict}
         logger.store_datadict(datadict=datadict)
         logger.n_obj_func_calls+=1
-        return get_score_from_obj_key(datadict=datadict, objective_key=objective_key)
+        return get_score_from_obj_key(datadict=datadict, objective_key=objective_key, use_log=use_log)
 
 
-def get_score_from_obj_key(datadict:dict, objective_key:str="rate"):
+def get_score_from_obj_key(datadict:dict, objective_key:str="rate", use_log:bool=False):
+    
     if objective_key == "rate":
-        return datadict["score_dict"]["rate"]
+        return np.log(datadict["score_dict"]["rate"]) if use_log else datadict["score_dict"]["rate"]
     elif objective_key == "stability":
         return datadict["score_dict"]["e_form"]
     elif objective_key == "mixture":
         raise NotImplementedError("Not implemented yet for having objective for both rate and e_form")
     elif objective_key == "both":
-        return datadict["score_dict"]["rate"], datadict["score_dict"]["e_form"]
+        return np.log(datadict["score_dict"]["rate"]) if use_log else datadict["score_dict"]["rate"], datadict["score_dict"]["e_form"]
     else:
         raise Exception(f"Other score-type of {objective_key} is not defined")
 
@@ -138,7 +136,7 @@ def setup_optimization_objective(
     
     #Train calculator on database
     calculator.train_model_from_db(
-         db_filename=f"atoms_adsorbates_{miller_index}_DFT_all.db", #Change this back
+         db_filename=f"atoms_adsorbates_{miller_index}_DFT_all.db",
          features_bulk=features_bulk, 
          features_gas=features_gas, 
          db_pth_header=os.path.join(database_pth_header, "DFT_database"),

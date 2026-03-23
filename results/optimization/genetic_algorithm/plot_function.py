@@ -3,6 +3,7 @@ from gen_catalyst_design.db import Database, load_datadicts_from_db
 import matplotlib.patches as patches
 import matplotlib as mpl
 import numpy as np
+from sklearn.neighbors import KernelDensity
 
 def main():
     mpl.rcParams['text.usetex'] = True
@@ -13,7 +14,7 @@ def main():
 
     random_seed = 42
     np.random.seed(random_seed)
-    dist_type = "violin"
+    dist_type = "kde"
     n_budget = 10000
     seperate_initial_dist = False
     use_log = False
@@ -26,7 +27,7 @@ def main():
     distribution_dict = get_distribution_dict(
         database=database,
         n_budget_samples=n_budget,
-        num_distributions=8,
+        num_distributions=10,
         seperate_initial_samples=seperate_initial_dist,
         use_log=use_log
     )
@@ -150,6 +151,13 @@ def distribution_plot(
             ax=ax,
             distribution_dict=distribution_dict
         )
+    elif dist_type == "kde":
+        make_kde_plot(
+            ax=ax,
+            distribution_dict=distribution_dict,
+            add_scatter_plot=add_scatter_plot,
+            plot_kwargs=plot_kwargs
+        )
     else:
         raise NotImplementedError(f"Distribution of type: {dist_type} is not implemented")
 
@@ -272,7 +280,50 @@ def make_violion_plot(
             parts[part].set_linewidth(1.0)
             parts[part].set_color("black")
         final_tot_dist_ax.set_xticks([])
-    
+
+
+
+def make_kde_plot(
+        ax,
+        distribution_dict:dict,
+        add_scatter_plot:bool=True,
+        plot_kwargs:dict={},
+        kde_kwargs:dict={"bandwidth":200.0},
+        use_y_axis:bool=True
+    ):
+    color = plot_kwargs.pop("color", "C2")
+    alpha = plot_kwargs.pop("alpha", 0.6)
+    spacing = 6.0
+    scale_pos = 0.5
+    #height_scale = 1e4
+    #positions = np.arange(0.0, )
+    init_pos = len(distribution_dict)
+    datasets = [distribution_dict[dist_num] for dist_num in distribution_dict]
+    all_rates = np.hstack(datasets)
+    rate_plots = np.linspace(np.min(all_rates)-1000, np.max(all_rates)+1000, 1000)
+    if use_y_axis:
+        ax.set_ylim([rate_plots[0], rate_plots[-1]])
+    else:
+        ax.set_xlim([rate_plots[0], rate_plots[-1]])
+    positions = np.linspace(0.0, len(distribution_dict), len(distribution_dict))*scale_pos#np.array(list(distribution_dict.keys()))
+    delta = np.diff(positions)[0]
+    for dist_num in distribution_dict:
+        rates = distribution_dict[dist_num]
+        kde = KernelDensity(**kde_kwargs).fit(rates.reshape(-1,1))
+        log_dist_plot = kde.score_samples(rate_plots.reshape(-1,1))
+        dist_plot = np.exp(log_dist_plot)
+        height_scale = 1/np.max(dist_plot)
+        if use_y_axis:
+            ax.plot(dist_plot*height_scale+positions[dist_num], rate_plots, color="k", lw=1)
+            ax.fill_betweenx(rate_plots, dist_plot*height_scale + positions[dist_num], positions[dist_num], color=color, alpha=0.3)
+        else:
+        #ax.plot(np.exp(log_dist_plot)*5e3+dist_num*1.2, rate_plots, color=color)
+            ax.plot(rate_plots, dist_plot*height_scale + positions[dist_num], color="k", lw=1)
+            ax.fill_between(rate_plots, dist_plot*height_scale + positions[dist_num], positions[dist_num], color=color, alpha=0.3)
+        #if dist_num == 3:
+        #    break
+
+
 
 def make_box_plot(
         ax,

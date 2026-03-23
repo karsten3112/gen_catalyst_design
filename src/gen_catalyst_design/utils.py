@@ -243,7 +243,7 @@ def exclude_species(
     return result_list
 
 def get_full_element_pool(
-        species_exclude:list=None
+        species_exclude:list=["Mn", "Ga"]
     ):
     result_list = ["Rh", "Pt", "Pd", "Co", "Ga", "Cu", "Zn", "Au", "Ag", 'Mn', 'Fe', 'Os', 'Mo', 'Ir', 'Ru', "Ni"]
     if species_exclude is not None:
@@ -252,4 +252,4 @@ def get_full_element_pool(
             species_exclude=species_exclude
         )
     return result_list
-    
+

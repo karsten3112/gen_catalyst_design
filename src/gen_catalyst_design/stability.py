@@ -143,6 +143,8 @@ def apply_inversion_symmetry(atoms:Atoms, miller_index:str, vacuum:float=10.0):
     atoms = center_slab(atoms=atoms)
     z = atomic_numbers["Au"]
     a_lat = reference_states[z]["a"]
+    #print(a_lat)
+    #exit()
     interlayer_dist = a_lat / 2
     atoms.center(vacuum=interlayer_dist / 2, axis=2)
     atoms = inversion_symmetry_repeat(atoms=atoms)
@@ -150,17 +152,44 @@ def apply_inversion_symmetry(atoms:Atoms, miller_index:str, vacuum:float=10.0):
     return atoms
 
 
-def reconstruction_check(
+def recon_check_from_connectivity(
         atoms:Atoms,
     ):
     has_reconstructed = False
     connectivity_kwargs = atoms.info["connectivity_kwargs"]
     init_connectivity = atoms.info["init_connectivity"]
     current_connectivity = get_connectivity(atoms=atoms, **connectivity_kwargs)
-    con_diff = np.bool(np.abs(init_connectivity - current_connectivity))
-    print(con_diff[0])
-    print(np.argwhere(con_diff == True))
-    if True in con_diff:
+    con_diff = init_connectivity - current_connectivity
+    mask = np.bool(np.abs(con_diff))
+    if True in mask:
+        has_reconstructed = True
+        indices = np.argwhere(mask == True)
+        print(indices)
+        print(indices[0])
+        print(con_diff[indices[0][0], indices[0][1]])
+    return has_reconstructed
+
+
+def get_cell_shrink_factors(
+        template_atoms:Atoms,
+        atoms:Atoms
+    ):
+    original_cell = template_atoms.get_cell()
+    relaxed_cell = atoms.get_cell()
+
+
+def recon_check_from_lattice(
+        template_atoms:Atoms,
+        atoms:Atoms,
+        a_lat:float,
+    ):
+    has_reconstructed = False
+    recon_radius = a_lat/2.0
+    lattice_positions = template_atoms.positions
+    current_positions = atoms.positions
+    dists = np.linalg.norm(current_positions-lattice_positions, axis=1)
+    recon_checks = dists > recon_radius
+    if True in recon_checks:
         has_reconstructed = True
     return has_reconstructed
 
@@ -204,20 +233,47 @@ class Stabilizer:
             apply_recon_check:bool=False, 
             recon_check_kwargs:dict={}
         ):
+        connectivity_kwargs = recon_check_kwargs.pop("connectivity_kwargs", {})
         atoms = self.template_atoms.copy()
+        #atoms.set_pbc([1,1,1])
         atoms.set_chemical_symbols(symbols=symbols)
         atoms = apply_inversion_symmetry(
             atoms=atoms,
             miller_index=self.template_atoms.info["miller_index"],
             vacuum=self.vacuum
         )
+        #init_connectivity = get_connectivity(
+        #        atoms=atoms,
+        #        **connectivity_kwargs
+        #    )
+        #atoms_2 = self.template_atoms.copy()
+        #atoms_2.set_chemical_symbols(symbols=symbols)
+        #atoms_2 = apply_inversion_symmetry(
+        #    atoms=atoms_2,
+        #    miller_index=self.template_atoms.info["miller_index"],
+        #    vacuum=self.vacuum
+        #)
+        #elem_connectivity = get_connectivity(
+        #        atoms=atoms_2,
+        #        **connectivity_kwargs
+        #    )
+        #con_diff = np.bool(np.abs(init_connectivity - elem_connectivity))
+        #has_reconstructed = False
+        #if True in con_diff:
+        #    has_reconstructed = True
+        #    print("Reconstruction has happened abort")
+        #    print(np.argwhere(con_diff == True))
+        #    #has_reconstructed = True
+        #return {"e_form":None, "atoms":[atoms, atoms_2], "recon":has_reconstructed}
         if apply_recon_check:
             connectivity_kwargs = recon_check_kwargs.pop("connectivity_kwargs", {})
-            print(connectivity_kwargs)
+            #print(connectivity_kwargs)
+            #exit()
             init_connectivity = get_connectivity(
                 atoms=atoms,
                 **connectivity_kwargs
             )
+            #exit()
             #connectivity_kwargs["skin"] = 0.2
             atoms.info["init_connectivity"] = init_connectivity
             atoms.info["connectivity_kwargs"] = connectivity_kwargs
@@ -230,7 +286,7 @@ class Stabilizer:
             relax_z=False,
             maxsteps=self.maxsteps,
             interval=self.interval,
-            recon_check_func=reconstruction_check if apply_recon_check else None
+            recon_check_func=recon_check_from_connectivity if apply_recon_check else None
         )
     
         if has_reconstructed:
@@ -241,5 +297,5 @@ class Stabilizer:
                 energies_ref=self.ref_energy_dict
             )/2.0
         
-        return {"e_form":e_form, "atoms":atoms}
+        return {"e_form":e_form, "atoms":atoms, "recon":has_reconstructed}
         
