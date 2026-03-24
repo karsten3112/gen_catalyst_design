@@ -214,18 +214,18 @@ def get_calculator(model, miller_index):
 
 
 
-def get_periodic_surface(miller_index:str, vacuum:float=10.0, n_layers_z:int=4) -> tuple:
+def get_periodic_surface(miller_index:str, vacuum:float=10.0, n_layers_z:int=4, a_lat:float=None) -> tuple:
     if miller_index == "100":
         from ase.build import fcc100
-        atoms_periodic = fcc100(symbol="Au", size=(3, 3, n_layers_z), vacuum=vacuum)
+        atoms_periodic = fcc100(symbol="Au", size=(3, 3, n_layers_z), vacuum=vacuum, a=a_lat)
         indices_site = [27, 28, 30, 31]
     elif miller_index == "111":
         from ase.build import fcc111
-        atoms_periodic = fcc111(symbol="Au", size=(3, 3, n_layers_z), vacuum=vacuum)
+        atoms_periodic = fcc111(symbol="Au", size=(3, 3, n_layers_z), vacuum=vacuum, a=a_lat)
         indices_site = [27, 28, 30, 31]
     elif miller_index == "211":
         from ase.build import fcc211
-        atoms_periodic = fcc211(symbol="Au", size=(6, 3, n_layers_z), vacuum=vacuum)
+        atoms_periodic = fcc211(symbol="Au", size=(6, 3, n_layers_z), vacuum=vacuum, a=a_lat)
         indices_site = [0, 1, 7, 10, 15, 16]
     # Highlight site atoms.
     for ii in indices_site:

@@ -7,8 +7,10 @@ from ase_ml_models.utilities import (
     get_edges_list_from_connectivity,
     get_connectivity_from_edges_list
 )
+from .utils import get_periodic_surface
 from chgnet.model.dynamics import CHGNetCalculator
 from ase.data import atomic_numbers, reference_states
+from ase.io import write
 import yaml
 import os
 # -------------------------------------------------------------------------------------
@@ -139,12 +141,15 @@ def get_connectivity_inverted_slab(
     return get_connectivity_from_edges_list(atoms=atoms, edges_list=edges_list_new)
 
 
-def apply_inversion_symmetry(atoms:Atoms, miller_index:str, vacuum:float=10.0):
+def apply_inversion_symmetry(
+        atoms:Atoms, 
+        miller_index:str, 
+        vacuum:float=10.0, 
+        a_lat:float=None
+    ):
     atoms = center_slab(atoms=atoms)
-    z = atomic_numbers["Au"]
-    a_lat = reference_states[z]["a"]
-    #print(a_lat)
-    #exit()
+    if a_lat is None:
+        a_lat = reference_states[atomic_numbers["Au"]]["a"]
     interlayer_dist = a_lat / 2
     atoms.center(vacuum=interlayer_dist / 2, axis=2)
     atoms = inversion_symmetry_repeat(atoms=atoms)
@@ -161,22 +166,16 @@ def recon_check_from_connectivity(
     current_connectivity = get_connectivity(atoms=atoms, **connectivity_kwargs)
     con_diff = init_connectivity - current_connectivity
     mask = np.bool(np.abs(con_diff))
+    #print(np.argwhere(mask == True))
     if True in mask:
         has_reconstructed = True
-        indices = np.argwhere(mask == True)
-        print(indices)
-        print(indices[0])
-        print(con_diff[indices[0][0], indices[0][1]])
     return has_reconstructed
 
 
-def get_cell_shrink_factors(
-        template_atoms:Atoms,
-        atoms:Atoms
+def get_mean_lattice_const(
+        symbols:list
     ):
-    original_cell = template_atoms.get_cell()
-    relaxed_cell = atoms.get_cell()
-
+    return np.mean([reference_states[atomic_numbers[symbol]]["a"] for symbol in symbols])
 
 def recon_check_from_lattice(
         template_atoms:Atoms,
@@ -230,54 +229,41 @@ class Stabilizer:
             self, 
             symbols:list, 
             trajectory=None, 
-            apply_recon_check:bool=False, 
+            apply_recon_check:bool=False,
+            start_from_mean_lattice:bool=True, 
             recon_check_kwargs:dict={}
         ):
-        connectivity_kwargs = recon_check_kwargs.pop("connectivity_kwargs", {})
-        atoms = self.template_atoms.copy()
-        #atoms.set_pbc([1,1,1])
+        if start_from_mean_lattice:
+            a_lat = get_mean_lattice_const(symbols=symbols)
+        else:
+            a_lat = None
+        
+        atoms, _ = get_periodic_surface(
+            miller_index="100",
+            vacuum=self.vacuum,
+            a_lat=a_lat
+        )
+
         atoms.set_chemical_symbols(symbols=symbols)
+        
         atoms = apply_inversion_symmetry(
             atoms=atoms,
             miller_index=self.template_atoms.info["miller_index"],
-            vacuum=self.vacuum
+            vacuum=self.vacuum,
+            a_lat=a_lat
         )
-        #init_connectivity = get_connectivity(
-        #        atoms=atoms,
-        #        **connectivity_kwargs
-        #    )
-        #atoms_2 = self.template_atoms.copy()
-        #atoms_2.set_chemical_symbols(symbols=symbols)
-        #atoms_2 = apply_inversion_symmetry(
-        #    atoms=atoms_2,
-        #    miller_index=self.template_atoms.info["miller_index"],
-        #    vacuum=self.vacuum
-        #)
-        #elem_connectivity = get_connectivity(
-        #        atoms=atoms_2,
-        #        **connectivity_kwargs
-        #    )
-        #con_diff = np.bool(np.abs(init_connectivity - elem_connectivity))
-        #has_reconstructed = False
-        #if True in con_diff:
-        #    has_reconstructed = True
-        #    print("Reconstruction has happened abort")
-        #    print(np.argwhere(con_diff == True))
-        #    #has_reconstructed = True
-        #return {"e_form":None, "atoms":[atoms, atoms_2], "recon":has_reconstructed}
+
+        atoms_init = atoms.copy()
+
         if apply_recon_check:
             connectivity_kwargs = recon_check_kwargs.pop("connectivity_kwargs", {})
-            #print(connectivity_kwargs)
-            #exit()
             init_connectivity = get_connectivity(
                 atoms=atoms,
                 **connectivity_kwargs
             )
-            #exit()
-            #connectivity_kwargs["skin"] = 0.2
             atoms.info["init_connectivity"] = init_connectivity
             atoms.info["connectivity_kwargs"] = connectivity_kwargs
-
+        
         atoms.calc = self.calculator
         atoms, has_reconstructed = relax_atoms_and_cell(
             atoms=atoms,
@@ -297,5 +283,5 @@ class Stabilizer:
                 energies_ref=self.ref_energy_dict
             )/2.0
         
-        return {"e_form":e_form, "atoms":atoms, "recon":has_reconstructed}
+        return {"e_form":e_form, "atoms_final":atoms, "atoms_init":atoms_init, "recon":has_reconstructed}
         

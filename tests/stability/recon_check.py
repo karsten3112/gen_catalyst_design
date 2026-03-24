@@ -8,11 +8,11 @@ import random
 def main():
     random_seed = 42
     random.seed(random_seed)
-    element_pool = get_full_element_pool()#["Rh", "Cu", "Au"]
     miller_index = "100"
+    element_pool = ['Rh', 'Pt', 'Pd', 'Cu', 'Au', 'Ag', 'Ir', 'Ni']#get_full_element_pool()#['Ag', 'Pt', 'Pd', 'Ir']#['Rh', 'Pt', 'Pd', 'Cu', 'Au', 'Ag', 'Ir', 'Ni']
     calculator = CHGNetCalculator()
     #write_atoms_list = True
-    n_samples = 1
+    n_samples = 5
 
     template_atoms_list, n_atoms_surf = get_atoms_from_template_db(
         db_filename=f"{miller_index}_templates.db",
@@ -28,31 +28,29 @@ def main():
     )
 
     recon_check_kwargs = dict(
-                method="ase",
-                bond_cutoff=1.0,
-                remove_pbc=True,
-                skin=0.30)
+        method="ase",
+        bond_cutoff=1.0,
+        remove_pbc=True,
+        skin=0.3
+    )
 
     atoms_list = []
     for i in range(n_samples):
         symbols = random.choices(population=element_pool, k=n_atoms_surf)
         result_dict = stabilizer.get_formation_energy_from_symbols(
             symbols=symbols, 
-            trajectory=f"no_elem_swap.traj",
+            trajectory=f"test_relax_{i}.traj",
             apply_recon_check=True,
-            recon_check_kwargs=dict(connectivity_kwargs=recon_check_kwargs)
+            recon_check_kwargs=dict(connectivity_kwargs=recon_check_kwargs),
+            start_from_mean_lattice=False
         )
         e_form = result_dict["e_form"]
         has_reconstructed = result_dict["recon"]
-        #print(result_dict)
-        #if has_reconstructed:
-        #if has_reconstructed:
-        #    write(f"atoms_recon_{i}.traj", images=[result_dict["atoms"])
         
-        #if e_form is not None:
-        #    print(f"Formation energy of surface: E_form = {e_form:+7.3e} [eV]")
-        #else:
-        #    print("reconstruction happened")
+        if e_form is not None:
+            print(f"Formation energy of surface: E_form = {e_form:+7.3e} [eV]")
+        else:
+            print("reconstruction happened")
         #atoms.info["e_form"] = e_form
         #atoms_list.append(atoms)
     
