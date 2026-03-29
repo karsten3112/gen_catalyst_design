@@ -1,0 +1,10 @@
+-filename=rnd_0_seed.db -setup_files_header=../../.. -rnd_seed=0 
+-filename=rnd_1_seed.db -setup_files_header=../../.. -rnd_seed=1 
+-filename=rnd_2_seed.db -setup_files_header=../../.. -rnd_seed=2 
+-filename=rnd_3_seed.db -setup_files_header=../../.. -rnd_seed=3 
+-filename=rnd_4_seed.db -setup_files_header=../../.. -rnd_seed=4 
+-filename=rnd_5_seed.db -setup_files_header=../../.. -rnd_seed=5 
+-filename=rnd_6_seed.db -setup_files_header=../../.. -rnd_seed=6 
+-filename=rnd_7_seed.db -setup_files_header=../../.. -rnd_seed=7 
+-filename=rnd_8_seed.db -setup_files_header=../../.. -rnd_seed=8 
+-filename=rnd_9_seed.db -setup_files_header=../../.. -rnd_seed=9 

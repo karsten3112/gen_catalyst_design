@@ -13,12 +13,12 @@ def main():
     n_samples = 20
     miller_index = "100"
     template_type = "surface"
-    ckpt_file_header = "rate_eform_testing/test_log_rate"
+    ckpt_file_header = "rate_eform_testing/test_debug"
     ckpt_file = os.path.join(ckpt_file_header,"checkpoints/last.ckpt") #epoch=epoch=146-val=val_loss=1.9309.ckpt
     include_stability = True
-    temps = [0.5]
-    rate_conditions = [4.0]#[5.0, 10.0, 15.0, 20.0]
-    e_form_conditions = [3.0]
+    temps = [1.0]
+    rate_conditions = [7.40]#[5.0, 10.0, 15.0, 20.0]
+    e_form_conditions = [4.0]
     guidance_scale = 2.0
     #rate_guidance = 0.0
     #e_form_guidance = 2.0
@@ -57,7 +57,8 @@ def main():
                 timesteps=None, 
                 log_all_timesteps=False, 
                 return_as_atoms_list=True,
-                temp=temp, 
+                temp=temp,
+                dataset_kwargs={"graph_kwargs":{"use_log":True}} 
             )
 
             save_dir = os.path.join(ckpt_file_header, "samples")

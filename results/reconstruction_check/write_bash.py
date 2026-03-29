@@ -10,7 +10,7 @@ def main():
     ]
 
     element_pools = [
-        "full",
+        #"full",
         "all_fcc",
         "au_close_fcc",
         "ni_close_fcc"
@@ -22,8 +22,9 @@ def main():
     job = ArrayJob(
         job_name="relax",
         n_jobs=n_jobs,
-        walltime="10:00:00",
-        partition="qany"
+        walltime="12:00:00",
+        partition="qgpu",
+        reserve_gpu=True
     )
 
     script_params_list = []
@@ -43,8 +44,7 @@ def main():
     )
 
     job.add_python_script(
-        file_name="relax.py",
-        pth_header="../"
+        file_name="relax.py"
     )
 
     job.add_param_file(

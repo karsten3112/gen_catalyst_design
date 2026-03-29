@@ -130,12 +130,9 @@ class FiLMNet(nn.Module):
         return (1.0+gamma)*message + beta
 
 class ContentDistanceAttentionPooling(nn.Module):
-    def __init__(self, hidden_dim: int, rbf_dim: int = 32, n_heads: int = 4):
+    def __init__(self, hidden_dim: int, rbf_dim: int = 32, activation_func:callable=nn.ReLU()):
         super().__init__()
-        assert hidden_dim % n_heads == 0
         self.hidden_dim = hidden_dim
-        self.n_heads = n_heads
-        self.d_head = hidden_dim // n_heads
 
         # QKV projections
         self.q_proj = nn.Linear(hidden_dim, hidden_dim, bias=False)
@@ -143,54 +140,62 @@ class ContentDistanceAttentionPooling(nn.Module):
         self.v_proj = nn.Linear(hidden_dim, hidden_dim, bias=False)
         self.out_proj = nn.Linear(hidden_dim, hidden_dim, bias=False)
 
-        # Distance -> attention bias (your existing idea)
+        # Distance -> attention bias
         self.centers = nn.Parameter(torch.linspace(0.0, 12.0, rbf_dim))
         self.width = nn.Parameter(torch.tensor(1.0))
         self.edge_mlp = nn.Sequential(
             nn.Linear(rbf_dim, hidden_dim),
-            nn.SiLU(),
+            activation_func,
             nn.Linear(hidden_dim, 1)   # scalar bias per (i,j)
         )
 
     def rbf(self, d):
-        diff = d[..., None] - self.centers[None, ...]
-        return torch.exp(-(diff**2) / (self.width.abs() + 1e-6))
+        diff = d[..., None] - self.centers[None, :]
+        return torch.exp(-(diff ** 2) / (self.width.abs() + 1e-6))
 
     def forward(self, h, pos, batch):
         H, mask = to_dense_batch(h, batch)     # [B, M, D]
-        P, _    = to_dense_batch(pos, batch)   # [B, M, 3]
+        P, _ = to_dense_batch(pos, batch)      # [B, M, 3]
         B, M, D = H.shape
 
         d = torch.cdist(P, P)                  # [B, M, M]
         rbf = self.rbf(d)                      # [B, M, M, rbf_dim]
         dist_bias = self.edge_mlp(rbf).squeeze(-1)  # [B, M, M]
 
-        # Q,K,V: [B, M, H, d_head]
-        Q = self.q_proj(H).view(B, M, self.n_heads, self.d_head)
-        K = self.k_proj(H).view(B, M, self.n_heads, self.d_head)
-        V = self.v_proj(H).view(B, M, self.n_heads, self.d_head)
+        # Single-head Q, K, V: [B, M, D]
+        Q = self.q_proj(H)
+        K = self.k_proj(H)
+        V = self.v_proj(H)
 
-        # attention logits: [B, H, M, M]
-        attn_logits = torch.einsum("bmhd,bnhd->bhmn", Q, K) / (self.d_head ** 0.5)
-        attn_logits = attn_logits + dist_bias[:, None, :, :]  # add distance bias to all heads
+        # Attention logits: [B, M, M]
+        attn_logits = torch.einsum("bmd,bnd->bmn", Q, K) / (D ** 0.5)
+        attn_logits = attn_logits + dist_bias
 
-        # masks
-        key_mask = mask[:, None, None, :].expand(B, self.n_heads, M, M)  # mask keys
-        attn_logits = attn_logits.masked_fill(~key_mask, -1e9)
+        # Valid query-key pairs
+        query_mask = mask[:, :, None]          # [B, M, 1]
+        key_mask = mask[:, None, :]            # [B, 1, M]
+        pair_mask = query_mask & key_mask      # [B, M, M]
 
-        # optional: exclude self
-        eye = torch.eye(M, device=h.device, dtype=torch.bool)[None, None, :, :]
-        attn_logits = attn_logits.masked_fill(eye, -1e9)
+        # Exclude self-attention
+        eye = torch.eye(M, device=h.device, dtype=torch.bool)[None, :, :]
+        pair_mask = pair_mask & ~eye
 
-        attn = F.softmax(attn_logits, dim=-1)  # [B, H, M, M]
-        
-        # ctx: [B, H, M, d_head] -> [B, M, D]
-        ctx = torch.einsum("bhmn,bnhd->bmhd", attn, V).reshape(B, M, D)
+        # Mask invalid logits
+        attn_logits = attn_logits.masked_fill(~pair_mask, float("-inf"))
+
+        # Softmax over keys j
+        attn = F.softmax(attn_logits, dim=-1)
+
+        # Handle rows with no valid neighbors
+        valid_row = pair_mask.any(dim=-1, keepdim=True)   # [B, M, 1]
+        attn = torch.where(valid_row, attn, torch.zeros_like(attn))
+
+        # Context: [B, M, D]
+        ctx = torch.einsum("bmn,bnd->bmd", attn, V)
         ctx = self.out_proj(ctx)
 
-        # back to sparse: [N, D]
+        # Back to sparse: [N, D]
         return ctx[mask]
-
 
 class EmbeddingBlock(nn.Module):
     def __init__(
@@ -379,8 +384,7 @@ class MPNNLogitPredictor(LogitPredictor):
 
         self.distance_pooling = ContentDistanceAttentionPooling(
             hidden_dim=hidden_rep_dim,
-            rbf_dim=message_dim,
-            n_heads=4
+            rbf_dim=message_dim
         )
 
         self.logit_head = nn.Sequential(

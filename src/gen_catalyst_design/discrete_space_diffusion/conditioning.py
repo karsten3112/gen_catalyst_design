@@ -67,6 +67,7 @@ class RateClassification(Conditioning):
 class RateConditioning(Conditioning):
     def __init__(self, embedding_dim = 32, activation_func:callable=nn.ReLU(), device=None):
         super().__init__(embedding_dim, device)
+        #self.linear_embed = nn.Linear(in_features=1, out_features=self.embedding_dim)
         self.ml_layers = nn.Sequential(
             nn.Linear(in_features=self.embedding_dim, out_features=self.embedding_dim),
             activation_func,

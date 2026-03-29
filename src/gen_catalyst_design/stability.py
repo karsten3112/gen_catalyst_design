@@ -71,6 +71,18 @@ def calculate_formation_energy(
     # Return formation energy.
     return e_form
 
+def calculate_surface_formation_energy(
+        atoms: Atoms,
+        energies_ref:dict
+    ) -> float:
+
+    e_form = calculate_formation_energy(
+        atoms=atoms,
+        energies_ref=energies_ref
+    )
+    return e_form/2.0
+
+
 # -------------------------------------------------------------------------------------
 # GET INVERSION CENTER
 # -------------------------------------------------------------------------------------
@@ -119,6 +131,7 @@ def inversion_symmetry_repeat(
 # -------------------------------------------------------------------------------------
 # GET CONNECTIVITY OF INVERTED SLAB
 # -------------------------------------------------------------------------------------
+
 
 def get_connectivity_inverted_slab(
     atoms: Atoms,
@@ -278,10 +291,10 @@ class Stabilizer:
         if has_reconstructed:
             e_form = None
         else:
-            e_form = calculate_formation_energy(
+            e_form = calculate_surface_formation_energy(
                 atoms=atoms,
                 energies_ref=self.ref_energy_dict
-            )/2.0
+            )
         
         return {"e_form":e_form, "atoms_final":atoms, "atoms_init":atoms_init, "recon":has_reconstructed}
         

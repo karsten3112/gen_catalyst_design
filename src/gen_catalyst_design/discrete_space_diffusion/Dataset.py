@@ -132,6 +132,8 @@ def get_graph_from_atoms(
         condition_keys:list=None,
         use_fully_connected_graph:bool=False,
         add_active_site_connectivity:bool=False,
+        use_log:bool=True,
+        include_recon_label:bool=False,
         device:str=None,
     ):
     x = embed_cluster_as_onehots(atoms=atoms, element_pool=element_pool, device=device)
@@ -158,14 +160,53 @@ def get_graph_from_atoms(
     graph = Graph(
         x=x,
         edge_index=edge_index,
-        rate=torch.log(torch.tensor(atoms.info["rate"], device=device)) if "rate" in condition_keys else None,
-        e_form=torch.tensor(atoms.info["e_form"], device=device) if "e_form" in condition_keys else None,
+        rate=get_rate_from_atoms(
+            atoms=atoms, 
+            device=device, 
+            use_log=use_log
+            ) if "rate" in condition_keys else None,
+        e_form=get_stability_measure_from_atoms(
+            atoms=atoms, 
+            device=device,
+            include_recon_label=include_recon_label
+            ) if "e_form" in condition_keys else None,
         pos=torch.tensor(atoms.positions, dtype=torch.float, device=device),
         edge_attr=None,
         active_sites=active_sites,
         active_site_dists=torch.tensor(active_site_dists, dtype=torch.float, device=device)
     )
     return graph
+
+
+def get_rate_from_atoms(
+        atoms:Atoms,
+        device:str=None,
+        use_log:bool=True
+    ):
+    if "rate" in atoms.info:
+        rate = torch.tensor(atoms.info["rate"], device=device)
+        if use_log:
+            return torch.log(rate)
+        else:
+            return rate
+    else:
+        return None
+
+
+def get_stability_measure_from_atoms(
+        atoms:Atoms,
+        device:str=None,
+        include_recon_label:bool=False
+    ):
+    if "e_form" in atoms.info:
+        e_form = atoms.info["e_form"]
+        if include_recon_label:
+            raise Exception("Not implemented yet")
+        else:
+            return torch.tensor(e_form, device=device)
+    else:
+        return None
+
 
 def get_graph_from_datadict(
         datadict:dict, 

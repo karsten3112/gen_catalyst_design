@@ -28,7 +28,7 @@ def main():
     #diffusion model parameters
     noiser = "AbsorbingStateNoiser" # absorbing | uniform
     scheduler_type = "ExponentialBetaScheduler" # exponential
-    element_pool = get_full_element_pool(["Mn", "Ga"])
+    element_pool = ['Ni', 'Cu', 'Rh', 'Ir', 'Pd', 'Pt', 'Au', 'Ag']#get_full_element_pool(["Mn", "Ga"])
 
     if noiser == "AbsorbingStateNoiser":
         element_pool = ["(X)"] + element_pool
@@ -57,7 +57,8 @@ def main():
 
     diff_model_kwargs = {
         "drop_prob":0.1,
-        "lr":1e-3
+        "lr":1e-3,
+        #"d3pm_auxillary_weight":0.01
     }
 
     #construct the diffusion model
@@ -72,20 +73,23 @@ def main():
         conditioning_kwargs=conditioning_kwargs,
         diff_model_kwargs=diff_model_kwargs
     )
-
+  
     #Load in the data and setup training and validation loaders
     train_loader, val_loader = get_dataloaders_from_atoms_list(
-        atoms_list=read("../datasets/random_search/rnd_rate_eform.traj", index=":"),
+        atoms_list=read("../../results/reconstruction_check/chgnet_result_all_fcc.traj", index=":"),
         element_pool = element_pool,
         condition_keys=condition_keys,
         add_active_site_connectivity=False,
         use_fully_connected_graph=False,
-        batch_size=20
+        batch_size=20,
+        graph_kwargs={"use_log":True}
     )
-    
+    #for batch in train_loader:
+    #    print(batch.e_form)
+    #exit()
     #Trainer parameters
     trainer_kwargs={
-        "max_epochs":600,
+        "max_epochs":1000,
         "log_every_n_steps":1, 
         "enable_progress_bar":True, 
         "enable_model_summary":True,
@@ -98,12 +102,12 @@ def main():
     #construct the trainer for handling training process
     trainer = setup_trainer_and_logger(
         project_name="rate_eform_testing",
-        model_name="test_log_rate",
+        model_name="test_debug",
         pth_header="rate_eform_testing",
-        accelerator="gpu",
+        accelerator="cpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,
-        patience=500
+        patience=800
     )
 
     #train the diffusion model

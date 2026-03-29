@@ -78,6 +78,19 @@ class DiffusionModel(LightningModule):
             "rate": self.drop_pattern_matrix[1],
             "e_form":self.drop_pattern_matrix[2]
         }
+        self.condition_joiner = nn.Sequential(
+            nn.Linear(
+                in_features=self.rate_conditioning.embedding_dim+self.e_form_conditioning.embedding_dim, 
+                out_features=self.rate_conditioning.embedding_dim+self.e_form_conditioning.embedding_dim
+            ),
+            nn.ReLU(),
+            nn.Linear(
+                in_features=self.rate_conditioning.embedding_dim+self.e_form_conditioning.embedding_dim, 
+                out_features=self.rate_conditioning.embedding_dim
+            ),
+            nn.ReLU(),
+            nn.Linear(in_features=self.rate_conditioning.embedding_dim, out_features=self.rate_conditioning.embedding_dim)
+        )
         self.lr = lr
         self.weight_decay = weight_decay
         self.num_kl_div_estimates = num_kl_div_estimates
@@ -151,8 +164,13 @@ class DiffusionModel(LightningModule):
             scheduler=self.scheduler
         ) for x0 in x0s
         ])
-        reverse_probs = (denoise_probs[None, :, :]*q_revs_tot).sum(dim=0)
+        weights = denoise_probs.T.unsqueeze(-1)
+        reverse_probs = (weights * q_revs_tot).sum(dim=0)
         normalized_probs = reverse_probs/reverse_probs.sum(dim=1, keepdim=True)
+        xt_idx = x_t.argmax(dim=-1)
+        x0_pred_idx = denoise_probs.argmax(dim=-1)
+        non_abs = xt_idx != self.noiser.absorbing_state_index
+        print((x0_pred_idx[non_abs] == xt_idx[non_abs]).float().mean())
         return normalized_probs
     
     def get_kl_divergence(self, p_dist, q_dist, batch):
@@ -175,7 +193,7 @@ class DiffusionModel(LightningModule):
             time_batch=time[noised_batch.batch], 
             scheduler=self.scheduler
         )
-        q_revs = torch.clamp(q_revs, min=1e-7, max=1.0 - 1e-7)
+        #q_revs = torch.clamp(q_revs, min=1e-7, max=1.0 - 1e-7)
         logits = self.logit_predictor.get_logits(
             batch=noised_batch,
             time=time,
@@ -210,11 +228,11 @@ class DiffusionModel(LightningModule):
             logits=logits
         )
 
-        q_forward = self.noiser.get_accum_transition_probabilities(
-            x0_batch=x0_batch.x*1.0,
-            time_batch=time[noised_batch.batch]
-        )
-        return self.get_cross_entropy(p_dist=q_forward, q_dist=probs, batch=noised_batch).mean()
+        #q_forward = self.noiser.get_accum_transition_probabilities(
+        #    x0_batch=x0_batch.x*1.0,
+        #    time_batch=time[noised_batch.batch]
+        #)
+        return self.get_cross_entropy(p_dist=x0_batch.x*1.0, q_dist=probs, batch=noised_batch).mean()
 
 
     def get_reconstruction_term_loss(self, batch, embedded_condition):
@@ -264,25 +282,28 @@ class DiffusionModel(LightningModule):
         return F.mse_loss(x0_rates.squeeze(-1), torch.log(batch.y))
 
     def get_joint_embedded_condition(self, batch, drop_scenario):
-        resulting_condition = 0.0
+        joined_condition = 0.0
+        #resulting_conditions = []
+        #print(drop_scenario)
         for drop_condition, embedder, condition in zip(
                 drop_scenario, 
                 [self.rate_conditioning, self.e_form_conditioning], 
                 [batch.rate if "rate" in batch else None, batch.e_form if "e_form" in batch else None]
             ):
+            #print(condition)
             embedded_condition = embedder.get_condition_embedding(
                 condition=condition,
                 batch_size=batch.batch_size,
                 drop_condition=drop_condition
             )
-            resulting_condition += embedded_condition
-        return resulting_condition[batch.batch]
+            joined_condition+=embedded_condition#resulting_conditions.append(embedded_condition)
+        #joined_condition = self.condition_joiner(torch.hstack(resulting_conditions))
+        return joined_condition[batch.batch]
             
     def calculate_loss_terms(self, batch, batch_idx):
         idx = torch.multinomial(self.drop_prob_vector, 1).squeeze(-1)
         drop_scenario = self.drop_pattern_matrix[idx]
         embedded_condition = self.get_joint_embedded_condition(batch=batch, drop_scenario=drop_scenario)
-
         t_span = (2, self.scheduler.t_final)
         denoise_matching_term = 0.0
         aux_loss = 0.0
@@ -713,9 +734,9 @@ def setup_diffusion_model(
     if scheduler_type not in implemented_modules["scheduler"]:
         raise Exception(f"scheduler of type {scheduler_type} is not implemented")
     else:
-        scheduler = ExponentialBetaScheduler(
-            **scheduler_kwargs
-        )
+        scheduler = CosineScheduler(time_sample_method="stratified")#ExponentialBetaScheduler(
+            #**scheduler_kwargs
+        #)
     
     condition_keys = []
     embedding_cond_dim = conditioning_kwargs.pop("embedding_dim", 64)

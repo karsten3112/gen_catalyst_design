@@ -6,7 +6,7 @@ import numpy as np
 import sys
 sys.path.insert(0, "../")
 from gen_catalyst_design.reaction_rates import ReactionMechanism
-from gen_catalyst_design.utils import get_atoms_from_template_db, get_calculator, get_features_bulk_and_gas
+from gen_catalyst_design.utils import get_atoms_from_template_db, get_calculator, get_features_bulk_and_gas, get_full_element_pool
 from gen_catalyst_design.db import Database
 import torch
 from ase.io import read
@@ -22,7 +22,7 @@ def main():
     model = "WWL-GPR"
     template_type = "surface" # cluster | surface
     miller_index = "100" # 100 | 111
-    elements = ["Rh", "Pt", "Pd", "Co", "Ga", "Cu", "Zn", "Au", "Ag", 'Mn', 'Fe', 'Os', 'Mo', 'Ir', 'Ru', "Ni"] # Elements of the surface.
+    elements = get_full_element_pool() # Elements of the surface.
     random_seed = 42 # Random seed for reproducibility.
     np.random.seed(random_seed)
     torch.manual_seed(random_seed)

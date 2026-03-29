@@ -58,11 +58,12 @@ parsed_args = parser.parse_args()
 def main():
     random_seed = 42
     random.seed(random_seed)
-    n_samples = 2
+    n_samples = 1000
     miller_index = "100"
     calculator_type = parsed_args.calculator
     start_from_mean_lattice = parsed_args.mean_lat
-    element_pool = get_full_element_pool()
+    element_pool = get_element_pool_from_kw(keyword=parsed_args.element_pool)
+    print(element_pool)
     outdir = parsed_args.outdir
     filename = parsed_args.filename
     if outdir is not None:
@@ -128,7 +129,7 @@ def get_calculator(
     if calculator_type == "chgnet":
         return CHGNetCalculator()
     elif calculator_type == "mace_mh1":
-        return mace_mp(model="../../../../mace_models/mace-mh-1.model", head="omat_pbe")
+        return mace_mp(model="../../../mace_models/mace-mh-1.model", head="omat_pbe")
     else:
         raise Exception(f"calculator type: {calculator_type} is not implemented")
 

@@ -2,9 +2,10 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, Callback
 from .calculators import GCNNCalculator, GraphCalculator
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.trainer import Trainer
-from catalyst_opt_tools.utilities import preprocess_features, update_atoms_list
+from catalyst_opt_tools.utilities import preprocess_features
 from ase_ml_models.databases import get_atoms_list_from_db
 from ase.db import connect
+import numpy as np
 import yaml
 import torch
 import wandb
@@ -253,3 +254,10 @@ def get_full_element_pool(
         )
     return result_list
 
+
+
+def get_rate_ecdf(
+        rate_distribution:np.array
+    ):
+    result = ecdf(rate_distribution)
+    return result

@@ -1,4 +1,4 @@
-from gen_catalyst_design.plotting import get_distribution_dict, plot_kde_dist
+from gen_catalyst_design.post_processing import get_distribution_dict, plot_kde_dist
 from gen_catalyst_design.db import Database
 import matplotlib as mpl
 import matplotlib.pyplot as plt
