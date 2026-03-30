@@ -13,13 +13,18 @@ def main():
     n_samples = 20
     miller_index = "100"
     template_type = "surface"
-    ckpt_file_header = "rate_eform_testing/test_debug"
+    ckpt_file_header = "rate_eform_testing/test_debug_cond"
     ckpt_file = os.path.join(ckpt_file_header,"checkpoints/last.ckpt") #epoch=epoch=146-val=val_loss=1.9309.ckpt
     include_stability = True
     temps = [1.0]
-    rate_conditions = [7.40]#[5.0, 10.0, 15.0, 20.0]
+    rate_conditions = [1.0]#[5.0, 10.0, 15.0, 20.0]
     e_form_conditions = [4.0]
-    guidance_scale = 2.0
+    guidance_scale = 10.0
+    guidance_scale_dict = {
+        "joint":0.0,#guidance_scale,
+        "rate":guidance_scale,
+        "e_form":0.0#guidance_scale
+    }
     #rate_guidance = 0.0
     #e_form_guidance = 2.0
 
@@ -50,8 +55,7 @@ def main():
                 n_samples=n_samples,
                 template_atoms=reaction_mechanism.clean_surface,
                 conditioning_dicts=[{"rate":rate_condition, "e_form":e_form_condition} for _ in range(n_samples)],
-                guidance_scale=guidance_scale,
-                #guidance_scale_dict={"rate":rate_guidance, "e_form":e_form_guidance},
+                guidance_scale_dict=guidance_scale_dict,
                 condition_keys=["rate", "e_form"],
                 batch_size=10,
                 timesteps=None, 

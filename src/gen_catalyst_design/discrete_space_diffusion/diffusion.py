@@ -107,9 +107,9 @@ class DiffusionModel(LightningModule):
             keep_e_form_prob = keep_rate_prob
         elif type(self.rate_conditioning) == NoneConditioning and type(self.e_form_conditioning) != NoneConditioning:
             keep_rate_prob = 0.0
-            keep_e_form_prob = 2.0*(1.0 - self.drop_prob)/4.0
+            keep_e_form_prob = (1.0 - self.drop_prob)/2.0
         elif type(self.rate_conditioning) != NoneConditioning and type(self.e_form_conditioning) == NoneConditioning:
-            keep_rate_prob = 2.0*(1.0 - self.drop_prob)/4.0
+            keep_rate_prob = (1.0 - self.drop_prob)/2.0
             keep_e_form_prob = 0.0
         else:
             keep_rate_prob = 0.0
@@ -149,14 +149,34 @@ class DiffusionModel(LightningModule):
             batch,
             time
         ):
+
         denoise_probs = self.logit_predictor.get_probs_from_logits(
             logits=denoise_logits
         )
+
+        #if self.noiser.absorbing_state_index is not None:
+        #    indices = torch.argmax(x_t, dim=-1)
+        #    abs_idx = self.noiser.absorbing_state_index
+
+        #    mask = indices != abs_idx                          # non-absorbed rows
+        #    onehots = F.one_hot(indices, num_classes=len(self.element_pool)).float()
+
+        #    masked_probs = denoise_probs.clone()
+
+            # keep only the valid x0 for non-absorbed rows
+        #    masked_probs[mask] = masked_probs[mask] * onehots[mask]
+
+         #   # renormalize those rows safely
+           # row_sums = masked_probs[mask].sum(dim=-1, keepdim=True).clamp_min(1e-12)
+          #  masked_probs[mask] = masked_probs[mask] / row_sums
+           # denoise_probs = masked_probs
+
         x0s = [
             F.one_hot(torch.tensor(i, device=self.device), num_classes=len(self.element_pool)) * \
             torch.ones(size=(len(x_t), 1), device=self.device) 
             for i in range(len(self.element_pool))
         ]
+
         q_revs_tot = torch.stack([self.noiser.get_reverse_transition_probabilities(
             x0_batch=x0*1.0,
             x_t_batch=x_t*1.0, 
@@ -167,10 +187,6 @@ class DiffusionModel(LightningModule):
         weights = denoise_probs.T.unsqueeze(-1)
         reverse_probs = (weights * q_revs_tot).sum(dim=0)
         normalized_probs = reverse_probs/reverse_probs.sum(dim=1, keepdim=True)
-        xt_idx = x_t.argmax(dim=-1)
-        x0_pred_idx = denoise_probs.argmax(dim=-1)
-        non_abs = xt_idx != self.noiser.absorbing_state_index
-        print((x0_pred_idx[non_abs] == xt_idx[non_abs]).float().mean())
         return normalized_probs
     
     def get_kl_divergence(self, p_dist, q_dist, batch):
@@ -180,8 +196,7 @@ class DiffusionModel(LightningModule):
 
     def get_cross_entropy(self, p_dist, q_dist, batch):
         cross_entropy = -(p_dist*torch.log(q_dist+self.log_regularization)).sum(dim=-1)
-        graph_cross_entropy = scatter(cross_entropy, batch.batch, dim=0, reduce="mean")
-        return graph_cross_entropy
+        return cross_entropy
 
 
     def get_denoise_matching_term_loss(self, noised_batch, x0_batch, time, embedded_condition):
@@ -209,7 +224,8 @@ class DiffusionModel(LightningModule):
                 batch=noised_batch,
                 time=time
             )
-            kl_div_per_graph = self.get_kl_divergence(p_dist=q_revs, q_dist=denoise_probs, batch=noised_batch)
+            kl_divs_per_token = self.get_kl_divergence(p_dist=q_revs, q_dist=denoise_probs, batch=noised_batch)
+            kl_div_per_graph = scatter(kl_divs_per_token, noised_batch.batch, dim=0, reduce="mean")
             loss += kl_div_per_graph.mean()
         else:
             loss += self.cross_entropy_logits(logits, q_revs)
@@ -265,7 +281,9 @@ class DiffusionModel(LightningModule):
                 batch=batch,
                 time=time
             )
-            return self.get_cross_entropy(p_dist=batch.x*1.0, q_dist=denoise_probs, batch=batch).mean()#self.get_kl_divergence(p_dist=q_forward, q_dist=denoise_probs, batch=batch_1).mean()
+            kl_divs_per_token = self.get_kl_divergence(p_dist=q_forward, q_dist=denoise_probs, batch=batch_1)
+            kl_div_per_graph = scatter(kl_divs_per_token, batch.batch, dim=0, reduce="mean")
+            return kl_div_per_graph.mean()
         else:
             return self.cross_entropy_logits(logits, q_forward)
 
@@ -282,23 +300,22 @@ class DiffusionModel(LightningModule):
         return F.mse_loss(x0_rates.squeeze(-1), torch.log(batch.y))
 
     def get_joint_embedded_condition(self, batch, drop_scenario):
-        joined_condition = 0.0
-        #resulting_conditions = []
-        #print(drop_scenario)
+        resulting_condition = 0.0
+        resulting_conditions = []
         for drop_condition, embedder, condition in zip(
                 drop_scenario, 
                 [self.rate_conditioning, self.e_form_conditioning], 
                 [batch.rate if "rate" in batch else None, batch.e_form if "e_form" in batch else None]
             ):
-            #print(condition)
             embedded_condition = embedder.get_condition_embedding(
                 condition=condition,
                 batch_size=batch.batch_size,
                 drop_condition=drop_condition
             )
-            joined_condition+=embedded_condition#resulting_conditions.append(embedded_condition)
+            resulting_condition+=embedded_condition
+            #resulting_conditions.append(embedded_condition)
         #joined_condition = self.condition_joiner(torch.hstack(resulting_conditions))
-        return joined_condition[batch.batch]
+        return resulting_condition[batch.batch]#joined_condition[batch.batch]
             
     def calculate_loss_terms(self, batch, batch_idx):
         idx = torch.multinomial(self.drop_prob_vector, 1).squeeze(-1)
@@ -394,8 +411,7 @@ class DiffusionModel(LightningModule):
             template_atoms:Atoms, 
             conditioning_dicts:dict={},
             condition_keys:list=["rate"],
-            guidance_scale:float=2.0,
-            #guidance_scale_dict:dict={"rate":2.0},
+            guidance_scale_dict:dict={},
             return_as_atoms_list:bool=False, 
             batch_size:int=40,
             timesteps:torch.tensor=None,
@@ -406,11 +422,6 @@ class DiffusionModel(LightningModule):
         self.eval()
         self.on_sample_start()
 
-        guidance_scale_dict = {
-            "joint":guidance_scale,
-            "rate":0.1*guidance_scale,
-            "e_form":0.1*guidance_scale
-        }
 
         noised_atoms = self.noiser.sample_atoms_from_stationary(
             n_samples=n_samples, 
@@ -426,6 +437,7 @@ class DiffusionModel(LightningModule):
             condition_keys=condition_keys,
             dataset_kwargs=dataset_kwargs
         )
+       
         samples = []
         for batch in sample_loader:
             denoised_batch_list = self.denoise_batch(

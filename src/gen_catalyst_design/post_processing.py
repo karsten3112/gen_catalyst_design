@@ -1,6 +1,6 @@
 from sklearn.neighbors import KernelDensity
 from .db import Database, load_datadicts_from_db
-from scipy.stats import ecdf
+from scipy.stats import ecdf, iqr
 import numpy as np
 
 
@@ -93,7 +93,6 @@ def get_ecdf_sf(
     result = ecdf(distribution)
     return result.cdf, result.sf
 
-
 def get_top_k_solutions(
         distribution:np.array,
         top_k:int=10,    
@@ -117,9 +116,150 @@ def get_accummax_curve(
 
 def get_area_under_auc(
         accum_max_curve:np.array,
-        normalize:bool=False
+        normalize:bool=False,
+        #add_log_offset:float=1.0
     ):
     if normalize:
         accum_max_curve/=np.max(accum_max_curve)[0]
+    return np.sum(np.abs(accum_max_curve))
     
+def get_unique_structure_freq(
+        elements_list:list
+    ):
+    tot_samples = len(elements_list)
+    stored_keys = []
+
+    #Maybe add rotational invariance into check here
+
+    for elements in elements_list:
+        query = "".join(elements)
+        if query not in stored_keys:
+            stored_keys.append(query)
+    num_unique_samples = len(stored_keys)
+    return num_unique_samples/tot_samples
+
+
+def get_tot_summary_dict(
+        distribution:np.array,
+        top_k:int=100,
+        elements_list:list=None,
+        use_log:bool=True
+    ):
+    tot_summary_dict = {}
+    if use_log:
+        distribution = np.log10(distribution)
     
+    tot_summary_dict["max_val"] = np.max(distribution)
+    tot_summary_dict["min_val"] = np.min(distribution)
+
+    if elements_list is not None:
+        unique_freq = get_unique_structure_freq(
+            elements_list=elements_list
+        )
+        tot_summary_dict["unique_freq"] = unique_freq
+
+
+    distribution_summary = get_dist_summary(
+        distribution=distribution
+    )
+
+    tot_summary_dict["whole_distribution"] = distribution_summary
+
+    top_k_solutions, indices = get_top_k_solutions(
+        distribution=distribution,
+        top_k=top_k
+    )
+
+    tot_summary_dict["top_k_solutions"] = top_k_solutions
+    tot_summary_dict["top_k_indices"] = indices
+
+    top_k_summary = get_dist_summary(
+        distribution=top_k_solutions
+    )
+    tot_summary_dict["top_k_summary"] = top_k_summary
+    return tot_summary_dict
+
+
+def get_dist_summary(
+        distribution:np.array,
+    ):
+    
+    median = np.median(distribution)
+    mean = np.mean(distribution)
+    IQR = iqr(distribution)
+
+    return {"mean":mean, "median":median, "IQR":IQR}
+
+
+def get_survival_func(
+        distribution:np.array,
+        use_log:bool=False
+    ):
+    if use_log:
+        distribution = np.log10(distribution)
+    ecdf, sf = get_ecdf_sf(
+        distribution=distribution
+    )
+    return {"sf":sf, "in_log_space":use_log}
+
+def get_accum_max_curve(
+        distribution:np.array,
+        use_log:bool=False,
+        get_auc:bool=True
+    ):
+    if use_log:
+        distribution = np.log10(distribution)
+    
+    max_curve = []
+    for i, value in enumerate(distribution):
+        if i == 0:
+            max_curve.append(value)
+        else:
+            if value > max_curve[-1]:
+                max_curve.append(value)
+            else:
+                max_curve.append(max_curve[-1])
+    max_curve = np.array(max_curve)
+    if get_auc:
+        auc = np.sum(np.abs(max_curve))
+    else:
+        auc = None
+    return {"max_curve":max_curve, "auc": auc}
+
+
+def get_search_statistics(
+        database_filenames:list,
+        pth_header:str=None
+    ):
+
+    summary_dicts = []
+    survival_func_dicts = []
+    accum_max_curve_dicts = []
+
+    for database_file in database_filenames:
+        db = Database.establish_connection(
+            filename=database_file,
+            pth_header=pth_header
+        )
+        datadicts = load_datadicts_from_db(database=db)
+        rate_distribution = np.array([datadict["rate"] for datadict in datadicts])
+        elements_list = [datadict["elements"] for datadict in datadicts]
+
+        summary_dict = get_tot_summary_dict(
+            distribution=rate_distribution,
+            elements_list=elements_list,
+            use_log=True
+        )
+        summary_dicts.append(summary_dict)
+
+        sf_dict = get_survival_func(
+            distribution=rate_distribution
+        )
+        survival_func_dicts.append(sf_dict)
+
+        acc_max_dict = get_accum_max_curve(
+            distribution=rate_distribution
+        )
+        accum_max_curve_dicts.append(acc_max_dict)
+    
+    return summary_dicts, survival_func_dicts, accum_max_curve_dicts

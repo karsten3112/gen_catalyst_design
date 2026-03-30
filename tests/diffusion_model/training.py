@@ -57,7 +57,7 @@ def main():
 
     diff_model_kwargs = {
         "drop_prob":0.1,
-        "lr":1e-3,
+        "lr":1e-4,
         #"d3pm_auxillary_weight":0.01
     }
 
@@ -81,7 +81,7 @@ def main():
         condition_keys=condition_keys,
         add_active_site_connectivity=False,
         use_fully_connected_graph=False,
-        batch_size=20,
+        batch_size=40,
         graph_kwargs={"use_log":True}
     )
     #for batch in train_loader:
@@ -89,7 +89,7 @@ def main():
     #exit()
     #Trainer parameters
     trainer_kwargs={
-        "max_epochs":1000,
+        "max_epochs":5000,
         "log_every_n_steps":1, 
         "enable_progress_bar":True, 
         "enable_model_summary":True,
@@ -102,12 +102,12 @@ def main():
     #construct the trainer for handling training process
     trainer = setup_trainer_and_logger(
         project_name="rate_eform_testing",
-        model_name="test_debug",
+        model_name="test_debug_cond",
         pth_header="rate_eform_testing",
-        accelerator="cpu",
+        accelerator="gpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,
-        patience=800
+        patience=5000
     )
 
     #train the diffusion model
