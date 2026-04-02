@@ -1,9 +1,7 @@
 from .schedulers import DiscreteTimeScheduler, ExponentialBetaScheduler, CosineScheduler, LinearBetaScheduler, LinearAlphaScheduler
+from .conditioning import Conditioning, NoneConditioning, RateScalarConditioning, EformConditioning, RateClassConditioning
 from .noisers import DiscreteSpaceNoiser, UniformTransitionsNoiser, AbsorbingStateNoiser
-from .logits import MPNNLogitPredictor, LogitPredictor, TransformerLogitPredictor
-from .conditioning import Conditioning, NoneConditioning, RateConditioning, EformConditioning
-from torch_geometric.utils import to_dense_batch
-from .guidance import ReactionRateModule, rateGNN
+from .logits import MPNNLogitPredictor
 from ase.atoms import Atoms
 from torch_geometric.utils import scatter
 import torch
@@ -25,12 +23,12 @@ implemented_modules = {
     },
     "logit_predictor":{
         "MPNNLogitPredictor":MPNNLogitPredictor,
-        "TransformerLogitPredictor":TransformerLogitPredictor
     },
     "conditioning":{
         "None":NoneConditioning,
-        "RateConditioning":RateConditioning,
-        "EformConditioning":EformConditioning
+        "RateScalarConditioning":RateScalarConditioning,
+        "EformConditioning":EformConditioning,
+        "RateClassConditioning":RateClassConditioning
     }
 
 }
@@ -41,9 +39,9 @@ class DiffusionModel(LightningModule):
             element_pool:list=[],
             scheduler:DiscreteTimeScheduler=None,
             noiser:DiscreteSpaceNoiser=None,
-            logit_predictor:LogitPredictor=None,
             rate_conditioning:Conditioning=NoneConditioning(),
             e_form_conditioning:Conditioning=NoneConditioning(),
+            logit_predictor_kwargs:dict={},
             drop_prob:float=0.0,
             lr:float=1e-3,
             weight_decay:float=0.0,
@@ -57,9 +55,29 @@ class DiffusionModel(LightningModule):
         self.element_pool = element_pool
         self.scheduler = scheduler
         self.noiser = noiser
-        self.logit_predictor = logit_predictor
         self.rate_conditioning = rate_conditioning
         self.e_form_conditioning = e_form_conditioning
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.num_kl_div_estimates = num_kl_div_estimates
+        self.use_x0_reparam = use_x0_reparam
+        self.d3pm_auxillary_weight = d3pm_auxillary_weight
+        self.auxillary_rate_weight = auxillary_rate_weight
+        self.log_regularization = log_regularization
+
+        self.logit_predictor = MPNNLogitPredictor(
+            num_elements=len(self.element_pool),
+            rate_conditioning_dim=self.rate_conditioning.embedding_dim,
+            e_form_conditioning_dim=self.e_form_conditioning.embedding_dim,
+            embedding_dim=logit_predictor_kwargs.pop("embedding_dim", 64),
+            hidden_rep_dim=logit_predictor_kwargs.pop("hidden_rep_dim", 64),
+            time_embedding_dim=logit_predictor_kwargs.pop("time_embedding_dim", 64),
+            n_interaction_blocks=logit_predictor_kwargs.pop("n_interaction_blocks", 5),
+            message_dim=logit_predictor_kwargs.pop("message_dim", 64),
+            activation_func=logit_predictor_kwargs.pop("activation_func", nn.ReLU()),
+            aggr=logit_predictor_kwargs.pop("aggr","mean"),
+            device=self.device
+        )
 
         if self.noiser is not None and self.noiser.accumulated_q_matrices is None:
             self.noiser.pre_compute_accum_q_matrices(scheduler=self.scheduler)
@@ -78,28 +96,6 @@ class DiffusionModel(LightningModule):
             "rate": self.drop_pattern_matrix[1],
             "e_form":self.drop_pattern_matrix[2]
         }
-        self.condition_joiner = nn.Sequential(
-            nn.Linear(
-                in_features=self.rate_conditioning.embedding_dim+self.e_form_conditioning.embedding_dim, 
-                out_features=self.rate_conditioning.embedding_dim+self.e_form_conditioning.embedding_dim
-            ),
-            nn.ReLU(),
-            nn.Linear(
-                in_features=self.rate_conditioning.embedding_dim+self.e_form_conditioning.embedding_dim, 
-                out_features=self.rate_conditioning.embedding_dim
-            ),
-            nn.ReLU(),
-            nn.Linear(in_features=self.rate_conditioning.embedding_dim, out_features=self.rate_conditioning.embedding_dim)
-        )
-        self.lr = lr
-        self.weight_decay = weight_decay
-        self.num_kl_div_estimates = num_kl_div_estimates
-        self.use_x0_reparam = use_x0_reparam
-        self.d3pm_auxillary_weight = d3pm_auxillary_weight
-        self.auxillary_rate_weight = auxillary_rate_weight
-        self.log_regularization = log_regularization
-        self.cross_entropy_logits = nn.CrossEntropyLoss()
-        self.mse_loss = nn.MSELoss()
 
     def get_drop_prob_vector(self):
         if type(self.rate_conditioning) != NoneConditioning and type(self.e_form_conditioning) != NoneConditioning:
@@ -154,23 +150,6 @@ class DiffusionModel(LightningModule):
             logits=denoise_logits
         )
 
-        #if self.noiser.absorbing_state_index is not None:
-        #    indices = torch.argmax(x_t, dim=-1)
-        #    abs_idx = self.noiser.absorbing_state_index
-
-        #    mask = indices != abs_idx                          # non-absorbed rows
-        #    onehots = F.one_hot(indices, num_classes=len(self.element_pool)).float()
-
-        #    masked_probs = denoise_probs.clone()
-
-            # keep only the valid x0 for non-absorbed rows
-        #    masked_probs[mask] = masked_probs[mask] * onehots[mask]
-
-         #   # renormalize those rows safely
-           # row_sums = masked_probs[mask].sum(dim=-1, keepdim=True).clamp_min(1e-12)
-          #  masked_probs[mask] = masked_probs[mask] / row_sums
-           # denoise_probs = masked_probs
-
         x0s = [
             F.one_hot(torch.tensor(i, device=self.device), num_classes=len(self.element_pool)) * \
             torch.ones(size=(len(x_t), 1), device=self.device) 
@@ -199,7 +178,7 @@ class DiffusionModel(LightningModule):
         return cross_entropy
 
 
-    def get_denoise_matching_term_loss(self, noised_batch, x0_batch, time, embedded_condition):
+    def get_denoise_matching_term_loss(self, noised_batch, x0_batch, time, rate_embedded, e_form_embedded):
         #Calculate the known true posterier for when x0 is known
         loss = 0.0
         q_revs = self.noiser.get_reverse_transition_probabilities(
@@ -212,7 +191,8 @@ class DiffusionModel(LightningModule):
         logits = self.logit_predictor.get_logits(
             batch=noised_batch,
             time=time,
-            embedded_condition=embedded_condition   
+            rate_embedded=rate_embedded,
+            e_form_embedded=e_form_embedded  
         )
         #Apply the x0 reparameterization as outlined in D3PM if desired
         #return the cross entropy between the true posterier and the predicted reversals
@@ -232,12 +212,13 @@ class DiffusionModel(LightningModule):
         return loss
 
 
-    def get_d3pm_auxillary_term_loss(self, noised_batch, x0_batch, time, embedded_condition):
+    def get_d3pm_auxillary_term_loss(self, noised_batch, x0_batch, time, rate_embedded, e_form_embedded):
         #Calculate the auxillary term as mentioned in D3PM paper
         logits = self.logit_predictor.get_logits(
             batch=noised_batch,
             time=time,
-            embedded_condition=embedded_condition 
+            rate_embedded=rate_embedded,
+            e_form_embedded=e_form_embedded
         )
 
         probs = self.logit_predictor.get_probs_from_logits(
@@ -251,7 +232,7 @@ class DiffusionModel(LightningModule):
         return self.get_cross_entropy(p_dist=x0_batch.x*1.0, q_dist=probs, batch=noised_batch).mean()
 
 
-    def get_reconstruction_term_loss(self, batch, embedded_condition):
+    def get_reconstruction_term_loss(self, batch, rate_embedded, e_form_embedded):
         #get the known forward noising probabilites for going from x0 -> x1  
         batch_1 = batch.clone()
         time = torch.ones(size=(batch.batch_size,), dtype=torch.long, device=self.device)
@@ -269,7 +250,8 @@ class DiffusionModel(LightningModule):
         logits = self.logit_predictor.get_logits(
             batch=batch_1,
             time=time,
-            embedded_condition=embedded_condition  
+            rate_embedded=rate_embedded,
+            e_form_embedded=e_form_embedded
         )
         
         #Apply the x0 reparameterization as outlined in D3PM if desired
@@ -287,40 +269,37 @@ class DiffusionModel(LightningModule):
         else:
             return self.cross_entropy_logits(logits, q_forward)
 
-    def get_auxillary_rate_loss(self, batch, time, embedded_condition=None):
-        x0_rates = self.logit_predictor.get_x0_rate_prediction(
-            batch=batch,
-            time=time[batch.batch],
-            embedded_condition=self.conditioning.get_condition_embedding(
-                condition=batch.y,
-                batch_size=batch.batch_size,
-                drop_condition=True
-            )[batch.batch]
-        )
-        return F.mse_loss(x0_rates.squeeze(-1), torch.log(batch.y))
+    #def get_auxillary_rate_loss(self, batch, time, embedded_condition=None):
+    #    x0_rates = self.logit_predictor.get_x0_rate_prediction(
+    #        batch=batch,
+    #        time=time[batch.batch],
+    #        embedded_condition=self.conditioning.get_condition_embedding(
+    #            condition=batch.y,
+    #            batch_size=batch.batch_size,
+    #            drop_condition=True
+    #        )[batch.batch]
+    #    )
+    #    return F.mse_loss(x0_rates.squeeze(-1), torch.log(batch.y))
 
-    def get_joint_embedded_condition(self, batch, drop_scenario):
-        resulting_condition = 0.0
-        resulting_conditions = []
-        for drop_condition, embedder, condition in zip(
-                drop_scenario, 
-                [self.rate_conditioning, self.e_form_conditioning], 
-                [batch.rate if "rate" in batch else None, batch.e_form if "e_form" in batch else None]
-            ):
-            embedded_condition = embedder.get_condition_embedding(
-                condition=condition,
-                batch_size=batch.batch_size,
-                drop_condition=drop_condition
-            )
-            resulting_condition+=embedded_condition
-            #resulting_conditions.append(embedded_condition)
-        #joined_condition = self.condition_joiner(torch.hstack(resulting_conditions))
-        return resulting_condition[batch.batch]#joined_condition[batch.batch]
+    def embed_rate_e_form(self, batch, drop_scenario):
+        rate, e_form = batch.rate if "rate" in batch else None, batch.e_form if "e_form" in batch else None
+        drop_rate, drop_e_form = drop_scenario[0], drop_scenario[1]
+        embedded_rate = self.rate_conditioning.get_condition_embedding(
+            condition=rate,
+            batch_size=batch.batch_size,
+            drop_condition=drop_rate
+        )
+        embedded_e_form = self.e_form_conditioning.get_condition_embedding(
+            condition=e_form,
+            batch_size=batch.batch_size,
+            drop_condition=drop_e_form
+        )
+        return embedded_rate[batch.batch], embedded_e_form[batch.batch]
             
     def calculate_loss_terms(self, batch, batch_idx):
         idx = torch.multinomial(self.drop_prob_vector, 1).squeeze(-1)
         drop_scenario = self.drop_pattern_matrix[idx]
-        embedded_condition = self.get_joint_embedded_condition(batch=batch, drop_scenario=drop_scenario)
+        embedded_rate, embedded_e_form = self.embed_rate_e_form(batch=batch, drop_scenario=drop_scenario)
         t_span = (2, self.scheduler.t_final)
         denoise_matching_term = 0.0
         aux_loss = 0.0
@@ -336,7 +315,8 @@ class DiffusionModel(LightningModule):
                 noised_batch=batch_t,
                 x0_batch=batch,
                 time=time,
-                embedded_condition=embedded_condition
+                rate_embedded=embedded_rate,
+                e_form_embedded=embedded_e_form
             )
             #If desired add the auxillary term as described in the D3PM paper
             if self.d3pm_auxillary_weight is not None:
@@ -344,24 +324,26 @@ class DiffusionModel(LightningModule):
                     noised_batch=batch_t,
                     x0_batch=batch,
                     time=time,
-                    embedded_condition=embedded_condition
+                    rate_embedded=embedded_rate,
+                    e_form_embedded=embedded_e_form
                 )
             #If desired add the auxillary-rate loss
-            if self.auxillary_rate_weight is not None:
-                aux_rate_loss += self.auxillary_rate_weight*self.get_auxillary_rate_loss(
-                    batch=batch_t,
-                    time=time,
-                    embedded_condition=embedded_condition,
-                )
+            #if self.auxillary_rate_weight is not None:
+            #    aux_rate_loss += self.auxillary_rate_weight*self.get_auxillary_rate_loss(
+            #        batch=batch_t,
+            #        time=time,
+            #        embedded_condition=embedded_condition,
+            #    )
         
         denoise_matching_term/=self.num_kl_div_estimates
         aux_loss/=self.num_kl_div_estimates
-        aux_rate_loss/=self.num_kl_div_estimates
+        #aux_rate_loss/=self.num_kl_div_estimates
 
         #Calculating the reconstruction term and adding it to the total loss
         reconstruction_term = self.get_reconstruction_term_loss(
             batch=batch,
-            embedded_condition=embedded_condition
+            rate_embedded=embedded_rate,
+            e_form_embedded=embedded_e_form
         )
         return denoise_matching_term, reconstruction_term, aux_loss, aux_rate_loss
 
@@ -532,14 +514,13 @@ class DiffusionModel(LightningModule):
     def get_guided_logits(self, batch, time, guidance_scale_dict:dict={"rate":2.0}, temp:float=1.0):
         guided_logits_dict = {}
         for kw in ["uncond"]+list(guidance_scale_dict.keys()):
-            embedded_condition = self.get_joint_embedded_condition(
-                batch=batch,
-                drop_scenario=self.drop_scenarios_dict[kw]
-            )
+            embedded_rate, embedded_e_form = self.embed_rate_e_form(batch=batch, drop_scenario=self.drop_scenarios_dict[kw])#self.get_joint_embedded_condition(
+
             logits = self.logit_predictor.get_logits(
                 batch=batch,
                 time=time,
-                embedded_condition=embedded_condition
+                rate_embedded=embedded_rate,
+                e_form_embedded=embedded_e_form
             )
             guided_logits_dict[kw] = logits
         guided_logits = guided_logits_dict["uncond"]
@@ -676,7 +657,6 @@ class DiffusionModel(LightningModule):
             "rate_conditioning":"conditioning",
             "e_form_conditioning":"conditioning"
         }
-        #module_list = ["scheduler", "noiser", "logit_predictor"]
         modules = {}
         for module_type in module_dict:
             info_key = module_type+"_info"
@@ -728,8 +708,7 @@ def setup_diffusion_model(
         element_pool:list,
         noiser_type:str="AbsorbingStateNoiser",
         scheduler_type:str="ExponentialbetaScheduler",
-        add_rate_conditioning:bool=False,
-        add_e_form_conditioning:bool=False,
+        condition_keys:list=[],
         scheduler_kwargs:dict={},
         noiser_kwargs:dict={},
         logit_predictor_kwargs:dict={},
@@ -750,45 +729,94 @@ def setup_diffusion_model(
             #**scheduler_kwargs
         #)
     
-    condition_keys = []
     embedding_cond_dim = conditioning_kwargs.pop("embedding_dim", 64)
-    if add_rate_conditioning:
-        rate_conditioning = RateConditioning(
+    if "rate" in condition_keys:
+        rate_conditioning = RateClassConditioning(
             embedding_dim=embedding_cond_dim,
             **conditioning_kwargs
-        )
-        condition_keys+=["rate"]
+        )#
     else:
         rate_conditioning = NoneConditioning(
             embedding_dim=embedding_cond_dim,
             **conditioning_kwargs
         )
 
-    if add_e_form_conditioning:
+    if "e_form" in condition_keys:
         e_form_conditioning = EformConditioning(
             embedding_dim=embedding_cond_dim,
             **conditioning_kwargs    
         )
-        condition_keys+=["e_form"]
     else:
         e_form_conditioning = NoneConditioning(
             embedding_dim=embedding_cond_dim,
             **conditioning_kwargs
         )
 
-    logit_predictor = MPNNLogitPredictor(
-        num_elements=len(element_pool),
-        conditioning_dim=embedding_cond_dim,
-        **logit_predictor_kwargs
-    )
-
     diff_model = DiffusionModel(
         element_pool=element_pool,
         scheduler=scheduler,
         noiser=noiser,
-        logit_predictor=logit_predictor,
+        logit_predictor_kwargs=logit_predictor_kwargs,
         rate_conditioning=rate_conditioning,
         e_form_conditioning=e_form_conditioning,
         **diff_model_kwargs
     )
-    return diff_model, condition_keys
+    return diff_model
+
+
+
+class HierarchicalDiffusion(LightningModule):
+    def __init__(
+            self,
+            element_pool:list=[],
+            scheduler:DiscreteTimeScheduler=None,
+            noiser:DiscreteSpaceNoiser=None,
+            rate_conditioning:Conditioning=NoneConditioning(),
+            e_form_conditioning:Conditioning=NoneConditioning(),
+            logit_predictor_kwargs:dict={},
+            drop_prob:float=0.0,
+            lr:float=1e-3,
+            weight_decay:float=0.0,
+            num_kl_div_estimates:int=1,
+            use_x0_reparam:bool=True,
+            d3pm_auxillary_weight:float=None,
+            auxillary_rate_weight:float=None,
+            log_regularization:float=1e-12,
+        ):
+        super().__init__()
+
+        #CONSTRUCT THE TOP-LEVEL DIFFUSION MODEL WHICH ONLY CONDITIONS ON RATE
+        self.top_level_diffusion_model = DiffusionModel(
+            element_pool=element_pool,
+            scheduler=scheduler,
+            noiser=noiser,
+            rate_conditioning=rate_conditioning,
+            e_form_conditioning=NoneConditioning(),
+            logit_predictor_kwargs=logit_predictor_kwargs,
+            drop_prob=drop_prob,
+            lr=lr,
+            weight_decay=weight_decay,
+            num_kl_div_estimates=num_kl_div_estimates,
+            use_x0_reparam=use_x0_reparam,
+            d3pm_auxillary_weight=d3pm_auxillary_weight,
+            auxillary_rate_weight=auxillary_rate_weight,
+            log_regularization=log_regularization
+        )
+
+        #CONSTRUCT BOTTOM-LEVEL DIFFUSION MODEL WHICH ONLY CONDITIONS ON E-FORM
+        self.bottom_level_diffusion_model = DiffusionModel(
+            element_pool=element_pool,
+            scheduler=scheduler,
+            noiser=noiser,
+            rate_conditioning=NoneConditioning(),
+            e_form_conditioning=e_form_conditioning,
+            logit_predictor_kwargs=logit_predictor_kwargs,
+            drop_prob=drop_prob,
+            lr=lr,
+            weight_decay=weight_decay,
+            num_kl_div_estimates=num_kl_div_estimates,
+            use_x0_reparam=use_x0_reparam,
+            d3pm_auxillary_weight=d3pm_auxillary_weight,
+            auxillary_rate_weight=auxillary_rate_weight,
+            log_regularization=log_regularization
+        )

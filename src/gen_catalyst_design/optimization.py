@@ -101,7 +101,6 @@ def evaluate_score_from_symbols(
 
 
 def get_score_from_obj_key(datadict:dict, objective_key:str="rate", use_log:bool=False):
-    
     if objective_key == "rate":
         return np.log(datadict["score_dict"]["rate"]) if use_log else datadict["score_dict"]["rate"]
     elif objective_key == "stability":
@@ -136,7 +135,7 @@ def setup_optimization_objective(
     
     #Train calculator on database
     calculator.train_model_from_db(
-         db_filename=f"atoms_adsorbates_{miller_index}_DFT_all.db",
+         db_filename=f"atoms_adsorbates_{miller_index}_DFT_all.db", #remember to change this too
          features_bulk=features_bulk, 
          features_gas=features_gas, 
          db_pth_header=os.path.join(database_pth_header, "DFT_database"),

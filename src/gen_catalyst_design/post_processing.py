@@ -97,7 +97,7 @@ def get_top_k_solutions(
         distribution:np.array,
         top_k:int=10,    
     ):
-    indices = np.argpartition(distribution, top_k)[:top_k]
+    indices = np.argpartition(distribution, -top_k)[-top_k:]
     return distribution[indices], indices
 
 def get_accummax_curve(

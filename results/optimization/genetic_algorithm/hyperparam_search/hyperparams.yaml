@@ -1,0 +1,13 @@
+set_0: {-cross_type: single_point, -mut_type: random, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_0, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_1: {-cross_type: single_point, -mut_type: swap, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_1, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_2: {-cross_type: single_point, -mut_type: inversion, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_2, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_3: {-cross_type: single_point, -mut_type: scramble, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_3, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_4: {-cross_type: two_points, -mut_type: random, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_4, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_5: {-cross_type: two_points, -mut_type: swap, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_5, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_6: {-cross_type: two_points, -mut_type: inversion, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_6, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_7: {-cross_type: two_points, -mut_type: scramble, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_7, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_8: {-cross_type: uniform, -mut_type: random, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_8, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_9: {-cross_type: uniform, -mut_type: swap, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_9, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_10: {-cross_type: uniform, -mut_type: inversion, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_10, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_11: {-cross_type: uniform, -mut_type: scramble, -selection_type: tournament, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_11, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+default: {-mut_type: random, -cross_type: single_point, -selection_type: sss, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: default, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}

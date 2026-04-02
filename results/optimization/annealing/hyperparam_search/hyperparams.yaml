@@ -1,0 +1,10 @@
+set_0: {-visit: 1.10000000E+00, -acc: -1.00000000E-04, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_0, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_1: {-visit: 1.10000000E+00, -acc: -2.50000000E+00, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_1, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_2: {-visit: 1.10000000E+00, -acc: -5.00000000E+00, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_2, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_3: {-visit: 2.00000000E+00, -acc: -1.00000000E-04, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_3, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_4: {-visit: 2.00000000E+00, -acc: -2.50000000E+00, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_4, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_5: {-visit: 2.00000000E+00, -acc: -5.00000000E+00, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_5, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_6: {-visit: 2.90000000E+00, -acc: -1.00000000E-04, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_6, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_7: {-visit: 2.90000000E+00, -acc: -2.50000000E+00, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_7, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+set_8: {-visit: 2.90000000E+00, -acc: -5.00000000E+00, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: set_8, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}
+default: {-visit: 2.62000000E+00, -acc: -5.00000000E+00, -rnd_seeds: '0,1,2,3,4,5,6,7,8,9', -dir: default, -setup_files_header: ../../../gen_catalyst_design, -n_samples: 2000}

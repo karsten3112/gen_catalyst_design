@@ -14,11 +14,19 @@ fbool = lambda x: bool(strtobool(x))
 
 
 parser.add_argument(
-    "--random_seed",
-    "-rnd_seed",
+    "--random_seeds",
+    "-rnd_seeds",
+    type=str,
+    required=False,
+    default="42",
+)
+
+parser.add_argument(
+    "--num_samples",
+    "-n_samples",
     type=int,
     required=False,
-    default=42,
+    default=100,
 )
 
 parser.add_argument(
@@ -54,6 +62,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--parent_selection_type",
+    "-selection_type",
+    type=str,
+    required=False,
+    default="tournament",
+)
+
+parser.add_argument(
     "--use_log",
     "-use_log",
     type=fbool,
@@ -78,11 +94,11 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--setup_file_header",
-    "-setup_file_header",
+    "--setup_files_header",
+    "-setup_files_header",
     type=str,
     required=False,
-    default=None,
+    default="../../gen_catalyst_design",
 )
 
 
@@ -91,62 +107,77 @@ parsed_args = parser.parse_args()
 
 def main():
     #Hyperparameter setup
-    num_samples = 10000
-    n_candidates_per_generation = 100
+    num_samples = parsed_args.num_samples
     miller_index = parsed_args.miller_index
-    random_seed = parsed_args.random_seed
+    random_seeds = [int(rnd_seed) for rnd_seed in parsed_args.random_seeds.split(",")]
     objective_key = parsed_args.target
     use_log = parsed_args.use_log
-
+    setup_files_header = parsed_args.setup_files_header
     #Load full element_pool
     element_pool = get_full_element_pool()
-
+    
 
     #Get surface type and whether stability is included
     template_type, include_stability = get_surface_params_from_target(
         target_type=objective_key
     )
     
+    print("======================RUNNNING GENETIC ALGORITHM======================")
+    print(f"Element pool chosen:")
+    print(element_pool)
+    print(f"facet: fcc-{miller_index}, template-type: {template_type}")
+    print(f"objective target: {objective_key}, is log(rate) used: {use_log}")
+    print(f"Is stability included: {include_stability}")
+
     #Setup the reaction-mechanism -> Calculates the rate
     #Setup the stabilizer -> Estimates E_form
     #Get the template atoms used in both calculations
+    print("-------------------SETTING UP: REACTION-MECHANISM & STABILIZER-------------------")
     reaction_mechanism, stabilizer, template_atoms_list = setup_optimization_objective(
         miller_index=miller_index,
         template_type=template_type,
-        database_pth_header=f"{parsed_args.setup_files_header}/databases",
-        yaml_files_header=f"{parsed_args.setup_files_header}/yaml_files",
+        database_pth_header=f"{setup_files_header}/databases" if setup_files_header is not None else None,
+        yaml_files_header=f"{setup_files_header}/yaml_files" if setup_files_header is not None else None,
         include_stability=include_stability,
     )
 
     #Get search key-word arguments from input
     search_kwargs = get_search_kwargs(
-        sol_per_pop=n_candidates_per_generation,
         crossover_type=parsed_args.crossover_type,
-        mutation_type=parsed_args.mutation_type
+        mutation_type=parsed_args.mutation_type,
+        parent_selection_type=parsed_args.parent_selection_type
     )
 
+    print("-------------------SEARCH PARAMETERS-------------------")
+    print(f"total amount of samples: {num_samples}")
+    print(f"search key-word arguments set")
+    print(search_kwargs)
+
     #Setup the database for storing the data
-    database = Database.establish_connection(
-        filename=parsed_args.db_filename,
-        pth_header=parsed_args.outdir,
-        database_kwargs={
-            "append":False, 
-            "template_atoms_surf":template_atoms_list[0]
-        }
-    )
+    for rnd_seed in random_seeds:
+        database = Database.establish_connection(
+            filename=f"rnd_seed_{rnd_seed}_samples.db",
+            pth_header=parsed_args.outdir,
+            database_kwargs={
+                "append":False, 
+                "template_atoms_surf":template_atoms_list[0]
+            }
+        )
     
     #Run the genetic algorithm
-    datadicts = run_genetic_algorithm(
-        num_samples=num_samples,
-        element_pool=element_pool,
-        reaction_mechanism=reaction_mechanism,
-        stabilizer=stabilizer,
-        database=database,
-        random_seed=random_seed,
-        search_kwargs=search_kwargs,
-        objective_key=objective_key,
-        use_log=use_log
-    )
+        datadicts = run_genetic_algorithm(
+            num_samples=num_samples,
+            element_pool=element_pool,
+            reaction_mechanism=reaction_mechanism,
+            stabilizer=stabilizer,
+            database=database,
+            random_seed=rnd_seed,
+            search_kwargs=search_kwargs,
+            objective_key=objective_key,
+            use_log=use_log
+        )
+
+        database.close_connection()
 
 
 
@@ -231,13 +262,15 @@ def get_search_kwargs(
         sol_per_pop:int=100, 
         crossover_type:str="uniform",
         mutation_type:str="random",
+        parent_selection_type:str="sss",
+        mutation_percent_genes:float="default",
     ):
     search_kwargs = {
         "sol_per_pop": sol_per_pop,
         "keep_elitism":1,
         "num_parents_mating": int(np.ceil(0.2*sol_per_pop)),
-        "mutation_percent_genes": 10,
-        "parent_selection_type": "tournament", # sss | rws | rank | random | tournament
+        "mutation_percent_genes": mutation_percent_genes,
+        "parent_selection_type": parent_selection_type, # sss | rws | rank | random | tournament
         "crossover_type": crossover_type,  # single_point | two_points | uniform
         "mutation_type": mutation_type  # random | swap | inversion | scramble
     }

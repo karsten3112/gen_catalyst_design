@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=gen_alg
 #SBATCH --partition=qany
-#SBATCH --mem-per-cpu=6G
+#SBATCH --mem-per-cpu=4G
 #SBATCH --cpus-per-task=1
-#SBATCH --time=06:00:00
+#SBATCH --time=24:00:00
 #SBATCH --error=job-%A_%a.err
 #SBATCH --output=job-%A_%a.out
-#SBATCH --array=1-9
+#SBATCH --array=1-13
 
 echo "========= Job started  at `date` =========="
 

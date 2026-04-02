@@ -29,15 +29,15 @@ def main():
     noiser = "AbsorbingStateNoiser" # absorbing | uniform
     scheduler_type = "ExponentialBetaScheduler" # exponential
     element_pool = ['Ni', 'Cu', 'Rh', 'Ir', 'Pd', 'Pt', 'Au', 'Ag']#get_full_element_pool(["Mn", "Ga"])
+    condition_keys = ["rate"]
 
     if noiser == "AbsorbingStateNoiser":
         element_pool = ["(X)"] + element_pool
 
-    add_rate_conditioning = True
-    add_e_form_conditioning = True
-
     conditioning_kwargs = {
-        "embedding_dim":64
+        "embedding_dim":64,
+        "rate_min":np.log(1e-3),
+        "rate_max":np.log(450.0)
     }
 
     scheduler_kwargs = {
@@ -46,44 +46,41 @@ def main():
         "time_sample_method":"stratified"
     }
 
-    logit_predictor_kwargs = {
-        "embedding_dim":64,
-        "time_embedding_dim":64,
-        "hidden_rep_dim":64,
-        "message_dim":64,
-        "n_interaction_blocks":5,
-
-    }
-
     diff_model_kwargs = {
         "drop_prob":0.1,
         "lr":1e-4,
         #"d3pm_auxillary_weight":0.01
     }
 
-    #construct the diffusion model
-    diff_model, condition_keys = setup_diffusion_model(
-        element_pool=element_pool,
-        noiser_type=noiser,
-        scheduler_type=scheduler_type,
-        add_rate_conditioning=add_rate_conditioning,
-        add_e_form_conditioning=add_e_form_conditioning,
-        scheduler_kwargs=scheduler_kwargs,
-        logit_predictor_kwargs=logit_predictor_kwargs,
-        conditioning_kwargs=conditioning_kwargs,
-        diff_model_kwargs=diff_model_kwargs
+    atoms_list = read("../datasets/filter_sorrounding/filtered_samples.traj", index=":")
+
+    filtered_atoms_list = filter_dataset(
+        atoms_list=atoms_list,
+        log_rate_offset=1e-3
     )
-  
+
     #Load in the data and setup training and validation loaders
     train_loader, val_loader = get_dataloaders_from_atoms_list(
-        atoms_list=read("../../results/reconstruction_check/chgnet_result_all_fcc.traj", index=":"),
+        atoms_list=filtered_atoms_list,
         element_pool = element_pool,
         condition_keys=condition_keys,
         add_active_site_connectivity=False,
         use_fully_connected_graph=False,
-        batch_size=40,
+        batch_size=20,
         graph_kwargs={"use_log":True}
     )
+
+    #construct the diffusion model
+    diff_model = setup_diffusion_model(
+        element_pool=element_pool,
+        noiser_type=noiser,
+        scheduler_type=scheduler_type,
+        condition_keys=condition_keys,
+        scheduler_kwargs=scheduler_kwargs,
+        conditioning_kwargs=conditioning_kwargs,
+        diff_model_kwargs=diff_model_kwargs
+    )
+  
     #for batch in train_loader:
     #    print(batch.e_form)
     #exit()
@@ -101,9 +98,9 @@ def main():
 
     #construct the trainer for handling training process
     trainer = setup_trainer_and_logger(
-        project_name="rate_eform_testing",
-        model_name="test_debug_cond",
-        pth_header="rate_eform_testing",
+        project_name="full_surface",
+        model_name="rnd_search_test_filtered",
+        pth_header="full_surface",
         accelerator="gpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,
@@ -118,6 +115,40 @@ def main():
     )
 
     wandb.finish()
+
+
+def filter_dataset(
+        atoms_list:list,
+        num_classes:int=100,
+        max_samples_per_class:int=100,
+        use_log:bool=True,
+        log_rate_offset:float=1e-2
+    ):
+
+    rates = np.array([atoms.info["rate"] for atoms in atoms_list])
+    if use_log:
+        rates = np.log(rates)
+        if log_rate_offset is not None:
+            min_rate = np.log(np.exp(np.min(rates))+log_rate_offset)
+    else:
+        min_rate = np.min(rates)
+    max_rate = np.max(rates)
+    class_divisions = np.linspace(min_rate, max_rate, num_classes)
+    class_indices = np.digitize(rates, class_divisions)
+    filtered_atoms_list = []
+    for idx in range(num_classes):
+        indices = np.argwhere(class_indices==idx+1)
+        n_samples_in_class, _ = indices.shape
+        if n_samples_in_class > max_samples_per_class:
+            store_indices = np.random.permutation(indices.squeeze())[:max_samples_per_class]
+        else:
+            store_indices = indices.squeeze(axis=-1)
+        for store_index in store_indices:
+            filtered_atoms_list.append(atoms_list[store_index])
+    return filtered_atoms_list
+
+
+
 
 
 if __name__ == "__main__":

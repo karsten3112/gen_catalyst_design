@@ -38,7 +38,7 @@ class Conditioning(nn.Module):
 
 
 class NoneConditioning(nn.Module):
-    def __init__(self, embedding_dim=64, device=None):
+    def __init__(self, embedding_dim=64, device=None, **kwargs):
         super().__init__()
         self.device = device
         self.embedding_dim = embedding_dim
@@ -59,12 +59,7 @@ class NoneConditioning(nn.Module):
         return self.none_embedding.repeat(batch_size,1)
 
 
-class RateClassification(Conditioning):
-    def __init__(self, embedding_dim = 32, device=None):
-        super().__init__(embedding_dim, device)
-
-
-class RateConditioning(Conditioning):
+class RateScalarConditioning(Conditioning):
     def __init__(self, embedding_dim = 32, activation_func:callable=nn.ReLU(), device=None):
         super().__init__(embedding_dim, device)
         #self.linear_embed = nn.Linear(in_features=1, out_features=self.embedding_dim)
@@ -76,7 +71,7 @@ class RateConditioning(Conditioning):
     
     def get_state_dict(self):
         state_dict = super().get_state_dict()
-        state_dict.update({"conditioning_type":"RateConditioning"})
+        state_dict.update({"conditioning_type":"RateScalarConditioning"})
         return state_dict
 
     def embed_condition(self, condition):
@@ -84,7 +79,7 @@ class RateConditioning(Conditioning):
         return self.ml_layers(rate_embedded)
     
 
-class EformConditioning(RateConditioning):
+class EformConditioning(RateScalarConditioning):
     def __init__(self, embedding_dim=32, activation_func = nn.ReLU(), device=None):
         super().__init__(embedding_dim, activation_func, device)
 
@@ -92,3 +87,53 @@ class EformConditioning(RateConditioning):
         state_dict = super().get_state_dict()
         state_dict["conditioning_type"] = "EformConditioning"
         return state_dict
+    
+
+
+class RateClassConditioning(Conditioning):
+    def __init__(
+            self,
+            rate_min:float=0.0,
+            rate_max:float=1e3,
+            num_classes:int=20, 
+            embedding_dim = 64, 
+            device=None
+        ):
+        super().__init__(embedding_dim, device)
+        self.rate_min = rate_min
+        self.rate_max = rate_max
+        self.num_classes = num_classes
+        self.class_embeddings = nn.Embedding(
+            num_embeddings=num_classes, 
+            embedding_dim=embedding_dim
+        )
+        self.class_divisions = torch.linspace(rate_min, rate_max, num_classes)
+        self.spacings = torch.diff(self.class_divisions)
+        self.mixing_mlp = nn.Sequential(
+            nn.Linear(2*self.embedding_dim, 2*self.embedding_dim),
+            nn.ReLU(),
+            nn.Linear(2*self.embedding_dim, self.embedding_dim),
+        )
+    
+    def set_device(self, device):
+        super().set_device(device)
+        self.spacings = self.spacings.to(device=device)
+        self.class_divisions = self.class_divisions.to(device=device)
+
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
+        state_dict.update({
+                "conditioning_type":"RateClassConditioning",
+                "rate_min":self.rate_min,
+                "rate_max":self.rate_max,
+                "num_classes":self.num_classes
+        })
+        return state_dict
+    
+    def embed_condition(self, condition):
+        class_indices = torch.bucketize(input=condition, boundaries=self.class_divisions)
+        lin_scaled_rates = (condition-self.class_divisions[class_indices-1])/self.spacings[class_indices-1]
+        embedded_classes = self.class_embeddings(class_indices)
+        embedded_rate = self.sinusoidal_embedding(pos_encoding=lin_scaled_rates)
+        features = torch.hstack([embedded_classes, embedded_rate])
+        return self.mixing_mlp(features)

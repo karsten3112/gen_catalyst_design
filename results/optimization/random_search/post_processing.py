@@ -1,6 +1,6 @@
 from gen_catalyst_design.db import Database, load_datadicts_from_db
 from gen_catalyst_design.post_processing import get_tot_summary_dict, get_survival_func, get_accum_max_curve
-from scipy.stats import iqr
+from ase_ml_models.yaml import write_to_yaml
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -8,14 +8,13 @@ import numpy as np
 
 def main():
     fig, axs = plt.subplots(1,2)
-    use_log = True
+    use_log = False
     results_dir = "results"
-    rnd_seeds = list(range(10))
+    rnd_seeds = list(range(50))
 
-    summary_dicts = []
-
+    summary_dicts = {}
     survival_funcs = []
-    accum_max_curves = []
+    accum_max_curves = {}
 
     for rnd_seed in rnd_seeds:
         db = Database.establish_connection(
@@ -29,36 +28,42 @@ def main():
         summary_dict = get_tot_summary_dict(
             distribution=rate_distribution,
             elements_list=elements_list,
-            use_log=True
+            use_log=use_log
         )
-        summary_dicts.append(summary_dict)
+        summary_dicts[f"rnd_seed_{rnd_seed}"] = summary_dict
 
         sf_dict = get_survival_func(
             distribution=rate_distribution
         )
         survival_funcs.append(sf_dict)
 
-        acc_max, auc = get_accum_max_curve(
+        accum_max_dict = get_accum_max_curve(
             distribution=rate_distribution
         )
+        accum_max_curves[f"rnd_seed_{rnd_seed}"] =  accum_max_dict
 
-        accum_max_curves.append(acc_max)
-
-
-    get_sf_mean_plot(
-        ax=axs[0],
-        survival_func_dicts=survival_funcs,
-        summary_dicts=summary_dicts,
-        add_all_traj=False,
-        use_log=True
+    write_to_yaml(
+        "summary_dicts.yaml", data=summary_dicts
     )
 
-    get_mean_accum_max_curve(
-        ax=axs[1],
-        acc_max_curves=accum_max_curves
+    write_to_yaml(
+        "accum_maxs.yaml", data=accum_max_curves
     )
 
-    plt.savefig("tot.png")
+    #get_sf_mean_plot(
+    #    ax=axs[0],
+    #    survival_func_dicts=survival_funcs,
+    #    summary_dicts=summary_dicts,
+    #    add_all_traj=False,
+    #    use_log=True
+    #)
+
+    #get_mean_accum_max_curve(
+    #    ax=axs[1],
+    #    acc_max_curves=accum_max_curves
+    #)
+
+    #plt.savefig("tot.png")
 
 
 def get_search_statistics(

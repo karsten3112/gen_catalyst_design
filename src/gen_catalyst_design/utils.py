@@ -181,7 +181,7 @@ def get_calculator(model, miller_index):
         calculator = GraphCalculator(
              miller_index=miller_index,
              kernel="GPR",
-             S2=0.0
+             S2=0.0 #remember to remove
         )
         train_kwargs = {}
     elif model == "GCNN":
@@ -244,7 +244,7 @@ def exclude_species(
     return result_list
 
 def get_full_element_pool(
-        species_exclude:list=["Mn", "Ga"]
+        species_exclude:list=None#["Mn", "Ga"]
     ):
     result_list = ["Rh", "Pt", "Pd", "Co", "Ga", "Cu", "Zn", "Au", "Ag", 'Mn', 'Fe', 'Os', 'Mo', 'Ir', 'Ru', "Ni"]
     if species_exclude is not None:

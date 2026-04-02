@@ -10,20 +10,20 @@ import random
 
 def main():
     random_seed = 42
-    n_samples = 20
+    n_samples = 100
     miller_index = "100"
-    template_type = "surface"
-    ckpt_file_header = "rate_eform_testing/test_debug_cond"
+    template_type = "cluster"
+    ckpt_file_header = "full_surface/rnd_search_test_filtered"
     ckpt_file = os.path.join(ckpt_file_header,"checkpoints/last.ckpt") #epoch=epoch=146-val=val_loss=1.9309.ckpt
-    include_stability = True
+    include_stability = False
     temps = [1.0]
-    rate_conditions = [1.0]#[5.0, 10.0, 15.0, 20.0]
-    e_form_conditions = [4.0]
-    guidance_scale = 10.0
+    rate_conditions = [10**(-2.5), 10**(-1.5), 10**(0.0), 10**(0.5)]#[3.0e-7, 4.5e-5, 1.0]#[5.0, 10.0, 15.0, 20.0]
+    e_form_conditions = [4.0] * len(rate_conditions)
+    guidance_scale = 2.0
     guidance_scale_dict = {
-        "joint":0.0,#guidance_scale,
+        #"joint":0.0,#guidance_scale,#guidance_scale,
         "rate":guidance_scale,
-        "e_form":0.0#guidance_scale
+        #"e_form":0.0*guidance_scale
     }
     #rate_guidance = 0.0
     #e_form_guidance = 2.0
@@ -38,7 +38,7 @@ def main():
 
     diff_model = DiffusionModel.load_from_checkpoint(ckpt_file)
     diff_model = diff_model.to(device=torch.device("cpu"))
-    
+    i = 0
     for temp in temps:
         for rate_condition, e_form_condition in zip(rate_conditions, e_form_conditions):
             random.seed(random_seed)
@@ -54,10 +54,10 @@ def main():
             result_samples = diff_model.sample(
                 n_samples=n_samples,
                 template_atoms=reaction_mechanism.clean_surface,
-                conditioning_dicts=[{"rate":rate_condition, "e_form":e_form_condition} for _ in range(n_samples)],
+                conditioning_dicts=[{"rate":rate_condition} for _ in range(n_samples)],
                 guidance_scale_dict=guidance_scale_dict,
-                condition_keys=["rate", "e_form"],
-                batch_size=10,
+                condition_keys=["rate"],
+                batch_size=50,
                 timesteps=None, 
                 log_all_timesteps=False, 
                 return_as_atoms_list=True,
@@ -70,7 +70,7 @@ def main():
                 os.makedirs(save_dir)
             
             database = Database.establish_connection(
-                filename=f"joint_evals.db",
+                filename=f"joint_evals_{i+1}.db",
                 pth_header=save_dir,
                 database_kwargs={"append":False, "template_atoms_surf":reaction_mechanism.clean_surface}
             )
@@ -87,9 +87,10 @@ def main():
                     reaction_mechanism=reaction_mechanism,
                     logger=logger,
                     stabilizer=stabilizer,
-                    objective_key="both"
+                    objective_key="rate"
                 )
             print("finished")
+            i+=1
 
 
 

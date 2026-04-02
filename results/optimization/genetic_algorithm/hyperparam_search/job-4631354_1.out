@@ -1,0 +1,15 @@
+========= Job started  at Wed Apr  1 12:24:19 CEST 2026 ==========
+My jobid: 4631354
+My array id: 1
+======================RUNNNING GENETIC ALGORITHM======================
+Element pool chosen:
+['Rh', 'Pt', 'Pd', 'Co', 'Ga', 'Cu', 'Zn', 'Au', 'Ag', 'Mn', 'Fe', 'Os', 'Mo', 'Ir', 'Ru', 'Ni']
+facet: fcc-100, template-type: cluster
+objective target: rate, is log(rate) used: False
+Is stability included: False
+-------------------SETTING UP: REACTION-MECHANISM & STABILIZER-------------------
+-------------------SEARCH PARAMETERS-------------------
+total amount of samples: 2
+search key-word arguments set
+{'sol_per_pop': 100, 'keep_elitism': 1, 'num_parents_mating': 20, 'mutation_percent_genes': 'default', 'parent_selection_type': 'sss', 'crossover_type': 'single_point', 'mutation_type': 'random'}
+========= Job Finished  at Wed Apr  1 12:35:00 CEST 2026 ==========
