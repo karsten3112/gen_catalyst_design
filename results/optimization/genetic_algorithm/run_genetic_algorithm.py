@@ -260,7 +260,7 @@ def get_surface_params_from_target(target_type:str="rate"):
 
 def get_search_kwargs(
         sol_per_pop:int=100, 
-        crossover_type:str="uniform",
+        crossover_type:str="single_point",
         mutation_type:str="random",
         parent_selection_type:str="sss",
         mutation_percent_genes:float="default",

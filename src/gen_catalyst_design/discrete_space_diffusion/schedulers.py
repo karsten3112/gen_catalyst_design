@@ -90,7 +90,7 @@ class DiscreteBetaScheduler(DiscreteTimeScheduler):
 
 
 class LinearBetaScheduler(DiscreteBetaScheduler):
-    def __init__(self, beta_min = 0.001, beta_max = 1, t_init=1, t_final=1000, time_sample_method="stratified"):
+    def __init__(self, beta_min = 0.001, beta_max = 1, t_init=1, t_final=1000, time_sample_method="stratified", **kwargs):
         super().__init__(beta_min, beta_max, t_init, t_final, time_sample_method)
 
     def get_state_dict(self):
@@ -103,7 +103,7 @@ class LinearBetaScheduler(DiscreteBetaScheduler):
 
 
 class ExponentialBetaScheduler(DiscreteBetaScheduler):
-    def __init__(self, beta_min = 0.001, beta_max = 1, t_init=1, t_final=1000, time_sample_method="stratified"):
+    def __init__(self, beta_min = 0.001, beta_max = 1, t_init=1, t_final=1000, time_sample_method="stratified", **kwargs):
         super().__init__(beta_min, beta_max, t_init, t_final, time_sample_method)
 
     def get_state_dict(self):
@@ -113,7 +113,6 @@ class ExponentialBetaScheduler(DiscreteBetaScheduler):
 
     def __call__(self, t):
         return self.beta_min*torch.pow(self.beta_max/self.beta_min, (t-1.0)/(self.t_final-1.0))
-
 
 # -------------------------------------------------------------------------------------
 # SCHEDULES DERIVED FROM EVOLUTION OF ALPHA
@@ -125,7 +124,7 @@ class DiscreteAlphaScheduler(DiscreteTimeScheduler):
 
 
 class CosineScheduler(DiscreteAlphaScheduler):
-    def __init__(self, reg:float=1e-1, t_init=1, t_final=1000, time_sample_method="stratified"):
+    def __init__(self, reg:float=1e-1, t_init=1, t_final=1000, time_sample_method="stratified", **kwargs):
         super().__init__(t_init, t_final, time_sample_method)
         self.reg = torch.tensor(reg)
     
@@ -148,7 +147,7 @@ class CosineScheduler(DiscreteAlphaScheduler):
         return 1.0 - self.alpha_t(t=t)/self.alpha_t(t=(t-1))
     
 class LinearAlphaScheduler(DiscreteAlphaScheduler):
-    def __init__(self, t_init=1, t_final=1000, time_sample_method="stratified"):
+    def __init__(self, t_init=1, t_final=1000, time_sample_method="stratified", **kwargs):
         super().__init__(t_init, t_final, time_sample_method)
         self.alpha_t_final = torch.tensor(0.0)
         self.alpha_t_init = torch.tensor(1.0)

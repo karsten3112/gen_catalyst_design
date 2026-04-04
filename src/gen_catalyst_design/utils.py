@@ -62,8 +62,9 @@ def setup_trainer_and_logger(
         logger_kwargs:dict={}
     ) -> Trainer:
 
-    if not os.path.exists(pth_header):
-        os.makedirs(pth_header)
+    if pth_header is not None:
+        if not os.path.exists(pth_header):
+            os.makedirs(pth_header)
 
     if model_name is None:
         model_name = "model"
@@ -188,7 +189,8 @@ def get_calculator(model, miller_index):
         calculator = GCNNCalculator(
             miller_index=miller_index
         )
-        network_hyperparams = {"hidden_dim":128,
+        network_hyperparams = {
+            "hidden_dim":128,
             "n_conv_layers": 4,
             "n_lin_layers": 2,
             "conv_type": "ARMAConv",
@@ -255,9 +257,32 @@ def get_full_element_pool(
     return result_list
 
 
-
-def get_rate_ecdf(
-        rate_distribution:np.array
+def filter_dataset(
+        atoms_list:list,
+        num_classes:int=100,
+        max_samples_per_class:int=100,
+        use_log:bool=True,
+        log_rate_offset:float=1e-2
     ):
-    result = ecdf(rate_distribution)
-    return result
+
+    rates = np.array([atoms.info["rate"] for atoms in atoms_list])
+    if use_log:
+        rates = np.log(rates)
+        if log_rate_offset is not None:
+            min_rate = np.log(np.exp(np.min(rates))+log_rate_offset)
+    else:
+        min_rate = np.min(rates)
+    max_rate = np.max(rates)
+    class_divisions = np.linspace(min_rate, max_rate, num_classes)
+    class_indices = np.digitize(rates, class_divisions)
+    filtered_atoms_list = []
+    for idx in range(num_classes):
+        indices = np.argwhere(class_indices==idx+1)
+        n_samples_in_class, _ = indices.shape
+        if n_samples_in_class > max_samples_per_class:
+            store_indices = np.random.permutation(indices.squeeze())[:max_samples_per_class]
+        else:
+            store_indices = indices.squeeze(axis=-1)
+        for store_index in store_indices:
+            filtered_atoms_list.append(atoms_list[store_index])
+    return filtered_atoms_list

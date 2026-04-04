@@ -28,7 +28,7 @@ def main():
     #diffusion model parameters
     noiser = "AbsorbingStateNoiser" # absorbing | uniform
     scheduler_type = "ExponentialBetaScheduler" # exponential
-    element_pool = ['Ni', 'Cu', 'Rh', 'Ir', 'Pd', 'Pt', 'Au', 'Ag']#get_full_element_pool(["Mn", "Ga"])
+    element_pool = get_full_element_pool() #['Ni', 'Cu', 'Rh', 'Ir', 'Pd', 'Pt', 'Au', 'Ag']#
     condition_keys = ["rate"]
 
     if noiser == "AbsorbingStateNoiser":
@@ -36,8 +36,8 @@ def main():
 
     conditioning_kwargs = {
         "embedding_dim":64,
-        "rate_min":np.log(1e-3),
-        "rate_max":np.log(450.0)
+        "rate_min":-16.0,
+        "rate_max":6.0
     }
 
     scheduler_kwargs = {
@@ -52,12 +52,12 @@ def main():
         #"d3pm_auxillary_weight":0.01
     }
 
-    atoms_list = read("../datasets/filter_sorrounding/filtered_samples.traj", index=":")
+    atoms_list = read("../../results/diffusion_model_parameters/datasets/random_search_2000.traj", index=":")
 
-    filtered_atoms_list = filter_dataset(
-        atoms_list=atoms_list,
-        log_rate_offset=1e-3
-    )
+    filtered_atoms_list = atoms_list #filter_dataset(
+    #    atoms_list=atoms_list,
+    #    log_rate_offset=1e-3
+    #)
 
     #Load in the data and setup training and validation loaders
     train_loader, val_loader = get_dataloaders_from_atoms_list(
@@ -98,10 +98,10 @@ def main():
 
     #construct the trainer for handling training process
     trainer = setup_trainer_and_logger(
-        project_name="full_surface",
-        model_name="rnd_search_test_filtered",
-        pth_header="full_surface",
-        accelerator="gpu",
+        project_name="rate_new",
+        model_name="rnd_search1",
+        pth_header="rate_new",
+        accelerator="cpu",
         trainer_kwargs=trainer_kwargs,
         logger_kwargs=logger_kwargs,
         patience=5000

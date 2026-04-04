@@ -108,7 +108,7 @@ class RateClassConditioning(Conditioning):
             embedding_dim=embedding_dim
         )
         self.class_divisions = torch.linspace(rate_min, rate_max, num_classes)
-        self.spacings = torch.diff(self.class_divisions)
+        self.spacing = torch.diff(self.class_divisions)[0]
         self.mixing_mlp = nn.Sequential(
             nn.Linear(2*self.embedding_dim, 2*self.embedding_dim),
             nn.ReLU(),
@@ -117,7 +117,7 @@ class RateClassConditioning(Conditioning):
     
     def set_device(self, device):
         super().set_device(device)
-        self.spacings = self.spacings.to(device=device)
+        self.spacing = self.spacing.to(device=device)
         self.class_divisions = self.class_divisions.to(device=device)
 
     def get_state_dict(self):
@@ -132,7 +132,7 @@ class RateClassConditioning(Conditioning):
     
     def embed_condition(self, condition):
         class_indices = torch.bucketize(input=condition, boundaries=self.class_divisions)
-        lin_scaled_rates = (condition-self.class_divisions[class_indices-1])/self.spacings[class_indices-1]
+        lin_scaled_rates = (condition-self.class_divisions[class_indices-1])/self.spacing
         embedded_classes = self.class_embeddings(class_indices)
         embedded_rate = self.sinusoidal_embedding(pos_encoding=lin_scaled_rates)
         features = torch.hstack([embedded_classes, embedded_rate])

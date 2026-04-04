@@ -186,7 +186,7 @@ def get_rate_from_atoms(
     if "rate" in atoms.info:
         rate = torch.tensor(atoms.info["rate"], device=device)
         if use_log:
-            return torch.log(rate)
+            return torch.log10(rate)
         else:
             return rate
     else:

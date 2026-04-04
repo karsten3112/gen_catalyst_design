@@ -205,7 +205,8 @@ def get_survival_func(
 def get_accum_max_curve(
         distribution:np.array,
         use_log:bool=False,
-        get_auc:bool=True
+        get_auc:bool=True,
+        num_tot_samples:int=10000,
     ):
     if use_log:
         distribution = np.log10(distribution)
@@ -219,7 +220,13 @@ def get_accum_max_curve(
                 max_curve.append(value)
             else:
                 max_curve.append(max_curve[-1])
+
     max_curve = np.array(max_curve)
+    if len(max_curve) < num_tot_samples:
+        diff_samples = num_tot_samples - len(max_curve)
+        min_val = max_curve[0]
+        max_curve = np.hstack([min_val.repeat(diff_samples), max_curve])
+        
     if get_auc:
         auc = np.sum(np.abs(max_curve))
     else:
