@@ -30,7 +30,7 @@ class DumpCheckpointDataCallback(Callback):
             print("No checkpoint found to extract custom data.")
             return
 
-        ckpt = torch.load(ckpt_path, map_location="cpu")
+        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
 
         # Extract the dictionary you stored earlier
         if self.dict_key not in ckpt:
@@ -53,7 +53,8 @@ class DumpCheckpointDataCallback(Callback):
 def setup_trainer_and_logger(
         project_name:str,
         model_name:str=None,
-        patience:int=50, 
+        patience:int=None, 
+        save_every_n_epochs:int=100,
         gradient_clip_val:float=1.0,
         checkpoint_dir:str="checkpoints",
         accelerator:str="gpu",
@@ -80,6 +81,7 @@ def setup_trainer_and_logger(
                 file_search = file    
             if os.path.isdir(file_search) and model_name in file:
                 model_num+=1
+        
         model_num+=1
         model_name = f"{model_name}_{model_num:03d}"
         if pth_header is not None:
@@ -101,37 +103,52 @@ def setup_trainer_and_logger(
         save_dir=save_dir,
         **logger_kwargs
     )
-    
-    checkpoint_callback = ModelCheckpoint(
-        dirpath=os.path.join(save_dir, checkpoint_dir),
-        monitor="val_loss",
-        mode="min",
-        save_top_k=1,      # keep best model
-        save_last=True,    # also save last model
-        filename="epoch={epoch}-val={val_loss:.4f}",
-    )
-    early_stopping = EarlyStopping(
-        monitor="val_loss",
-        mode="min",
-        patience=patience,
-        min_delta=0.0,
-    )
 
+    periodic_checkpoint_callback = ModelCheckpoint(
+        dirpath=os.path.join(save_dir, checkpoint_dir),
+        every_n_epochs=save_every_n_epochs,
+        save_top_k=-1,   # keep all periodic checkpoints
+        save_last=True,  # always keep last.ckpt too
+        filename="epoch={epoch:03d}",
+        auto_insert_metric_name=False,
+    )
+    
     hyper_params_log = DumpCheckpointDataCallback(
         dict_key="diffusion_parameters",
         filename="model_parameters.yaml"
     )
 
+    best_callback = ModelCheckpoint(
+            dirpath=os.path.join(save_dir, checkpoint_dir),
+            monitor="val_loss",
+            mode="min",
+            save_top_k=1,      # keep best model
+            save_last=True,    # also save last model
+            filename="best_epoch={epoch}-val={val_loss:.4f}",
+        )
+
+    callbacks = [periodic_checkpoint_callback, hyper_params_log, best_callback]
+
+    if patience is not None:
+        early_stopping = EarlyStopping(
+            monitor="val_loss",
+            mode="min",
+            patience=patience,
+            min_delta=0.0,
+        )
+        callbacks+=[early_stopping]
+
     trainer = Trainer(
         logger=logger,
         default_root_dir=save_dir,
-        callbacks=[checkpoint_callback, early_stopping, hyper_params_log],
+        callbacks=callbacks,
         gradient_clip_val=gradient_clip_val,
         devices=1,
         accelerator=accelerator,
         **trainer_kwargs
     )
     return trainer
+
 
 def get_atoms_from_template_db(
     db_filename:str,

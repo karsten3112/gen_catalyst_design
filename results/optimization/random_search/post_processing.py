@@ -50,20 +50,6 @@ def main():
         "accum_maxs.yaml", data=accum_max_curves
     )
 
-    #get_sf_mean_plot(
-    #    ax=axs[0],
-    #    survival_func_dicts=survival_funcs,
-    #    summary_dicts=summary_dicts,
-    #    add_all_traj=False,
-    #    use_log=True
-    #)
-
-    #get_mean_accum_max_curve(
-    #    ax=axs[1],
-    #    acc_max_curves=accum_max_curves
-    #)
-
-    #plt.savefig("tot.png")
 
 
 def get_search_statistics(

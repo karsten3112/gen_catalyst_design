@@ -22,7 +22,6 @@ def main():
     script_params = {
         "-data_traj":"../datasets/genetic_algorithm_2000.traj",
         "-m_epochs":1000,
-        "-patience":1000,
         "-out":"hyperparam_search",
         "-beta_max":1.0,
         "-beta_min":1e-4,

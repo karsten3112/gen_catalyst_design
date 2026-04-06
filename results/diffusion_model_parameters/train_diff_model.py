@@ -125,7 +125,23 @@ parser.add_argument(
     "-pat",
     type=int,
     required=False,
-    default=1000,
+    default=None,
+)
+
+parser.add_argument(
+    "--learning_rate",
+    "-lr",
+    type=float,
+    required=False,
+    default=1e-3,
+)
+
+parser.add_argument(
+    "--log_every_n_epochs",
+    "-n_epoch_log",
+    type=int,
+    required=False,
+    default=500,
 )
 
 parser.add_argument(
@@ -164,6 +180,8 @@ def main():
     log_project_name = parsed_args.log_project_name
     max_epochs = parsed_args.max_epochs
     patience = parsed_args.patience
+    lr = parsed_args.learning_rate
+    log_every_n_epochs = parsed_args.log_evey_n_epochs
     element_pool = get_full_element_pool()
     use_log = True
 
@@ -220,7 +238,7 @@ def main():
         rate_conditioning=rate_conditioning,
         e_form_conditioning=e_form_conditioning, 
         drop_prob=drop_prob,
-        lr=1e-3,
+        lr=lr,
         weight_decay=0.0,
         d3pm_auxillary_weight=d3pm_aux_weight
     )
@@ -256,8 +274,9 @@ def main():
         pth_header=outdir,
         accelerator=device,
         trainer_kwargs=trainer_kwargs,
-        logger_kwargs=logger_kwargs,
-        patience=patience
+        save_every_n_epochs=log_every_n_epochs,
+        patience=patience,
+        logger_kwargs=logger_kwargs
     )
 
     #train the diffusion model
