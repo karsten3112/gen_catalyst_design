@@ -184,7 +184,7 @@ def get_rate_from_atoms(
         use_log:bool=True
     ):
     if "rate" in atoms.info:
-        rate = torch.tensor(atoms.info["rate"], device=device)
+        rate = torch.tensor(atoms.info["rate"], device=device, dtype=torch.float)
         if use_log:
             return torch.log10(rate)
         else:
@@ -203,7 +203,7 @@ def get_stability_measure_from_atoms(
         if include_recon_label:
             raise Exception("Not implemented yet")
         else:
-            return torch.tensor(e_form, device=device)
+            return torch.tensor(e_form, device=device, dtype=torch.float)
     else:
         return None
 

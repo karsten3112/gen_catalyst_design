@@ -1,0 +1,330 @@
+========= Job started at Tue Feb 24 01:34:52 CET 2026 ==========
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: WARNING The anonymous setting has no effect and will be removed in a future version.
+wandb: Currently logged in as: karsten-walz-jensen (karsten-walz-jensen-aarhus-university) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run gi0pnkr3
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in iter_0/wandb/run-20260224_020840-gi0pnkr3
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run iter_0
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test/runs/gi0pnkr3
+
+  | Name                 | Type                 | Params | Mode | FLOPs
+-----------------------------------------------------------------------------
+0 | conditioning         | RateConditioning     | 8.4 K  | eval | 0    
+1 | cross_entropy_logits | CrossEntropyLoss     | 0      | eval | 0    
+2 | mse_loss             | MSELoss              | 0      | eval | 0    
+3 | noiser               | AbsorbingStateNoiser | 0      | eval | 0    
+4 | scheduler            | ExponentialScheduler | 0      | eval | 0    
+5 | logit_predictor      | MPNNLogitPredictor   | 541 K  | eval | 0    
+-----------------------------------------------------------------------------
+550 K     Trainable params
+0         Non-trainable params
+550 K     Total params
+2.200     Total estimated model params size (MB)
+0         Modules in train mode
+147       Modules in eval mode
+0         Total Flops
+SLURM auto-requeueing enabled. Setting signal handlers.
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=3` in the `DataLoader` to improve performance.
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=3` in the `DataLoader` to improve performance.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading output.log; uploading iter_0/wandb/run-20260224_020840-gi0pnkr3/files/model_parameters.yaml; uploading wandb-summary.json
+wandb: uploading output.log; uploading iter_0/wandb/run-20260224_020840-gi0pnkr3/files/model_parameters.yaml; uploading config.yaml; uploading history steps 4935-5015, summary, console lines 20-20
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▁▁▂▂▂▂▂▂▃▃▃▄▄▄▄▄▅▅▅▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇████
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch █▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▂▂▁▁▂▂▁▁▁▂▁▂▂▂▂▁▁▁▁
+wandb:        train_loss/denoise_step ▆▇▅▆█▅▆▃▄▆▇▄▅▇▆▅▆▇▃▃▃▆▄█▂▅▂▁▃▅▇▆▅▅▇▄▄▃▄▅
+wandb:         train_loss/recon_epoch █▂▂▂▂▂▃▁▂▁▂▂▁▂▁▂▁▂▂▂▂▁▂▂▂▁▁▂▂▂▁▂▁▂▁▁▁▁▂▁
+wandb:          train_loss/recon_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:               train_loss_epoch █▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▂▂▁▁▂▂▁▁▁▂▁▂▂▂▂▁▁▁▁
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 43
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 0.55833
+wandb:        train_loss/denoise_step 0.6406
+wandb:         train_loss/recon_epoch 0.00086
+wandb:          train_loss/recon_step 0.00078
+wandb:               train_loss_epoch 0.55919
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run iter_0 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test/runs/gi0pnkr3
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: iter_0/wandb/run-20260224_020840-gi0pnkr3/logs
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: setting up run h81gq8dh
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in iter_1/wandb/run-20260224_025323-h81gq8dh
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run iter_1
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test/runs/h81gq8dh
+
+  | Name                 | Type                 | Params | Mode | FLOPs
+-----------------------------------------------------------------------------
+0 | conditioning         | RateConditioning     | 8.4 K  | eval | 0    
+1 | cross_entropy_logits | CrossEntropyLoss     | 0      | eval | 0    
+2 | mse_loss             | MSELoss              | 0      | eval | 0    
+3 | noiser               | AbsorbingStateNoiser | 0      | eval | 0    
+4 | scheduler            | ExponentialScheduler | 0      | eval | 0    
+5 | logit_predictor      | MPNNLogitPredictor   | 541 K  | eval | 0    
+-----------------------------------------------------------------------------
+550 K     Trainable params
+0         Non-trainable params
+550 K     Total params
+2.200     Total estimated model params size (MB)
+0         Modules in train mode
+147       Modules in eval mode
+0         Total Flops
+SLURM auto-requeueing enabled. Setting signal handlers.
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=3` in the `DataLoader` to improve performance.
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=3` in the `DataLoader` to improve performance.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading iter_1/wandb/run-20260224_025323-h81gq8dh/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json
+wandb: uploading iter_1/wandb/run-20260224_025323-h81gq8dh/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▁▁▁▂▂▂▂▂▂▂▃▃▃▄▄▄▄▄▅▅▅▅▅▆▆▆▆▆▇▇▇▇▇▇▇▇██
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▄▇▆▆▅██▇▅▁▄▆▇▄▅▁▅▅▃█▁▂▂▅▄▅▃▅▅▃▄▁▁▃▆▄▁▂▅▄
+wandb:        train_loss/denoise_step ▅▃▅▅▅▇▄▁▇█▃▄▅▄▆▂▁█▄█▇▄▅▆▅▅▃▄▅▄▇▃▃▃▄▂▄▄▅▃
+wandb:         train_loss/recon_epoch ▄▄▅▆▆▇▂▃▄▅▃█▄▄▄▅▂▄▅▄▃▂▃▄▃▄▃▆▆▃▄▆▃▁▄▃▄▄▄▆
+wandb:          train_loss/recon_step ▁▁▁▁█▁▁▁▁▁▁▁▃▁▁▁▁▁▃▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:               train_loss_epoch ▄▇▆▆▅▆██▅▁▄▆▇▄▅▁▅▅▃▂▂▂▅▄▄▃▅▅▃▇▄▁▁▁▃▄▄▁▅▄
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 50
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 0.56731
+wandb:        train_loss/denoise_step 0.56378
+wandb:         train_loss/recon_epoch 0.00092
+wandb:          train_loss/recon_step 0.00078
+wandb:               train_loss_epoch 0.56823
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run iter_1 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test/runs/h81gq8dh
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: iter_1/wandb/run-20260224_025323-h81gq8dh/logs
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: setting up run zdjbcxns
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in iter_2/wandb/run-20260224_034115-zdjbcxns
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run iter_2
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test/runs/zdjbcxns
+
+  | Name                 | Type                 | Params | Mode | FLOPs
+-----------------------------------------------------------------------------
+0 | conditioning         | RateConditioning     | 8.4 K  | eval | 0    
+1 | cross_entropy_logits | CrossEntropyLoss     | 0      | eval | 0    
+2 | mse_loss             | MSELoss              | 0      | eval | 0    
+3 | noiser               | AbsorbingStateNoiser | 0      | eval | 0    
+4 | scheduler            | ExponentialScheduler | 0      | eval | 0    
+5 | logit_predictor      | MPNNLogitPredictor   | 541 K  | eval | 0    
+-----------------------------------------------------------------------------
+550 K     Trainable params
+0         Non-trainable params
+550 K     Total params
+2.200     Total estimated model params size (MB)
+0         Modules in train mode
+147       Modules in eval mode
+0         Total Flops
+SLURM auto-requeueing enabled. Setting signal handlers.
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=3` in the `DataLoader` to improve performance.
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=3` in the `DataLoader` to improve performance.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading iter_2/wandb/run-20260224_034115-zdjbcxns/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json
+wandb: uploading history steps 4672-4673, summary, console lines 20-20
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▁▂▂▂▃▃▃▃▄▄▄▄▄▄▄▄▄▅▅▅▅▆▆▆▆▆▇▇▇▇▇▇██████
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▇▅▆▅▄▅▇▅▅▆▅▅█▇▄▆▅▆▇▅▅▆█▃▄▄▇▆▂▅▂▇▃▃▁▂▁▅▄▄
+wandb:        train_loss/denoise_step ▄▃▃▄▆▄▂▂▃▆▅▃▃▅▅▃▄▁▅▅▅▃█▃▅▂▄▆▄▃▆▂▅▄▄▃▃▆▄▃
+wandb:         train_loss/recon_epoch ▃█▂▂▃▄▃▄▃▄▄▅▄▃▃▅▂▄▄▄▆▂▄▃▃▄▃▅▃▆▃▁▃▃▄▁▂▄▃▅
+wandb:          train_loss/recon_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▇▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:               train_loss_epoch ▇▅▆▅▄▅▇▅▅▆▅▅█▇▄▆▅▆▇▅▅▆█▃▄▄▇▇▂▅▂▆▃▃▁▂▁▅▄▄
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 40
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 0.56599
+wandb:        train_loss/denoise_step 0.5489
+wandb:         train_loss/recon_epoch 0.00093
+wandb:          train_loss/recon_step 0.00081
+wandb:               train_loss_epoch 0.56692
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run iter_2 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test/runs/zdjbcxns
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: iter_2/wandb/run-20260224_034115-zdjbcxns/logs
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: setting up run 6kazl5cb
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in iter_3/wandb/run-20260224_042552-6kazl5cb
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run iter_3
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test/runs/6kazl5cb
+
+  | Name                 | Type                 | Params | Mode | FLOPs
+-----------------------------------------------------------------------------
+0 | conditioning         | RateConditioning     | 8.4 K  | eval | 0    
+1 | cross_entropy_logits | CrossEntropyLoss     | 0      | eval | 0    
+2 | mse_loss             | MSELoss              | 0      | eval | 0    
+3 | noiser               | AbsorbingStateNoiser | 0      | eval | 0    
+4 | scheduler            | ExponentialScheduler | 0      | eval | 0    
+5 | logit_predictor      | MPNNLogitPredictor   | 541 K  | eval | 0    
+-----------------------------------------------------------------------------
+550 K     Trainable params
+0         Non-trainable params
+550 K     Total params
+2.200     Total estimated model params size (MB)
+0         Modules in train mode
+147       Modules in eval mode
+0         Total Flops
+SLURM auto-requeueing enabled. Setting signal handlers.
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=3` in the `DataLoader` to improve performance.
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=3` in the `DataLoader` to improve performance.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading iter_3/wandb/run-20260224_042552-6kazl5cb/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json
+wandb: uploading iter_3/wandb/run-20260224_042552-6kazl5cb/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▁▂▂▂▂▂▃▃▃▃▄▄▄▄▄▄▄▅▅▅▅▅▅▅▅▆▆▆▆▇▇▇▇█████
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▄█▅▅▄▄▅▇▄▅▅▅▇▅▄▆▃▃▅▂▃▃▃▃▃▃▃▃▂▂▁▄▄▃▄▅▄▁▃▁
+wandb:        train_loss/denoise_step ▄▄█▄▄▄▄▃▄▄▃▄▇▃▂▂▂▂▂▄▅▇▄▄▅▅▁▄▆▃▃▅▂▅▂▇▃▅▃▃
+wandb:         train_loss/recon_epoch ▇▇▇▇▇██▇▇▇▇██▇▇▇▇▇▇▇▇▇▆▆▆▆▆▅▅▃▃▃▂▂▃▂▁▂▃▃
+wandb:          train_loss/recon_step ▇▃▃▃▃▃▃▇▃▃▃▃▃▃▃▂▂▂▂▂▂█▂▂▂▂▂▂▂▂▁▄▁▁▂▁▁▁▁▁
+wandb:               train_loss_epoch ▄▅█▅▅▄▇▅▃▅▇▅▄▃▆▃▅▆▂▄▆▃▃▁▃▁▃▃▄▃▃▄▃▄▄▂▂▂▄▂
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 104
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 0.54557
+wandb:        train_loss/denoise_step 0.87608
+wandb:         train_loss/recon_epoch 0.00041
+wandb:          train_loss/recon_step 0.00776
+wandb:               train_loss_epoch 0.54598
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run iter_3 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test/runs/6kazl5cb
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: iter_3/wandb/run-20260224_042552-6kazl5cb/logs
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: setting up run yvhtpvv9
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in iter_4/wandb/run-20260224_053205-yvhtpvv9
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run iter_4
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test/runs/yvhtpvv9
+
+  | Name                 | Type                 | Params | Mode | FLOPs
+-----------------------------------------------------------------------------
+0 | conditioning         | RateConditioning     | 8.4 K  | eval | 0    
+1 | cross_entropy_logits | CrossEntropyLoss     | 0      | eval | 0    
+2 | mse_loss             | MSELoss              | 0      | eval | 0    
+3 | noiser               | AbsorbingStateNoiser | 0      | eval | 0    
+4 | scheduler            | ExponentialScheduler | 0      | eval | 0    
+5 | logit_predictor      | MPNNLogitPredictor   | 541 K  | eval | 0    
+-----------------------------------------------------------------------------
+550 K     Trainable params
+0         Non-trainable params
+550 K     Total params
+2.200     Total estimated model params size (MB)
+0         Modules in train mode
+147       Modules in eval mode
+0         Total Flops
+SLURM auto-requeueing enabled. Setting signal handlers.
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=3` in the `DataLoader` to improve performance.
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=3` in the `DataLoader` to improve performance.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: updating run metadata; uploading wandb-summary.json; uploading iter_4/wandb/run-20260224_053205-yvhtpvv9/files/model_parameters.yaml; uploading output.log
+wandb: uploading wandb-summary.json; uploading iter_4/wandb/run-20260224_053205-yvhtpvv9/files/model_parameters.yaml; uploading output.log; uploading config.yaml
+wandb: uploading history steps 5967-6041, summary, console lines 20-20
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▂▂▂▂▂▂▃▃▃▃▄▄▄▄▄▄▅▅▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇████
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▆▆▅█▃▅▃▃▃▅▃▁▃▄▃▅█▇▅▅▆▅▇▅▅▅▄▃▃█▂▃▅▆▄▂▄▂▄▃
+wandb:        train_loss/denoise_step ▅▆▁▂▂▃▄▅▃▃▂▁▂▂█▄▄▄▄▂▂▃▂▅▅▆▅▆▃▁▂▃▆▄▄▅▇▂▅▃
+wandb:         train_loss/recon_epoch ▆▆▆█▆▃▇▄█▃▅▅▅▆▃▅▄▃▃▄▃▃▅▃▄▅▅▄▂▂▄▄▅▅▆▄▃▂▂▁
+wandb:          train_loss/recon_step ▁▂▁▁▁█▁▂▂▁▁▁▁▁▁▁▁▁▁▁▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▄▁▁▁▁
+wandb:               train_loss_epoch ▆▄▆▅█▅▅▃▃▃▂▃▁▃▄▅▅█▇▅▅▇▅▅▂▄▃▃█▆▅▅▆▄▄▄▂▃▄▃
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 52
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 0.54806
+wandb:        train_loss/denoise_step 0.59282
+wandb:         train_loss/recon_epoch 0.00012
+wandb:          train_loss/recon_step 7e-05
+wandb:               train_loss_epoch 0.54818
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run iter_4 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test/runs/yvhtpvv9
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_test
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: iter_4/wandb/run-20260224_053205-yvhtpvv9/logs
+========= Job ended at Tue Feb 24 05:50:09 CET 2026 ==========

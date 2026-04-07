@@ -109,7 +109,7 @@ def setup_trainer_and_logger(
         every_n_epochs=save_every_n_epochs,
         save_top_k=-1,   # keep all periodic checkpoints
         save_last=True,  # always keep last.ckpt too
-        filename="epoch={epoch:03d}",
+        filename="logged_epoch={epoch:03d}",
         auto_insert_metric_name=False,
     )
     

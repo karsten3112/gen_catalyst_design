@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH --job-name=act_learn
+#SBATCH --partition=qgpu
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=5G
+#SBATCH --ntasks=1
+#SBATCH --time=12:00:00
+
+source ~/.bashrc
+conda activate cat_opt
+
+echo "========= Job started at `date` =========="
+command="python active_learning.py"
+$command
+echo "========= Job ended at `date` =========="

@@ -1,0 +1,102 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            x15h9qot6p9adys7wbz7xaqlu6unztav:
+                codePath: tests/active_learning/active_learning.py
+                codePathLocal: active_learning.py
+                cpu_count: 36
+                cpu_count_logical: 36
+                disk:
+                    /:
+                        total: "78604800000"
+                        used: "34696519680"
+                email: karsten.walz.jensen@gmail.com
+                executable: /home/kwalz/.conda/envs/cat_opt/bin/python
+                git:
+                    commit: abb9ca875e375b05bb0985da54d6254c8f916223
+                    remote: https://github.com/karsten3112/gen_catalyst_design.git
+                host: s31n03.grendel.cscaa.dk
+                memory:
+                    total: "405370077184"
+                os: Linux-4.18.0-513.18.1.el8_9.x86_64-x86_64-with-glibc2.28
+                program: /home/kwalz/speciale_files/gen_catalyst_design/tests/active_learning/active_learning.py
+                python: CPython 3.10.18
+                root: iter_2
+                slurm:
+                    cluster_name: grendel
+                    conf: /etc/slurm/slurm.conf
+                    cpus_on_node: "4"
+                    cpus_per_task: "4"
+                    gtids: "0"
+                    job_account: fysma
+                    job_cpus_per_node: "4"
+                    job_end_time: "1772107078"
+                    job_gid: "525"
+                    job_id: "4373580"
+                    job_name: act_learn
+                    job_nodelist: s31n03
+                    job_num_nodes: "1"
+                    job_partition: qgpu
+                    job_qos: gpulimfysma
+                    job_start_time: "1772063878"
+                    job_uid: "1586"
+                    job_user: kwalz
+                    jobid: "4373580"
+                    localid: "0"
+                    mem_per_node: "5120"
+                    nnodes: "1"
+                    nodeid: "0"
+                    nodelist: s31n03
+                    nprocs: "1"
+                    ntasks: "1"
+                    oom_kill_step: "0"
+                    prio_process: "0"
+                    procid: "0"
+                    submit_dir: /home/kwalz/speciale_files/gen_catalyst_design/tests/active_learning
+                    submit_host: grendel
+                    task_pid: "348326"
+                    tasks_per_node: "1"
+                    topology_addr: s31n03
+                    topology_addr_pattern: node
+                    tres_per_task: cpu=4
+                startedAt: "2026-02-26T01:43:46.300136Z"
+                writerId: x15h9qot6p9adys7wbz7xaqlu6unztav
+        m:
+            - "1": trainer/global_step
+              "6":
+                - 3
+              "7": []
+            - "2": '*'
+              "5": 1
+              "6":
+                - 1
+              "7": []
+        python_version: 3.10.18
+        t:
+            "1":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+                - 105
+            "2":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+                - 105
+            "3":
+                - 2
+                - 3
+                - 7
+                - 13
+                - 66
+            "4": 3.10.18
+            "5": 0.23.1
+            "12": 0.23.1
+            "13": linux-x86_64

@@ -65,19 +65,22 @@ class DiffusionModel(LightningModule):
         self.auxillary_rate_weight = auxillary_rate_weight
         self.log_regularization = log_regularization
 
-        self.logit_predictor = MPNNLogitPredictor(
-            num_elements=len(self.element_pool),
-            rate_conditioning_dim=self.rate_conditioning.embedding_dim,
-            e_form_conditioning_dim=self.e_form_conditioning.embedding_dim,
-            embedding_dim=logit_predictor_kwargs.pop("embedding_dim", 64),
-            hidden_rep_dim=logit_predictor_kwargs.pop("hidden_rep_dim", 64),
-            time_embedding_dim=logit_predictor_kwargs.pop("time_embedding_dim", 64),
-            n_interaction_blocks=logit_predictor_kwargs.pop("n_interaction_blocks", 5),
-            message_dim=logit_predictor_kwargs.pop("message_dim", 64),
-            activation_func=logit_predictor_kwargs.pop("activation_func", nn.ReLU()),
-            aggr=logit_predictor_kwargs.pop("aggr","mean"),
-            device=self.device
-        )
+        if len(element_pool) > 0:
+            self.logit_predictor = MPNNLogitPredictor(
+                num_elements=len(self.element_pool),
+                rate_conditioning_dim=self.rate_conditioning.embedding_dim,
+                e_form_conditioning_dim=self.e_form_conditioning.embedding_dim,
+                embedding_dim=logit_predictor_kwargs.pop("embedding_dim", 64),
+                hidden_rep_dim=logit_predictor_kwargs.pop("hidden_rep_dim", 64),
+                time_embedding_dim=logit_predictor_kwargs.pop("time_embedding_dim", 64),
+                n_interaction_blocks=logit_predictor_kwargs.pop("n_interaction_blocks", 5),
+                message_dim=logit_predictor_kwargs.pop("message_dim", 64),
+                activation_func=logit_predictor_kwargs.pop("activation_func", nn.ReLU()),
+                aggr=logit_predictor_kwargs.pop("aggr","mean"),
+                device=self.device
+            )
+        else:
+            self.logit_predictor = None
 
         if self.noiser is not None and self.noiser.accumulated_q_matrices is None:
             self.noiser.pre_compute_accum_q_matrices(scheduler=self.scheduler)
@@ -296,7 +299,7 @@ class DiffusionModel(LightningModule):
         )
         return embedded_rate[batch.batch], embedded_e_form[batch.batch]
             
-    def calculate_loss_terms(self, batch, batch_idx):
+    def calculate_loss_terms(self, batch, batch_idx, num_kl_estimates:int=None):
         idx = torch.multinomial(self.drop_prob_vector, 1).squeeze(-1)
         drop_scenario = self.drop_pattern_matrix[idx]
         embedded_rate, embedded_e_form = self.embed_rate_e_form(batch=batch, drop_scenario=drop_scenario)
@@ -304,7 +307,9 @@ class DiffusionModel(LightningModule):
         denoise_matching_term = 0.0
         aux_loss = 0.0
         aux_rate_loss = 0.0
-        for _ in range(self.num_kl_div_estimates):
+        if num_kl_estimates is None:
+            num_kl_estimates = self.num_kl_div_estimates
+        for _ in range(num_kl_estimates):
             batch_t = batch.clone()
             time = self.scheduler.sample_time(n_samples=batch.batch_size, t_span=t_span)
             self.noiser.noise_batch_x0_xt(
@@ -335,7 +340,7 @@ class DiffusionModel(LightningModule):
             #        embedded_condition=embedded_condition,
             #    )
         
-        denoise_matching_term/=self.num_kl_div_estimates
+        denoise_matching_term/=num_kl_estimates
         aux_loss/=self.num_kl_div_estimates
         #aux_rate_loss/=self.num_kl_div_estimates
 
@@ -359,7 +364,7 @@ class DiffusionModel(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        denoise_term, recon_term, aux_loss, aux_rate_loss = self.calculate_loss_terms(batch=batch, batch_idx=batch_idx)
+        denoise_term, recon_term, aux_loss, aux_rate_loss = self.calculate_loss_terms(batch=batch, batch_idx=batch_idx, num_kl_estimates=10)
         loss = denoise_term + recon_term + aux_loss + aux_rate_loss
         self.log("val_loss", loss, on_epoch=True, batch_size=batch.batch_size)
         return loss
