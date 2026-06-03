@@ -1,0 +1,66 @@
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/lightning_fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python3 train_diff_model.py -data_traj=no_duplicates.traj - ...
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: WARNING The anonymous setting has no effect and will be removed in a future version.
+wandb: Currently logged in as: karsten-walz-jensen (karsten-walz-jensen-aarhus-university) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run a4kjjozp
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in trained_models/model_with_att_pool_no_log/wandb/run-20260526_084817-a4kjjozp
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run model_with_att_pool_no_log
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/att_pooling_importance
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/att_pooling_importance/runs/a4kjjozp
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name                | Type                   | Params | Mode  | FLOPs
+-------------------------------------------------------------------------------
+0 | scheduler           | CosineScheduler        | 0      | train | 0    
+1 | noiser              | AbsorbingStateNoiser   | 0      | train | 0    
+2 | rate_conditioning   | RateScalarConditioning | 8.4 K  | train | 0    
+3 | e_form_conditioning | NoneConditioning       | 0      | train | 0    
+4 | logit_predictor     | MPNNLogitPredictor     | 625 K  | train | 0    
+-------------------------------------------------------------------------------
+633 K     Trainable params
+0         Non-trainable params
+633 K     Total params
+2.535     Total estimated model params size (MB)
+140       Modules in train mode
+0         Modules in eval mode
+0         Total Flops
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading trained_models/model_with_att_pool_no_log/wandb/run-20260526_084817-a4kjjozp/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json
+wandb: uploading trained_models/model_with_att_pool_no_log/wandb/run-20260526_084817-a4kjjozp/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 40472-40473, summary, console lines 17-17
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▁▁▂▂▂▂▂▃▃▃▄▄▄▅▅▅▅▅▅▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇███
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch █▇▅▅▅▄▃▄▃▃▃▃▃▃▂▃▂▃▂▃▂▂▂▁▂▂▂▁▁▂▂▁▂▂▂▁▁▁▂▁
+wandb:        train_loss/denoise_step ▄▆▆▆▆▃▃▁▃▄▃▂▄▄▃▃▅▅▅▃▆▄▁▂▄▂▄▅█▂▆█▃▁▂▅▄▃▃▃
+wandb:         train_loss/recon_epoch ▅▇▂▂▂▅▂█▄▄▄▇▂▆▄▃▄▂▄▅▇▆▃▃▅▃▃▂▇▃▆▃▂▅▄▆▃▂▅▁
+wandb:          train_loss/recon_step ▁▁▁▂▁▁▁▁▂▁▁▂▁▂▁▁▁▁▁▅▃▂▁▁▃▁▁▅▃▁█▂▁▁▁▁▃▁▁▁
+wandb:               train_loss_epoch █▆▄▄▃▃▃▃▂▃▂▂▂▂▂▂▂▂▂▁▂▂▁▁▁▁▁▂▁▁▁▁▁▁▂▁▁▁▁▁
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 412
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 0.76924
+wandb:        train_loss/denoise_step 0.8836
+wandb:         train_loss/recon_epoch 0.00793
+wandb:          train_loss/recon_step 0.00777
+wandb:               train_loss_epoch 0.77718
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run model_with_att_pool_no_log at: https://wandb.ai/karsten-walz-jensen-aarhus-university/att_pooling_importance/runs/a4kjjozp
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/att_pooling_importance
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: trained_models/model_with_att_pool_no_log/wandb/run-20260526_084817-a4kjjozp/logs

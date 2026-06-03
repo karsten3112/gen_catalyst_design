@@ -1,0 +1,8 @@
+conditions:
+  condition_0: {rate: 2.20000000E+00, e_form: 4.44000000E+00}
+  condition_1: {rate: 2.31000000E+00, e_form: 4.32000000E+00}
+  condition_2: {rate: 2.38000000E+00, e_form: 4.21000000E+00}
+  condition_3: {rate: 2.43000000E+00, e_form: 4.14000000E+00}
+  condition_4: {rate: 2.48000000E+00, e_form: 4.05000000E+00}
+  condition_5: {rate: 2.59000000E+00, e_form: 3.88000000E+00}
+  condition_6: {rate: 2.67000000E+00, e_form: 3.69000000E+00}

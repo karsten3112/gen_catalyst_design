@@ -1,0 +1,3 @@
+-dev=cuda -m_name=model_set_1 
+-dev=cuda -m_name=model_set_2 
+-dev=cuda -m_name=model_set_3 

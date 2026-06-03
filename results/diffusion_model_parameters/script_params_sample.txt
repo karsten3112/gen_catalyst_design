@@ -1,0 +1,10 @@
+-dev=cuda -m_name=model_0 
+-dev=cuda -m_name=model_1 
+-dev=cuda -m_name=model_2 
+-dev=cuda -m_name=model_3 
+-dev=cuda -m_name=model_4 
+-dev=cuda -m_name=model_5 
+-dev=cuda -m_name=model_6 
+-dev=cuda -m_name=model_7 
+-dev=cuda -m_name=model_8 
+-dev=cuda -m_name=model_9 

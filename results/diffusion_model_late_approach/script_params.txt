@@ -1,0 +1,2 @@
+-data_traj=../datasets_100/genetic_algorithm_8000_no_saas.traj -m_epochs=2000 -out=trained_models -beta_max=1.0 -beta_min=0.0001 -dev=cuda -p_drop=0.1 -pat=100 -lr=0.0005 -m_name=model_3 -noiser=AbsorbingStateNoiser -sched=CosineScheduler 
+-data_traj=../datasets_100/genetic_algorithm_8000_no_saas.traj -m_epochs=2000 -out=trained_models -beta_max=1.0 -beta_min=0.0001 -dev=cuda -p_drop=0.1 -pat=100 -lr=0.0005 -m_name=model_8 -noiser=UniformTransitionsNoiser -sched=CosineScheduler 

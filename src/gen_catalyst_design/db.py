@@ -310,7 +310,9 @@ class Database:
             else:
                 command += f"""JOIN {table.table_name} AS {abbrev} ON {element_table_abbrev}.{join_attr}={abbrev}.{join_attr} \n"""
         if selection is not None:
-            pass #Code something here
+            command += selection
+            
+            #pass #Code something here
         return command
 
     def join_tables(self, selection:str=None):
@@ -324,8 +326,11 @@ class Database:
             for table in self.table_list:
                 coloumn_splits[table.table_name] = (n_prev, table.n_coloums)
                 n_prev+=table.n_coloums
-        else:
-            pass #Code something here
+        else: #For now this will do
+            n_prev = 0
+            for table in self.table_list:
+                coloumn_splits[table.table_name] = (n_prev, table.n_coloums)
+                n_prev+=table.n_coloums
         result_list = []
         for data_row in self.cursor.fetchall():
             result_dict = {}
@@ -396,9 +401,10 @@ class Database:
         return database
     
     
-def load_datadicts_from_db(database:Database, selection:str=None):
+def load_datadicts_from_db(database:Database, selection:str=None, close_connection:bool=True):
     result_list = database.select_data_from_db(selection=selection)
-    database.close_connection()
+    if close_connection:
+        database.close_connection()
     return result_list
 
 def load_atoms_list_from_db(database:Database, selection:str=None, template_atoms_surf:Atoms=None):
@@ -422,4 +428,19 @@ def load_atoms_list_from_db(database:Database, selection:str=None, template_atom
         atoms_list.append(atoms)
     return atoms_list
 
+
+def load_datadicts_from_db_with_rate_selection(
+        database:Database,
+        rate_min:float,
+        rate_max:float,
+        close_connection:bool=True
+    ):
+    abbrev = database.element_table.abbrev
+    selection = f"""WHERE {abbrev}.rate > {rate_min} AND {abbrev}.rate < {rate_max}"""
+    result_list = load_datadicts_from_db(
+        database=database,
+        selection=selection,
+        close_connection=close_connection
+    )
+    return result_list
 

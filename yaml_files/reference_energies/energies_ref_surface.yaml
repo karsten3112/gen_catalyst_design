@@ -1,0 +1,26 @@
+'100':
+  Rh: {ref_energy: -7.10105562E+00, recon: false}
+  Pt: {ref_energy: -5.95142031E+00, recon: false}
+  Pd: {ref_energy: -5.07378531E+00, recon: false}
+  Co: {ref_energy: -6.87425137E+00, recon: false}
+  Cu: {ref_energy: -3.98200512E+00, recon: false}
+  Au: {ref_energy: -3.18031144E+00, recon: false}
+  Ag: {ref_energy: -2.73791099E+00, recon: false}
+  Fe: {ref_energy: -8.20377350E+00, recon: false}
+  Os: {ref_energy: -1.08789825E+01, recon: false}
+  Ir: {ref_energy: -8.62021637E+00, recon: false}
+  Ru: {ref_energy: -8.89987564E+00, recon: false}
+  Ni: {ref_energy: -5.56243420E+00, recon: false}
+'111':
+  Rh: {ref_energy: -7.14461517E+00, recon: false}
+  Pt: {ref_energy: -5.98038101E+00, recon: false}
+  Pd: {ref_energy: -5.10325336E+00, recon: false}
+  Co: {ref_energy: -6.91696882E+00, recon: false}
+  Cu: {ref_energy: -4.01027155E+00, recon: false}
+  Au: {ref_energy: -3.19563961E+00, recon: false}
+  Ag: {ref_energy: -2.75580740E+00, recon: false}
+  Fe: {ref_energy: -8.24241829E+00, recon: false}
+  Os: {ref_energy: -1.09574060E+01, recon: false}
+  Ir: {ref_energy: -8.67942524E+00, recon: false}
+  Ru: {ref_energy: -8.95973206E+00, recon: false}
+  Ni: {ref_energy: -5.60538149E+00, recon: false}

@@ -1,0 +1,1 @@
+-data_traj=no_duplicates.traj -m_epochs=2000 -out=trained_models -beta_max=1.0 -beta_min=0.0001 -dev=cuda -p_drop=0.1 -pat=100 -lr=0.0005 -log=False -log_proj_name=att_pooling_importance -m_name=model_with_att_pool_no_dist_no_log -noiser=AbsorbingStateNoiser -sched=CosineScheduler 

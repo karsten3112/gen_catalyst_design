@@ -1,0 +1,129 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            5f5hr9ufe6r26oi2sz4mdzmab243w3pq:
+                args:
+                    - -data_traj=no_duplicates.traj
+                    - -m_epochs=2000
+                    - -out=trained_models
+                    - -beta_max=1.0
+                    - -beta_min=0.0001
+                    - -dev=cuda
+                    - -p_drop=0.1
+                    - -pat=100
+                    - -lr=0.0005
+                    - -log=False
+                    - -log_proj_name=att_pooling_importance
+                    - -m_name=model_with_att_pool_no_dist_no_log
+                    - -noiser=AbsorbingStateNoiser
+                    - -sched=CosineScheduler
+                codePath: train_diff_model.py
+                codePathLocal: train_diff_model.py
+                cpu_count: 36
+                cpu_count_logical: 36
+                cudaVersion: "12.9"
+                disk:
+                    /:
+                        total: "78604800000"
+                        used: "34711572480"
+                email: karsten.walz.jensen@gmail.com
+                executable: /home/kwalz/.conda/envs/cat_opt/bin/python3
+                gpu: Tesla V100-PCIE-16GB
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Volta
+                      cudaCores: 5120
+                      memoryTotal: "17179869184"
+                      name: Tesla V100-PCIE-16GB
+                      uuid: GPU-fce0c603-9d49-3511-5ef5-c170a832ff21
+                host: s31n12.grendel.cscaa.dk
+                memory:
+                    total: "405370290176"
+                os: Linux-4.18.0-513.18.1.el8_9.x86_64-x86_64-with-glibc2.28
+                program: /home/kwalz/speciale_files/pool_importance/train_diff_model.py
+                python: CPython 3.10.18
+                root: trained_models/model_with_att_pool_no_dist_no_log
+                slurm:
+                    array_job_id: "5194489"
+                    array_task_count: "1"
+                    array_task_id: "1"
+                    array_task_max: "1"
+                    array_task_min: "1"
+                    array_task_step: "1"
+                    cluster_name: grendel
+                    conf: /etc/slurm/slurm.conf
+                    cpus_on_node: "1"
+                    cpus_per_task: "1"
+                    gpus_on_node: "1"
+                    gtids: "0"
+                    job_account: fysma
+                    job_cpus_per_node: "1"
+                    job_end_time: "1779824204"
+                    job_gid: "525"
+                    job_gpus: "0"
+                    job_id: "5194489"
+                    job_name: diff_train
+                    job_nodelist: s31n12
+                    job_num_nodes: "1"
+                    job_partition: qgpu
+                    job_qos: gpulimfysma
+                    job_start_time: "1779781004"
+                    job_uid: "1586"
+                    job_user: kwalz
+                    jobid: "5194489"
+                    localid: "0"
+                    mem_per_cpu: "6144"
+                    nnodes: "1"
+                    nodeid: "0"
+                    nodelist: s31n12
+                    oom_kill_step: "0"
+                    prio_process: "0"
+                    procid: "0"
+                    submit_dir: /home/kwalz/speciale_files/pool_importance
+                    submit_host: grendel
+                    task_pid: "96420"
+                    tasks_per_node: "1"
+                    topology_addr: s31n12
+                    topology_addr_pattern: node
+                    tres_per_task: cpu=1
+                startedAt: "2026-05-26T07:37:14.308428Z"
+                writerId: 5f5hr9ufe6r26oi2sz4mdzmab243w3pq
+        m:
+            - "1": trainer/global_step
+              "6":
+                - 3
+              "7": []
+            - "2": '*'
+              "5": 1
+              "6":
+                - 1
+              "7": []
+        python_version: 3.10.18
+        t:
+            "1":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+                - 105
+            "2":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+                - 105
+            "3":
+                - 2
+                - 3
+                - 7
+                - 13
+                - 66
+            "4": 3.10.18
+            "5": 0.23.1
+            "12": 0.23.1
+            "13": linux-x86_64

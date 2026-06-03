@@ -1,0 +1,33 @@
+genetic_algorithm:
+  whole_distribution:
+    mean: {mean: 2.10182342E+00, std: 2.17622755E-01, err: 3.07765051E-02}
+    median: {mean: 3.13525243E+00, std: 3.17662256E-01, err: 4.49242271E-02}
+    IQR: {mean: 2.33120326E+00, std: 5.97862247E-01, err: 8.45504899E-02}
+  top_k_summary:
+    mean: {mean: 4.06901147E+00, std: 4.60753623E-01, err: 6.51604022E-02}
+    median: {mean: 4.06034812E+00, std: 4.59902041E-01, err: 6.50399703E-02}
+    IQR: {mean: 5.24553469E-02, std: 1.82831355E-02, err: 2.58562582E-03}
+  max_val: {mean: 4.18721014E+00, std: 4.82435081E-01, err: 6.82266234E-02}
+  unique_freq: {mean: 9.99954000E-01, std: 8.38123609E-05, err: 1.18528577E-05}
+annealing:
+  whole_distribution:
+    mean: {mean: -4.66357226E-02, std: 2.12293162E-01, err: 3.00227869E-02}
+    median: {mean: 1.21660523E-01, std: 1.59204386E-01, err: 2.25149003E-02}
+    IQR: {mean: 6.62802958E+00, std: 5.22352367E-01, err: 7.38717801E-02}
+  top_k_summary:
+    mean: {mean: 4.05453688E+00, std: 4.64975273E-01, err: 6.57574337E-02}
+    median: {mean: 4.05398092E+00, std: 4.64828400E-01, err: 6.57366628E-02}
+    IQR: {mean: 5.91970704E-03, std: 1.62009920E-02, err: 2.29116626E-03}
+  max_val: {mean: 4.06174535E+00, std: 4.65625127E-01, err: 6.58493369E-02}
+  unique_freq: {mean: 7.02590000E-01, std: 1.31611228E-01, err: 1.86126383E-02}
+random_search:
+  whole_distribution:
+    mean: {mean: -2.87978592E+00, std: 2.67355835E-02, err: 3.78098248E-03}
+    median: {mean: -2.74107548E+00, std: 3.16341446E-02, err: 4.47374364E-03}
+    IQR: {mean: 3.32863380E+00, std: 3.98150774E-02, err: 5.63070225E-03}
+  top_k_summary:
+    mean: {mean: 2.37610391E+00, std: 5.50798098E-02, err: 7.78946141E-03}
+    median: {mean: 2.30069629E+00, std: 6.23882036E-02, err: 8.82302437E-03}
+    IQR: {mean: 4.56273072E-01, std: 6.09664973E-02, err: 8.62196474E-03}
+  max_val: {mean: 3.56218252E+00, std: 2.41496326E-01, err: 3.41527380E-02}
+  unique_freq: {mean: 1.00000000E+00, std: 0.00000000E+00, err: 0.00000000E+00}

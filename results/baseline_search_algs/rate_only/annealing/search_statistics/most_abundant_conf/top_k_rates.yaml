@@ -1,0 +1,10 @@
+- {active_conf: Cu_Fe_Co_Rh, max_rate: 4.87355352E+00, mean_rate: 4.34552253E+00, std: 3.08438909E-01, frac: 3.01602664E-02, n: 2119}
+- {active_conf: Fe_Rh_Cu_Co, max_rate: 4.81069715E+00, mean_rate: 4.34943437E+00, std: 3.59460565E-01, frac: 6.61846338E-03, n: 465}
+- {active_conf: Cu_Fe_Fe_Rh, max_rate: 4.65511039E+00, mean_rate: 4.25648969E+00, std: 3.13561316E-01, frac: 8.46878647E-03, n: 595}
+- {active_conf: Cu_Fe_Co_Co, max_rate: 4.61504911E+00, mean_rate: 4.27803214E+00, std: 2.92961890E-01, frac: 1.46744855E-02, n: 1031}
+- {active_conf: Co_Cu_Co_Fe, max_rate: 4.60881004E+00, mean_rate: 4.32997406E+00, std: 2.60462386E-01, frac: 6.16299923E-03, n: 433}
+- {active_conf: Rh_Fe_Co_Cu, max_rate: 4.55830334E+00, mean_rate: 4.14774369E+00, std: 2.93120693E-01, frac: 2.44811979E-02, n: 1720}
+- {active_conf: Fe_Fe_Cu_Co, max_rate: 4.54544406E+00, mean_rate: 4.21810399E+00, std: 3.37341617E-01, frac: 5.84986763E-03, n: 411}
+- {active_conf: Co_Cu_Ni_Fe, max_rate: 4.54535041E+00, mean_rate: 4.15575332E+00, std: 3.77397533E-01, frac: 9.63591335E-03, n: 677}
+- {active_conf: Rh_Cu_Fe_Co, max_rate: 4.50867309E+00, mean_rate: 4.09954446E+00, std: 3.43646293E-01, frac: 1.67383074E-02, n: 1176}
+- {active_conf: Rh_Ru_Fe_Cu, max_rate: 4.43752746E+00, mean_rate: 4.05431928E+00, std: 3.38871899E-01, frac: 6.74656267E-03, n: 474}

@@ -1,0 +1,35 @@
+g_scale_0.5:
+- {tau: 0, precision: 3.43000000E-01, recall: 0.00000000E+00, novelty: 1.00000000E+00, internal_coverage: 4.05247813E-01}
+- {tau: 1, precision: 3.43000000E-01, recall: 2.50000000E-03, novelty: 9.94169096E-01, internal_coverage: 5.30612245E-01}
+- {tau: 3, precision: 3.43000000E-01, recall: 4.00000000E-02, novelty: 9.53352770E-01, internal_coverage: 6.79300292E-01}
+- {tau: 5, precision: 3.43000000E-01, recall: 2.90000000E-01, novelty: 6.96793003E-01, internal_coverage: 8.10495627E-01}
+- {tau: 7, precision: 3.43000000E-01, recall: 7.20000000E-01, novelty: 2.33236152E-01, internal_coverage: 9.21282799E-01}
+- {tau: 10, precision: 3.43000000E-01, recall: 9.92500000E-01, novelty: 1.45772595E-02, internal_coverage: 9.94169096E-01}
+g_scale_1.0:
+- {tau: 0, precision: 4.56000000E-01, recall: 0.00000000E+00, novelty: 1.00000000E+00, internal_coverage: 2.03947368E-01}
+- {tau: 1, precision: 4.56000000E-01, recall: 0.00000000E+00, novelty: 1.00000000E+00, internal_coverage: 3.20175439E-01}
+- {tau: 3, precision: 4.56000000E-01, recall: 5.50000000E-02, novelty: 9.38596491E-01, internal_coverage: 5.39473684E-01}
+- {tau: 5, precision: 4.56000000E-01, recall: 3.95000000E-01, novelty: 6.66666667E-01, internal_coverage: 7.69736842E-01}
+- {tau: 7, precision: 4.56000000E-01, recall: 8.30000000E-01, novelty: 2.28070175E-01, internal_coverage: 9.40789474E-01}
+- {tau: 10, precision: 4.56000000E-01, recall: 9.95000000E-01, novelty: 2.19298246E-03, internal_coverage: 9.97807018E-01}
+g_scale_2.0:
+- {tau: 0, precision: 5.04000000E-01, recall: 2.50000000E-03, novelty: 9.98015873E-01, internal_coverage: 2.77777778E-02}
+- {tau: 1, precision: 5.04000000E-01, recall: 5.00000000E-03, novelty: 9.94047619E-01, internal_coverage: 9.32539683E-02}
+- {tau: 3, precision: 5.04000000E-01, recall: 7.50000000E-02, novelty: 9.36507937E-01, internal_coverage: 2.67857143E-01}
+- {tau: 5, precision: 5.04000000E-01, recall: 3.77500000E-01, novelty: 6.96428571E-01, internal_coverage: 6.62698413E-01}
+- {tau: 7, precision: 5.04000000E-01, recall: 7.77500000E-01, novelty: 2.59920635E-01, internal_coverage: 9.36507937E-01}
+- {tau: 10, precision: 5.04000000E-01, recall: 9.95000000E-01, novelty: 0.00000000E+00, internal_coverage: 1.00000000E+00}
+g_scale_4.0:
+- {tau: 0, precision: 5.14000000E-01, recall: 0.00000000E+00, novelty: 1.00000000E+00, internal_coverage: 0.00000000E+00}
+- {tau: 1, precision: 5.14000000E-01, recall: 0.00000000E+00, novelty: 1.00000000E+00, internal_coverage: 2.33463035E-02}
+- {tau: 3, precision: 5.14000000E-01, recall: 2.50000000E-02, novelty: 9.80544747E-01, internal_coverage: 1.22568093E-01}
+- {tau: 5, precision: 5.14000000E-01, recall: 1.87500000E-01, novelty: 8.32684825E-01, internal_coverage: 4.26070039E-01}
+- {tau: 7, precision: 5.14000000E-01, recall: 6.15000000E-01, novelty: 4.37743191E-01, internal_coverage: 8.40466926E-01}
+- {tau: 10, precision: 5.14000000E-01, recall: 9.80000000E-01, novelty: 5.83657588E-03, internal_coverage: 9.98054475E-01}
+g_scale_8.0:
+- {tau: 0, precision: 4.04000000E-01, recall: 2.50000000E-03, novelty: 9.97524752E-01, internal_coverage: 0.00000000E+00}
+- {tau: 1, precision: 4.04000000E-01, recall: 2.50000000E-03, novelty: 9.97524752E-01, internal_coverage: 4.95049505E-03}
+- {tau: 3, precision: 4.04000000E-01, recall: 2.00000000E-02, novelty: 9.87623762E-01, internal_coverage: 3.96039604E-02}
+- {tau: 5, precision: 4.04000000E-01, recall: 1.10000000E-01, novelty: 8.98514851E-01, internal_coverage: 2.82178218E-01}
+- {tau: 7, precision: 4.04000000E-01, recall: 3.90000000E-01, novelty: 5.56930693E-01, internal_coverage: 7.35148515E-01}
+- {tau: 10, precision: 4.04000000E-01, recall: 9.17500000E-01, novelty: 2.72277228E-02, internal_coverage: 9.95049505E-01}

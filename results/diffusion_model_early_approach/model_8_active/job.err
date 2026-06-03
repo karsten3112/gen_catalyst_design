@@ -1,0 +1,450 @@
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/lightning_fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python3 ../active_learning.py -model_ckpt=../../diffusion_m ...
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: WARNING The anonymous setting has no effect and will be removed in a future version.
+wandb: Currently logged in as: karsten-walz-jensen (karsten-walz-jensen-aarhus-university) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run al4sbdev
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_1/wandb/run-20260515_041236-al4sbdev
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run learn_iter_1
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/al4sbdev
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name                | Type                     | Params | Mode  | FLOPs
+---------------------------------------------------------------------------------
+0 | rate_conditioning   | RateScalarConditioning   | 8.4 K  | train | 0    
+1 | e_form_conditioning | NoneConditioning         | 0      | train | 0    
+2 | scheduler           | CosineScheduler          | 0      | train | 0    
+3 | noiser              | UniformTransitionsNoiser | 0      | train | 0    
+4 | logit_predictor     | MPNNLogitPredictor       | 626 K  | train | 0    
+---------------------------------------------------------------------------------
+634 K     Trainable params
+0         Non-trainable params
+634 K     Total params
+2.539     Total estimated model params size (MB)
+140       Modules in train mode
+0         Modules in eval mode
+0         Total Flops
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:485: Your `val_dataloader`'s sampler has shuffling enabled, it is strongly recommended that you turn shuffling off for val/test dataloaders.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_1/wandb/run-20260515_041236-al4sbdev/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json
+wandb: uploading genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_1/wandb/run-20260515_041236-al4sbdev/files/model_parameters.yaml; uploading output.log; uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▂▂▂▂▃▃▃▃▄▄▄▄▄▄▄▅▅▅▅▅▅▅▅▆▆▆▆▇▇▇▇▇▇█████
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▆▇▂▅▅▄▄▇▄▇▄▃█▅▅▄▄▆▄▁▂▃▄▄▃▄▆▄▄█▅▅▄▃▃▄▂▃▂▄
+wandb:        train_loss/denoise_step ▃▄▄▃▃▂▃▅▂▄▃▄█▆▄▂▂▁▃▅▂▆▁▂▅▅▃▃▅▄▄▂▂▄▂▃▂▅▅▃
+wandb:         train_loss/recon_epoch ▆█▅▅▃▄▄▁▄▃▅▃▇▃▃▅▇▅█▄▄▅▃▆▂▁▆█▅█▅▆▃▆▇▇▅▆▅▄
+wandb:          train_loss/recon_step ▃▅▁▃▃▁▁▁▁▂▁█▄▁▁▁▄▄▁▁▁▁▃▁▁▁▁▁▃▁▁▁▁▁▁▁▄▁▄▄
+wandb:               train_loss_epoch ▅▂▅▅▂▅▇▅▅▅█▂▄▅▄▄▄▄▄▁▅▄▆▄▅▄▄█▅▅▃▃▄▄▂▄▃▅▃▄
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 88
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 1.44182
+wandb:        train_loss/denoise_step 1.22254
+wandb:         train_loss/recon_epoch 0.00334
+wandb:          train_loss/recon_step 0.00084
+wandb:               train_loss_epoch 1.44516
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run learn_iter_1 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/al4sbdev
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_1/wandb/run-20260515_041236-al4sbdev/logs
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/lightning_fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python3 ../active_learning.py -model_ckpt=../../diffusion_m ...
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: setting up run t1m6c52w
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_2/wandb/run-20260515_045310-t1m6c52w
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run learn_iter_2
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/t1m6c52w
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name                | Type                     | Params | Mode | FLOPs
+--------------------------------------------------------------------------------
+0 | rate_conditioning   | RateScalarConditioning   | 8.4 K  | eval | 0    
+1 | e_form_conditioning | NoneConditioning         | 0      | eval | 0    
+2 | scheduler           | CosineScheduler          | 0      | eval | 0    
+3 | noiser              | UniformTransitionsNoiser | 0      | eval | 0    
+4 | logit_predictor     | MPNNLogitPredictor       | 626 K  | eval | 0    
+--------------------------------------------------------------------------------
+634 K     Trainable params
+0         Non-trainable params
+634 K     Total params
+2.539     Total estimated model params size (MB)
+0         Modules in train mode
+140       Modules in eval mode
+0         Total Flops
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:485: Your `val_dataloader`'s sampler has shuffling enabled, it is strongly recommended that you turn shuffling off for val/test dataloaders.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: uploading genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_2/wandb/run-20260515_045310-t1m6c52w/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json
+wandb: uploading history steps 8815-8839, summary, console lines 18-18
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▂▂▂▃▃▃▃▄▄▄▄▄▄▄▅▅▅▅▅▅▅▅▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇█
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▄▃▅▄▅▄▂▄▃▃▃█▄▄▄▃▄▃▂▄▃█▃▃▃▂▄▁▁▂▃▃▃▂▄▂▃▂▆▂
+wandb:        train_loss/denoise_step ▅▃▃▇▄█▄▄▆▅▄▁▆▆▃▅▅▁▃▄▅▅▄▄▄▆▅▄▆█▅▇▄▄▇▅▄▅▇▃
+wandb:         train_loss/recon_epoch ▁▅▆▂▇▃▆▄▄▆▄▅▄▄▃▂▄▄▄▄▁▁▆▄▄▄▄█▄▄▃▄▄▇▃▆▃▄▂▅
+wandb:          train_loss/recon_step ▁▁▁▁▁▁▁▃▁▁▁▁▁▁▁▁▁▁▆▁▆▃▁▁▁▆▁▁▇▁▁▁▁▁█▃▄▁▁▁
+wandb:               train_loss_epoch ▄▄▅█▄▆▄▃▅▄▆▅▄▃▃▅▂▆▅▂▄▂▃▂▆▅▄▃▂▃▃▃▂▂▂▁▃▃▂▂
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 169
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 1.31788
+wandb:        train_loss/denoise_step 1.64062
+wandb:         train_loss/recon_epoch 0.00443
+wandb:          train_loss/recon_step 0.00141
+wandb:               train_loss_epoch 1.32232
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run learn_iter_2 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/t1m6c52w
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_2/wandb/run-20260515_045310-t1m6c52w/logs
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/lightning_fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python3 ../active_learning.py -model_ckpt=../../diffusion_m ...
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: setting up run 604psaqi
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_3/wandb/run-20260515_055247-604psaqi
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run learn_iter_3
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/604psaqi
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name                | Type                     | Params | Mode | FLOPs
+--------------------------------------------------------------------------------
+0 | rate_conditioning   | RateScalarConditioning   | 8.4 K  | eval | 0    
+1 | e_form_conditioning | NoneConditioning         | 0      | eval | 0    
+2 | scheduler           | CosineScheduler          | 0      | eval | 0    
+3 | noiser              | UniformTransitionsNoiser | 0      | eval | 0    
+4 | logit_predictor     | MPNNLogitPredictor       | 626 K  | eval | 0    
+--------------------------------------------------------------------------------
+634 K     Trainable params
+0         Non-trainable params
+634 K     Total params
+2.539     Total estimated model params size (MB)
+0         Modules in train mode
+140       Modules in eval mode
+0         Total Flops
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:485: Your `val_dataloader`'s sampler has shuffling enabled, it is strongly recommended that you turn shuffling off for val/test dataloaders.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_3/wandb/run-20260515_055247-604psaqi/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json
+wandb: uploading history steps 4480-4481, summary, console lines 18-18
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▁▁▁▂▂▂▂▂▃▃▃▃▃▃▄▄▄▄▄▄▅▅▅▅▅▅▆▆▆▇▇▇▇▇████
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▅▂▂▂▄▆▄▃█▃▄▄▃▃▃▂▃▂▃▄▃▃▃▄▂▄▅▂▄▂▄▂▂▃▁▅▂▂▃▁
+wandb:        train_loss/denoise_step ▁▂▁▁▂▂▂▁▂▂▂▂▂▁▁▂▂▂▂▂▂▁▂▁▂▁▁▂▁▂▂▂▁▂▁▂▂▃█▁
+wandb:         train_loss/recon_epoch ▃▄▄▅▅▃▇▁▆▄▇▆█▅▄▆▄▄▃▁▅▄▅▆▃▃▃▃▃▄▄▁▄▅█▂▄▂▆▅
+wandb:          train_loss/recon_step ▁▁▁▁▁▁▁▁▄▁▁▁▁▅▃▁▁▁▁▁█▁▄▁▁▁▂▁▁▁▁▄▂▁▁▁▁▁▁▁
+wandb:               train_loss_epoch ▅▁▂▂▃▂▅▃█▃▂▃▂▃▃▃▁▃▁▃▂▁▁▂▂▂▃▂▂▄▃▃▂▁▂▃▂▁▃▃
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 82
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 1.44346
+wandb:        train_loss/denoise_step 0.81292
+wandb:         train_loss/recon_epoch 0.00398
+wandb:          train_loss/recon_step 0.00253
+wandb:               train_loss_epoch 1.44744
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run learn_iter_3 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/604psaqi
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_3/wandb/run-20260515_055247-604psaqi/logs
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/lightning_fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python3 ../active_learning.py -model_ckpt=../../diffusion_m ...
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: setting up run xxul0og7
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_4/wandb/run-20260515_063518-xxul0og7
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run learn_iter_4
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/xxul0og7
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name                | Type                     | Params | Mode | FLOPs
+--------------------------------------------------------------------------------
+0 | rate_conditioning   | RateScalarConditioning   | 8.4 K  | eval | 0    
+1 | e_form_conditioning | NoneConditioning         | 0      | eval | 0    
+2 | scheduler           | CosineScheduler          | 0      | eval | 0    
+3 | noiser              | UniformTransitionsNoiser | 0      | eval | 0    
+4 | logit_predictor     | MPNNLogitPredictor       | 626 K  | eval | 0    
+--------------------------------------------------------------------------------
+634 K     Trainable params
+0         Non-trainable params
+634 K     Total params
+2.539     Total estimated model params size (MB)
+0         Modules in train mode
+140       Modules in eval mode
+0         Total Flops
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:485: Your `val_dataloader`'s sampler has shuffling enabled, it is strongly recommended that you turn shuffling off for val/test dataloaders.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading wandb-summary.json; uploading genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_4/wandb/run-20260515_063518-xxul0og7/files/model_parameters.yaml; uploading output.log
+wandb: uploading wandb-summary.json; uploading output.log; uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▂▂▂▂▂▂▂▂▃▃▃▄▄▄▄▄▄▄▄▅▅▅▅▅▅▅▅▅▆▆▆▆▆▇▇▇██
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▄▅▄▄▄▄▃▃▅█▃▆▆▂▅▃▂▂▂▂▂▄▃▄▄▁▁▄▃▅▁▄▃▃▃▆▁▁▆▂
+wandb:        train_loss/denoise_step ▃▂▃▂▂▂▁▃▃▅▆▄▂▂▂▃▄▂▃▇▂▂▄▃█▂▂▃▂▂▃▃▃▄▄▂▃▂▃▂
+wandb:         train_loss/recon_epoch ▃▂▄▅▄▂▅▄▅▃▁▆▅▃▅▅▇▅▃▄▄▆▄▃▃▄▄▇▄▃▄▅▂▁█▆█▇▅▂
+wandb:          train_loss/recon_step ▁▁▁▁▄▁▇▅▁▁▁▁▁▁▁▁▁▁▇▁▁▁▁▁▂▁▁▅▂▁▁▁▁▁▁▁██▁▅
+wandb:               train_loss_epoch ▆▄▁▅▄▅▄▇▄▄▂▆▇▁▃▃▅█▄▃▆▇▅▆▃▃▃▅▂▅▂▃▄▅▂▂█▄▆▁
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 86
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 1.18144
+wandb:        train_loss/denoise_step 1.20711
+wandb:         train_loss/recon_epoch 0.00445
+wandb:          train_loss/recon_step 0.00105
+wandb:               train_loss_epoch 1.1859
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run learn_iter_4 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/xxul0og7
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_4/wandb/run-20260515_063518-xxul0og7/logs
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/lightning_fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python3 ../active_learning.py -model_ckpt=../../diffusion_m ...
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: setting up run 9ppat6t0
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_5/wandb/run-20260515_071929-9ppat6t0
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run learn_iter_5
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/9ppat6t0
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name                | Type                     | Params | Mode | FLOPs
+--------------------------------------------------------------------------------
+0 | rate_conditioning   | RateScalarConditioning   | 8.4 K  | eval | 0    
+1 | e_form_conditioning | NoneConditioning         | 0      | eval | 0    
+2 | scheduler           | CosineScheduler          | 0      | eval | 0    
+3 | noiser              | UniformTransitionsNoiser | 0      | eval | 0    
+4 | logit_predictor     | MPNNLogitPredictor       | 626 K  | eval | 0    
+--------------------------------------------------------------------------------
+634 K     Trainable params
+0         Non-trainable params
+634 K     Total params
+2.539     Total estimated model params size (MB)
+0         Modules in train mode
+140       Modules in eval mode
+0         Total Flops
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:485: Your `val_dataloader`'s sampler has shuffling enabled, it is strongly recommended that you turn shuffling off for val/test dataloaders.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading wandb-summary.json; uploading genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_5/wandb/run-20260515_071929-9ppat6t0/files/model_parameters.yaml; uploading output.log
+wandb: uploading history steps 5780-5781, summary, console lines 18-18
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▁▁▂▂▂▂▂▂▃▃▃▄▄▄▄▄▄▄▅▅▅▅▅▆▆▆▇▇▇▇▇▇▇▇████
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▄▃▃▅▂▃▂▃▆▂▃▅▁▃█▄▃▃▁▃▄▃▁▁▂▃▂▃▂▄▁▂▂▃▄▄▁▃▂▃
+wandb:        train_loss/denoise_step ▂▁▂▄▂▂▃▃▂▂▂▂▃▅▁▄▃▃▂▄▂▅▂▃▂▂▃▃▃▄▂▄▃▂▃█▁▄▃▂
+wandb:         train_loss/recon_epoch ▂▃▃▆▂▂▄▄▁▁▂▃▄▃▂▅▄▄▆▅▂▄▅█▄▁▃▁▂▂▄▂▃▃▃▅▂▃▅▆
+wandb:          train_loss/recon_step ▁█▁▁▁▁▁▂▁▄▃▂▁▁▁▁▁▁▁▁▅▁▄▁▁▁▁▁▁▁▁▁▁▁▄▃▁▁▁▁
+wandb:               train_loss_epoch ▄▄▃▃▂▅▂▃▃▆▄▃▆▅▂█▂▃▂▃▁▆▃▂▅▃▂▃▃▂▂▁▂▃▃▃▄▁▂▃
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 97
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 1.20021
+wandb:        train_loss/denoise_step 0.96531
+wandb:         train_loss/recon_epoch 0.00455
+wandb:          train_loss/recon_step 0.00117
+wandb:               train_loss_epoch 1.20476
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run learn_iter_5 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/9ppat6t0
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_5/wandb/run-20260515_071929-9ppat6t0/logs
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/lightning_fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python3 ../active_learning.py -model_ckpt=../../diffusion_m ...
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: setting up run ivuirlh4
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_6/wandb/run-20260515_080749-ivuirlh4
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run learn_iter_6
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/ivuirlh4
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name                | Type                     | Params | Mode | FLOPs
+--------------------------------------------------------------------------------
+0 | rate_conditioning   | RateScalarConditioning   | 8.4 K  | eval | 0    
+1 | e_form_conditioning | NoneConditioning         | 0      | eval | 0    
+2 | scheduler           | CosineScheduler          | 0      | eval | 0    
+3 | noiser              | UniformTransitionsNoiser | 0      | eval | 0    
+4 | logit_predictor     | MPNNLogitPredictor       | 626 K  | eval | 0    
+--------------------------------------------------------------------------------
+634 K     Trainable params
+0         Non-trainable params
+634 K     Total params
+2.539     Total estimated model params size (MB)
+0         Modules in train mode
+140       Modules in eval mode
+0         Total Flops
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:485: Your `val_dataloader`'s sampler has shuffling enabled, it is strongly recommended that you turn shuffling off for val/test dataloaders.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_6/wandb/run-20260515_080749-ivuirlh4/files/model_parameters.yaml; uploading output.log; uploading wandb-summary.json
+wandb: uploading genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_6/wandb/run-20260515_080749-ivuirlh4/files/model_parameters.yaml; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 8244-8255, summary, console lines 18-18
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▁▂▂▂▂▂▂▃▃▃▃▃▄▄▄▄▅▅▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇████
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▂▄▇▄▅▇█▄▂▃▄▆▄▇▂▅▃▅▃▃▃▂▂▅▃▁█▆▄▆▄▂▅▅▄▂▂▄▅▃
+wandb:        train_loss/denoise_step ▂▂▃▃█▂▃▂▂▂▂▅▂▂▁▁▂▃▃▃▃▃▂▂▄▁▂▂▁▁▂▂▃▁▂▂▁▂▂▂
+wandb:         train_loss/recon_epoch ▁▄▂▄▁▄▄▇▄▅▄▅▅▂▆▇▃▅▂▆▃▃▁▃█▄▄▅▃▂▄▁▇▂▂▄▃▂▄▅
+wandb:          train_loss/recon_step ▁▁▃▃▁▅▄▁▁▆▁▁▁▁▇▃▆▁▂▁▇▆▁█▁▁▁▁▁▁▁▁▁▁▁▁▃▁█▂
+wandb:               train_loss_epoch ▃▃█▃▂▂▃▃▂▂▃▄▁▃▆▂▃▂▃▁▂▆▃▂▂▃▄▂▃▃▃▂▃▃▃▃▂▂▁▂
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 128
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 1.11621
+wandb:        train_loss/denoise_step 1.05369
+wandb:         train_loss/recon_epoch 0.00289
+wandb:          train_loss/recon_step 0.00123
+wandb:               train_loss_epoch 1.1191
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run learn_iter_6 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/ivuirlh4
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_6/wandb/run-20260515_080749-ivuirlh4/logs
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/lightning_fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python3 ../active_learning.py -model_ckpt=../../diffusion_m ...
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+wandb: setting up run 3yhi6omm
+wandb: Tracking run with wandb version 0.23.1
+wandb: Run data is saved locally in genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_7/wandb/run-20260515_090555-3yhi6omm
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run learn_iter_7
+wandb: ⭐️ View project at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: 🚀 View run at https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/3yhi6omm
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name                | Type                     | Params | Mode | FLOPs
+--------------------------------------------------------------------------------
+0 | rate_conditioning   | RateScalarConditioning   | 8.4 K  | eval | 0    
+1 | e_form_conditioning | NoneConditioning         | 0      | eval | 0    
+2 | scheduler           | CosineScheduler          | 0      | eval | 0    
+3 | noiser              | UniformTransitionsNoiser | 0      | eval | 0    
+4 | logit_predictor     | MPNNLogitPredictor       | 626 K  | eval | 0    
+--------------------------------------------------------------------------------
+634 K     Trainable params
+0         Non-trainable params
+634 K     Total params
+2.539     Total estimated model params size (MB)
+0         Modules in train mode
+140       Modules in eval mode
+0         Total Flops
+/home/kwalz/.conda/envs/cat_opt/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:485: Your `val_dataloader`'s sampler has shuffling enabled, it is strongly recommended that you turn shuffling off for val/test dataloaders.
+wandb: WARNING Symlinked 1 file into the W&B run directory; call wandb.save again to sync new files.
+wandb: updating run metadata
+wandb: uploading wandb-summary.json; uploading genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_7/wandb/run-20260515_090555-3yhi6omm/files/model_parameters.yaml; uploading output.log
+wandb: uploading history steps 3578-3603, summary, console lines 18-18
+wandb: 
+wandb: Run history:
+wandb:                          epoch ▁▁▁▂▂▂▂▂▂▂▂▃▃▃▃▄▄▄▄▄▅▅▅▅▅▆▆▆▆▆▇▇▇▇▇▇████
+wandb: train_loss/aux_rate_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/aux_rate_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: train_loss/d3pm_aux_term_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:  train_loss/d3pm_aux_term_step ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train_loss/denoise_epoch ▄▇▅▃▄▆▃▃▄▇▄▄▃▄▆▁▄▄▄▄▅▆▄█▃▃▃▂▄▅▃▃▃▁▅▂▃▂▂▃
+wandb:        train_loss/denoise_step ▄▄▂▃▄▃█▃▂▄▃▄▃▃▃▃▄▃▁▃▃▂▄▃▄▅▃▄▄▂▂▅▂▃▄▃▂▃▄▄
+wandb:         train_loss/recon_epoch ▅▄▆▅▄▄▃▃▆▄█▆▅▄▃▅▄▅▇▃▃▃▃▅▁▄▃▄▂▃▄▅▃▃▃▄▆▅▂▆
+wandb:          train_loss/recon_step ▁▁▁▁▁▁▁▁▁▁▆▁▁▁▁▁▁▂▁▁▁▇▁▁▁▁▁▁▇▁▁▁▁▁▇█▁▇▁▁
+wandb:               train_loss_epoch ▄▅▃▄▃▃▃▇▃▄▃▄▅▆▃▄▄▃▄▅▄█▃▇▃▄▅▁▃▃▁▅▃▂▂▃▂▃▂▃
+wandb:                             +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                          epoch 52
+wandb: train_loss/aux_rate_term_epoch 0
+wandb:  train_loss/aux_rate_term_step 0
+wandb: train_loss/d3pm_aux_term_epoch 0
+wandb:  train_loss/d3pm_aux_term_step 0
+wandb:       train_loss/denoise_epoch 1.06088
+wandb:        train_loss/denoise_step 0.95812
+wandb:         train_loss/recon_epoch 0.00379
+wandb:          train_loss/recon_step 0.01846
+wandb:               train_loss_epoch 1.06467
+wandb:                             +3 ...
+wandb: 
+wandb: 🚀 View run learn_iter_7 at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k/runs/3yhi6omm
+wandb: ⭐️ View project at: https://wandb.ai/karsten-walz-jensen-aarhus-university/active_learning_no_saas_2k
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_7/wandb/run-20260515_090555-3yhi6omm/logs

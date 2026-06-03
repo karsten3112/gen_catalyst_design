@@ -1,0 +1,116 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            hfjbe4tusfc878t4hlgs18ohtnkr9hbe:
+                args:
+                    - -model_ckpt=../../diffusion_model_parameters/hyperparam_search_100_no_saas/hyperparam_search/model_8/checkpoints/best_epoch=epoch=589-val=val_loss=1.5663.ckpt
+                    - -init_traj=../../diffusion_model_parameters/datasets_100/genetic_algorithm_2000_no_saas.traj
+                    - -pre_sample_db=genetic_alg_dataset_no_saas/model_8_2k_active_finale/pre_estim.db
+                    - -n_loops=7
+                    - -n_samples_per_loop=1000
+                    - -m_index=100
+                    - -proj_name=active_learning_no_saas_2k
+                    - -out=genetic_alg_dataset_no_saas/model_8_2k_active_finale
+                    - -dev=cuda
+                cpu_count: 36
+                cpu_count_logical: 36
+                cudaVersion: "12.9"
+                disk:
+                    /:
+                        total: "78604800000"
+                        used: "34718289920"
+                email: karsten.walz.jensen@gmail.com
+                executable: /home/kwalz/.conda/envs/cat_opt/bin/python3
+                gpu: Tesla V100-PCIE-16GB
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Volta
+                      cudaCores: 5120
+                      memoryTotal: "17179869184"
+                      name: Tesla V100-PCIE-16GB
+                      uuid: GPU-5f5d7daf-14b8-13a7-5e38-1b4884a70586
+                host: s34n12.grendel.cscaa.dk
+                memory:
+                    total: "405378285568"
+                os: Linux-4.18.0-513.18.1.el8_9.x86_64-x86_64-with-glibc2.28
+                program: /home/kwalz/speciale_files/active_learning_no_saas/rate_only/../active_learning.py
+                python: CPython 3.10.18
+                root: genetic_alg_dataset_no_saas/model_8_2k_active_finale/learn_iter_3
+                slurm:
+                    cluster_name: grendel
+                    conf: /etc/slurm/slurm.conf
+                    cpus_on_node: "1"
+                    cpus_per_task: "1"
+                    gpus_on_node: "1"
+                    gtids: "0"
+                    job_account: fysma
+                    job_cpus_per_node: "1"
+                    job_end_time: "1778854331"
+                    job_gid: "525"
+                    job_gpus: "1"
+                    job_id: "5089529"
+                    job_name: act_learn
+                    job_nodelist: s34n12
+                    job_num_nodes: "1"
+                    job_partition: qgpu
+                    job_qos: gpulimfysma
+                    job_start_time: "1778811131"
+                    job_uid: "1586"
+                    job_user: kwalz
+                    jobid: "5089529"
+                    localid: "0"
+                    mem_per_cpu: "6144"
+                    nnodes: "1"
+                    nodeid: "0"
+                    nodelist: s34n12
+                    oom_kill_step: "0"
+                    prio_process: "0"
+                    procid: "0"
+                    submit_dir: /home/kwalz/speciale_files/active_learning_no_saas/rate_only
+                    submit_host: grendel
+                    task_pid: "79906"
+                    tasks_per_node: "1"
+                    topology_addr: s34n12
+                    topology_addr_pattern: node
+                    tres_per_task: cpu=1
+                startedAt: "2026-05-15T03:52:47.937775Z"
+                writerId: hfjbe4tusfc878t4hlgs18ohtnkr9hbe
+        m:
+            - "1": trainer/global_step
+              "6":
+                - 3
+              "7": []
+            - "2": '*'
+              "5": 1
+              "6":
+                - 1
+              "7": []
+        python_version: 3.10.18
+        t:
+            "1":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+                - 105
+            "2":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+                - 105
+            "3":
+                - 2
+                - 3
+                - 7
+                - 13
+                - 66
+            "4": 3.10.18
+            "5": 0.23.1
+            "12": 0.23.1
+            "13": linux-x86_64

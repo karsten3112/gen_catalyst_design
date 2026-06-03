@@ -283,7 +283,7 @@ def get_full_element_pool(
 
 
 def get_full_element_pool_no_saas(
-        species_exclude:list=None
+        species_exclude:list=None#["Mn", "Ga"]
     ):
     element_pool = get_full_element_pool(species_exclude=["Zn", "Ga", "Mn", "Mo"])
     if species_exclude is not None:
@@ -292,6 +292,25 @@ def get_full_element_pool_no_saas(
             species_exclude=species_exclude
         )
     return element_pool
+
+def get_atom_color_dict(
+        element_pool:list
+    ):
+    from ase.data import atomic_numbers
+    from ase.data.colors import jmol_colors
+
+    element_colors = {
+        el: jmol_colors[atomic_numbers[el]]
+        for el in element_pool
+    }
+    return element_colors
+
+def get_element_hatches(
+        element_pool:list
+    ):
+    element_hatch = {element:("xx" if element in ["Rh", "Os", "Ru", "Zn", "Ga", "Ag"] else None) for element in element_pool}
+    element_hatch["Ru"] = "//"
+    return element_hatch
 
 
 def filter_dataset(

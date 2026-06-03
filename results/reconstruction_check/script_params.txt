@@ -1,6 +1,0 @@
--elem_pool=all_fcc -calc=chgnet -file=all_fcc.traj -out=chgnet 
--elem_pool=au_close_fcc -calc=chgnet -file=au_close_fcc.traj -out=chgnet 
--elem_pool=ni_close_fcc -calc=chgnet -file=ni_close_fcc.traj -out=chgnet 
--elem_pool=all_fcc -calc=mace_mh1 -file=all_fcc.traj -out=mace_mh1 
--elem_pool=au_close_fcc -calc=mace_mh1 -file=au_close_fcc.traj -out=mace_mh1 
--elem_pool=ni_close_fcc -calc=mace_mh1 -file=ni_close_fcc.traj -out=mace_mh1 
