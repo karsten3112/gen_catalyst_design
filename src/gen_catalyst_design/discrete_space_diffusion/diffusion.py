@@ -1,5 +1,5 @@
 from .schedulers import DiscreteTimeScheduler, ExponentialBetaScheduler, CosineScheduler, LinearBetaScheduler, LinearAlphaScheduler
-from .conditioning import Conditioning, NoneConditioning, RateScalarConditioning, EformConditioning, RateClassConditioning
+from .conditioning import Conditioning, NoneConditioning, RateScalarConditioning, EformConditioning, RateClassConditioning, RateMantissaConditioning
 from .noisers import DiscreteSpaceNoiser, UniformTransitionsNoiser, AbsorbingStateNoiser
 from .logits import MPNNLogitPredictor
 from ase.atoms import Atoms
@@ -28,7 +28,8 @@ implemented_modules = {
         "None":NoneConditioning,
         "RateScalarConditioning":RateScalarConditioning,
         "EformConditioning":EformConditioning,
-        "RateClassConditioning":RateClassConditioning
+        "RateClassConditioning":RateClassConditioning,
+        "RateMantissaConditioning":RateMantissaConditioning
     }
 
 }
@@ -396,7 +397,7 @@ class DiffusionModel(LightningModule):
             self, 
             n_samples:int,
             template_atoms:Atoms, 
-            conditioning_dicts:dict={},
+            conditioning_dicts:list=[],
             condition_keys:list=["rate"],
             guidance_scale_dict:dict={},
             return_as_atoms_list:bool=False, 
@@ -532,7 +533,10 @@ class DiffusionModel(LightningModule):
         for kw in guidance_scale_dict:
             guidance_scale = guidance_scale_dict[kw]
             guided_logits += guidance_scale*(guided_logits_dict[kw]-guided_logits_dict["uncond"])
-        return guided_logits/temp
+
+        guided_logits/=temp
+        #guided_logits = torch.clamp(guided_logits, min=-10.0)
+        return guided_logits
 
     def convert_denoised_batches_to_traj(self, denoised_batch_list, batch_size, return_as_atoms_list:bool=False):
         num_timesteps = len(denoised_batch_list)

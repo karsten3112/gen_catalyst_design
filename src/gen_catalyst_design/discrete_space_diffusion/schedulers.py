@@ -126,15 +126,15 @@ class DiscreteAlphaScheduler(DiscreteTimeScheduler):
 class CosineScheduler(DiscreteAlphaScheduler):
     def __init__(self, reg:float=1e-1, t_init=1, t_final=1000, time_sample_method="stratified", **kwargs):
         super().__init__(t_init, t_final, time_sample_method)
-        self.reg = torch.tensor(reg)
+        self.reg = reg
     
     def get_state_dict(self):
         state_dict = super().get_state_dict()
-        state_dict.update({"scheduler_type":"CosineScheduler", "reg":self.reg.item()})
+        state_dict.update({"scheduler_type":"CosineScheduler", "reg":self.reg})
         return state_dict
    
     def set_device(self, device):
-        self.reg = self.reg.to(device=device)
+        #self.reg = self.reg.to(device=device)
         return super().set_device(device)
 
     def cos(self, t:torch.tensor):
@@ -155,5 +155,10 @@ class LinearAlphaScheduler(DiscreteAlphaScheduler):
     def alpha_t(self, t):
         return self.alpha_t_init + t/self.t_final*(self.alpha_t_final-self.alpha_t_init)
     
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
+        state_dict.update({"scheduler_type":"LinearAlphaScheduler"})
+        return state_dict
+
     def __call__(self, t):
         return 1.0 - self.alpha_t(t=t)/self.alpha_t(t=(t-1))

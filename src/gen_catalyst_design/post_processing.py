@@ -70,7 +70,7 @@ def plot_kde_dist(
     ):
 
     kde = KernelDensity(bandwidth=bandwidth, **kde_kwargs).fit(rate_distribution.reshape(-1,1))
-    plot_samples = np.linspace(plot_range[0], plot_range[1], 10000)
+    plot_samples = np.linspace(plot_range[0], plot_range[1], 50000)
     log_dist = kde.score_samples(plot_samples.reshape(-1,1))
     norm_dist = np.exp(log_dist)
     scale_factor = 1.0/np.max(norm_dist) if scale_factor is None else scale_factor

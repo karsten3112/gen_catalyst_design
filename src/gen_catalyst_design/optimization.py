@@ -70,6 +70,9 @@ def evaluate_score_from_symbols(
         stabilizer:Stabilizer=None,
         add_time_stats:bool=False,
         objective_key:str="rate",
+        score_weight_dict:dict={},
+        log_atoms_conf_list:list=None,
+        start_from_mean_lattice:bool=True,        
         use_log:bool=False
         ):
         if add_time_stats:
@@ -87,28 +90,42 @@ def evaluate_score_from_symbols(
                 add_dict = logger.time_function_call(
                     "stability_eval",
                     stabilizer.get_formation_energy_from_symbols,
-                    {"symbols":symbols}
+                    {"symbols":symbols, "start_from_mean_lattice":start_from_mean_lattice}
                 )
             else:
                 add_dict = stabilizer.get_formation_energy_from_symbols(
-                    symbols=symbols
+                    symbols=symbols,
+                    start_from_mean_lattice=start_from_mean_lattice
                 )
             score_dict.update(add_dict)
+            if log_atoms_conf_list is not None:
+                log_atoms_conf_list.append({keyword:score_dict[keyword] for keyword in ["atoms_init", "atoms_final"]})
+        
         datadict = {"elements":symbols, "score_dict":score_dict}
         logger.store_datadict(datadict=datadict)
         logger.n_obj_func_calls+=1
-        return get_score_from_obj_key(datadict=datadict, objective_key=objective_key, use_log=use_log)
+        if objective_key == "datadict":
+            return datadict
+        else:
+            return get_score_from_obj_key(datadict=datadict, objective_key=objective_key, use_log=use_log, score_weight_dict=score_weight_dict)
 
 
-def get_score_from_obj_key(datadict:dict, objective_key:str="rate", use_log:bool=False):
+def get_score_from_obj_key(
+        datadict:dict, 
+        objective_key:str="rate", 
+        use_log:bool=False,
+        score_weight_dict:dict={}
+        ):
     if objective_key == "rate":
-        return np.log(datadict["score_dict"]["rate"]) if use_log else datadict["score_dict"]["rate"]
+        return np.log10(datadict["score_dict"]["rate"]) if use_log else datadict["score_dict"]["rate"]
     elif objective_key == "stability":
         return datadict["score_dict"]["e_form"]
-    elif objective_key == "mixture":
-        raise NotImplementedError("Not implemented yet for having objective for both rate and e_form")
     elif objective_key == "both":
-        return np.log(datadict["score_dict"]["rate"]) if use_log else datadict["score_dict"]["rate"], datadict["score_dict"]["e_form"]
+        rate_weight = score_weight_dict.pop("rate_weight", 0.5)
+        e_form_weight = score_weight_dict.pop("e_form_weight", 0.5)
+        rate = np.log(datadict["score_dict"]["rate"]) if use_log else datadict["score_dict"]["rate"]
+        e_form = datadict["score_dict"]["e_form"]
+        return rate*rate_weight - e_form*e_form_weight
     else:
         raise Exception(f"Other score-type of {objective_key} is not defined")
 
@@ -135,7 +152,7 @@ def setup_optimization_objective(
     
     #Train calculator on database
     calculator.train_model_from_db(
-         db_filename=f"atoms_adsorbates_{miller_index}_DFT_all.db", #remember to change this too
+         db_filename=f"atoms_adsorbates_{miller_index}_DFT.db", #remember to change this too
          features_bulk=features_bulk, 
          features_gas=features_gas, 
          db_pth_header=os.path.join(database_pth_header, "DFT_database"),
@@ -171,3 +188,14 @@ def setup_optimization_objective(
     else:
         stabilizer = None
     return reaction_mechanism, stabilizer, template_atoms_list
+
+
+def get_surface_params_from_target(target_type:str="rate"):
+    if target_type == "rate":
+        return "cluster", False
+    elif target_type == "stability":
+        return "surface", True
+    elif target_type == "both":
+        return "surface", True
+    else:
+        raise Exception(f"target of type {target_type} is not implemented")

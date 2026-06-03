@@ -77,7 +77,35 @@ class RateScalarConditioning(Conditioning):
     def embed_condition(self, condition):
         rate_embedded = self.sinusoidal_embedding(pos_encoding=condition)
         return self.ml_layers(rate_embedded)
-    
+
+class RateMantissaConditioning(Conditioning):
+    def __init__(self, embedding_dim = 32, apply_log:bool=False, activation_func:callable=nn.ReLU(),device=None):
+        super().__init__(embedding_dim, device)
+        self.apply_log = apply_log
+        self.ml_layers = nn.Sequential(
+            nn.Linear(in_features=2*self.embedding_dim, out_features=self.embedding_dim),
+            activation_func,
+            nn.Linear(in_features=self.embedding_dim, out_features=self.embedding_dim)
+        )
+
+    def get_state_dict(self):
+        state_dict = super().get_state_dict()
+        state_dict.update({"conditioning_type":"RateMantissaConditioning"})
+        return state_dict
+
+    def embed_condition(self, condition):
+        if self.apply_log:
+            exponents = torch.floor(torch.log10(condition))
+            mags = condition/(10**exponents)
+        else:
+            exponents = torch.floor(condition)
+            mags = (10**condition)/(10**exponents)
+        
+        mag_embedded = self.sinusoidal_embedding(pos_encoding=mags)
+        exp_embedded = self.sinusoidal_embedding(pos_encoding=exponents)
+        return self.ml_layers(torch.hstack([mag_embedded, exp_embedded]))
+
+
 
 class EformConditioning(RateScalarConditioning):
     def __init__(self, embedding_dim=32, activation_func = nn.ReLU(), device=None):

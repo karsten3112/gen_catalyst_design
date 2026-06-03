@@ -248,6 +248,7 @@ def run_genetic_algorithm(
 
 
 def get_surface_params_from_target(target_type:str="rate"):
+    print(target_type)
     if target_type == "rate":
         return "cluster", False
     elif target_type == "stability":

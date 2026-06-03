@@ -91,8 +91,8 @@ class Job:
         if "file_name" in script_settings:
             inputs_line+=f"{script_settings['file_name']} "
         
-        if "script_inputs" in self.script_params:
-            script_inputs = self.script_params["script_inputs"]
+        if "script_inputs" in script_settings:
+            script_inputs = script_settings["script_inputs"]
             for script_input in script_inputs:
                 inputs_line+=f"{script_input}={script_inputs[script_input]} "
         fileobj.write(f"{inputs_line}")

@@ -8,11 +8,11 @@ import random
 def main():
     random_seed = 42
     random.seed(random_seed)
-    miller_index = "100"
+    miller_index = "111"
     element_pool = ['Rh', 'Pt', 'Pd', 'Cu', 'Au', 'Ag', 'Ir', 'Ni']#get_full_element_pool()#['Ag', 'Pt', 'Pd', 'Ir']#['Rh', 'Pt', 'Pd', 'Cu', 'Au', 'Ag', 'Ir', 'Ni']
     calculator = CHGNetCalculator()
     #write_atoms_list = True
-    n_samples = 5
+    n_samples = 1
 
     template_atoms_list, n_atoms_surf = get_atoms_from_template_db(
         db_filename=f"{miller_index}_templates.db",
@@ -24,7 +24,8 @@ def main():
         calculator=calculator,
         ref_energy_file="chgnet_ref_energies.yaml",
         ref_energy_pth_header="../../yaml_files/reference_energies",
-        interval=1000
+        interval=1000,
+        fmax=5.0
     )
 
     recon_check_kwargs = dict(

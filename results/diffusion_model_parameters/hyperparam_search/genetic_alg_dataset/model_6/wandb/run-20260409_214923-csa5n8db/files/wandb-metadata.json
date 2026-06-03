@@ -1,0 +1,93 @@
+{
+  "os":  "Linux-4.18.0-513.18.1.el8_9.x86_64-x86_64-with-glibc2.28",
+  "python":  "CPython 3.10.18",
+  "startedAt":  "2026-04-09T19:49:23.044973Z",
+  "args":  [
+    "-data_traj=../datasets/genetic_algorithm_2000.traj",
+    "-m_epochs=1000",
+    "-out=genetic_alg_dataset",
+    "-beta_max=1.0",
+    "-beta_min=0.0001",
+    "-dev=cuda",
+    "-log_proj_name=hyperparams",
+    "-lr=0.0005",
+    "-pat=100",
+    "-m_name=model_18",
+    "-noiser=UniformTransitionsNoiser",
+    "-sched=ExponentialBetaScheduler",
+    "-p_drop=0.1"
+  ],
+  "program":  "/home/kwalz/speciale_files/diffusion_model_parameters/hyperparam_search/../train_diff_model.py",
+  "email":  "karsten.walz.jensen@gmail.com",
+  "root":  "genetic_alg_dataset/model_18",
+  "host":  "s34n08.grendel.cscaa.dk",
+  "executable":  "/home/kwalz/.conda/envs/cat_opt/bin/python3",
+  "cpu_count":  36,
+  "cpu_count_logical":  36,
+  "gpu":  "Tesla V100-PCIE-16GB",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "78604800000",
+      "used":  "34698035200"
+    }
+  },
+  "memory":  {
+    "total":  "405378629632"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "Tesla V100-PCIE-16GB",
+      "memoryTotal":  "17179869184",
+      "cudaCores":  5120,
+      "architecture":  "Volta",
+      "uuid":  "GPU-94a16f95-abc6-c69e-ae8a-983302df7280"
+    }
+  ],
+  "cudaVersion":  "12.9",
+  "slurm":  {
+    "array_job_id":  "4675651",
+    "array_task_count":  "30",
+    "array_task_id":  "19",
+    "array_task_max":  "30",
+    "array_task_min":  "1",
+    "array_task_step":  "1",
+    "cluster_name":  "grendel",
+    "conf":  "/etc/slurm/slurm.conf",
+    "cpus_on_node":  "1",
+    "cpus_per_task":  "1",
+    "gpus_on_node":  "1",
+    "gtids":  "0",
+    "job_account":  "fysma",
+    "job_cpus_per_node":  "1",
+    "job_end_time":  "1775785746",
+    "job_gid":  "525",
+    "job_gpus":  "1",
+    "job_id":  "4677121",
+    "job_name":  "diff_opt",
+    "job_nodelist":  "s34n08",
+    "job_num_nodes":  "1",
+    "job_partition":  "qgpu",
+    "job_qos":  "gpulimfysma",
+    "job_start_time":  "1775764146",
+    "job_uid":  "1586",
+    "job_user":  "kwalz",
+    "jobid":  "4677121",
+    "localid":  "0",
+    "mem_per_cpu":  "6144",
+    "nnodes":  "1",
+    "nodeid":  "0",
+    "nodelist":  "s34n08",
+    "oom_kill_step":  "0",
+    "prio_process":  "0",
+    "procid":  "0",
+    "submit_dir":  "/home/kwalz/speciale_files/diffusion_model_parameters/hyperparam_search",
+    "submit_host":  "grendel",
+    "task_pid":  "621020",
+    "tasks_per_node":  "1",
+    "topology_addr":  "s34n08",
+    "topology_addr_pattern":  "node",
+    "tres_per_task":  "cpu=1"
+  },
+  "writerId":  "qpsc0vwvedccuhohcglfmsey8i634oci"
+}

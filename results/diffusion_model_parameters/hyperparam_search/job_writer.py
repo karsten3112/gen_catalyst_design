@@ -19,25 +19,28 @@ def main():
     
     drop_probs = [0.1]#, 0.2, 0.5]
 
+    lrs = [1e-3]#[1e-3, 1e-2, 1e-4]
+
     script_params = {
         "-data_traj":"../datasets/genetic_algorithm_2000.traj",
-        "-m_epochs":1000,
+        "-m_epochs":400,
         "-out":"hyperparam_search",
         "-beta_max":1.0,
         "-beta_min":1e-4,
-        "-dev":"gpu" if reserve_gpu else "cpu"
+        "-dev": "cuda" if reserve_gpu else "cpu"
     }
     script_params_list = []
     i = 0
     for noiser in noisers:
         for scheduler in schedulers:
-            for drop_prob in drop_probs:
+            for lr in lrs:#for drop_prob in drop_probs:
                 script_dict = script_params.copy()
                 script_dict.update({
-                    "-m_name":f"model_{i+1}",
+                    "-m_name":f"model_{i+9}", #CHANGE THIS
                     "-noiser":noiser,
-                    "-scheduler":scheduler,
-                    "-p_drop":drop_prob
+                    "-sched":scheduler,
+                    "-p_drop":drop_probs[0],
+                    "-lr":lr
                 })
                 script_params_list.append(script_dict)
                 if scheduler == "ExponentialBetaScheduler":

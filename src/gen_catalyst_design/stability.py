@@ -95,6 +95,7 @@ def center_slab(
         centers = list(range(len(atoms)))
     center = atoms[centers].positions.mean(axis=0)
     transl = np.dot([0.5] * 3, atoms.cell) - center
+
     atoms.translate(transl)
     atoms.wrap()
     return atoms
@@ -105,6 +106,7 @@ def center_slab(
 
 def inversion_symmetry_repeat(
     atoms: Atoms,
+    miller_index:str="100",
     center: str = "cell",
 ) -> Atoms:
     """
@@ -116,6 +118,8 @@ def inversion_symmetry_repeat(
     scaled = atoms.get_scaled_positions(wrap=False)
     s0 = np.array([0.5, 0.5, 0.0], dtype=float)
     scaled_inv = 2.0 * s0 - scaled
+    if miller_index == "111":
+        scaled_inv += np.array([-1/9, -1/9, 0.0])
     pos_inv = scaled_inv @ cell
     symbols = atoms.get_chemical_symbols()
     atoms_inv = Atoms(
@@ -160,12 +164,22 @@ def apply_inversion_symmetry(
         vacuum:float=10.0, 
         a_lat:float=None
     ):
-    atoms = center_slab(atoms=atoms)
+    if miller_index == "100":
+        atoms = center_slab(atoms=atoms)
     if a_lat is None:
         a_lat = reference_states[atomic_numbers["Au"]]["a"]
-    interlayer_dist = a_lat / 2
+    if miller_index == "100":
+        interlayer_dist = a_lat /(2.0*np.sqrt(1)) #divide by two to get half the inter-layer distance and sqrt(1) from miller index
+    elif miller_index == "111":
+        interlayer_dist = a_lat/(np.sqrt(3)) #divide by two to get half the inter-layer distance and sqrt(3) from miller index
+    else:
+        raise Exception(f"miller index of type: {miller_index} is not implemented")
+    
     atoms.center(vacuum=interlayer_dist / 2, axis=2)
-    atoms = inversion_symmetry_repeat(atoms=atoms)
+    atoms = inversion_symmetry_repeat(
+        atoms=atoms,
+        miller_index=miller_index
+    )
     atoms.center(vacuum=vacuum, axis=2)
     return atoms
 
@@ -252,7 +266,7 @@ class Stabilizer:
             a_lat = None
         
         atoms, _ = get_periodic_surface(
-            miller_index="100",
+            miller_index=self.template_atoms.info["miller_index"],
             vacuum=self.vacuum,
             a_lat=a_lat
         )
@@ -288,13 +302,10 @@ class Stabilizer:
             recon_check_func=recon_check_from_connectivity if apply_recon_check else None
         )
     
-        if has_reconstructed:
-            e_form = None
-        else:
-            e_form = calculate_surface_formation_energy(
-                atoms=atoms,
-                energies_ref=self.ref_energy_dict
-            )
+        e_form = calculate_surface_formation_energy(
+            atoms=atoms,
+            energies_ref=self.ref_energy_dict
+        )
         
         return {"e_form":e_form, "atoms_final":atoms, "atoms_init":atoms_init, "recon":has_reconstructed}
         

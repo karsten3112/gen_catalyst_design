@@ -130,8 +130,6 @@ def get_graph_from_atoms(
         atoms:Atoms,
         element_pool:list,
         condition_keys:list=None,
-        use_fully_connected_graph:bool=False,
-        add_active_site_connectivity:bool=False,
         use_log:bool=True,
         include_recon_label:bool=False,
         device:str=None,
@@ -141,17 +139,9 @@ def get_graph_from_atoms(
     site_indices = atoms.info["indices_site"]
     
     active_site_dists = get_active_site_dists(atoms=atoms, site_indices=site_indices)
-    #if use_fully_connected_graph:
-    #    connectivity = np.ones_like(connectivity) - np.identity(len(connectivity))
-    
-    #if add_active_site_connectivity and use_fully_connected_graph is False:
-    #    add_site_connections(connectivity=connectivity, site_indices=site_indices)
 
     edges_list = get_edges_list_from_connectivity(connectivity=connectivity)
     edge_index = torch.tensor(edges_list, dtype=torch.long, device=device).reshape(2,-1)
-
-    #embed coordination numbers
-    #coord_nums = torch.tensor(connectivity.sum(axis=-1), dtype=torch.long, device=device)
 
     #embed whether a site is active or not
     active_sites = torch.zeros((len(atoms),), dtype=torch.long, device=device)   # 21 atoms
@@ -213,14 +203,12 @@ def get_graph_from_datadict(
         template_atoms:Atoms, 
         element_pool:list, 
         condition_key:str=None,
-        add_active_site_connectivity:bool=False, 
     ):
     template_atoms.symbols = datadict["elements"]
     graph = get_graph_from_atoms(
         atoms=template_atoms,
         element_pool=element_pool,
-        condition_key=None,
-        add_active_site_connectivity=add_active_site_connectivity
+        condition_key=None
     )
     if condition_key is not None:
         if condition_key in datadict:
@@ -252,8 +240,6 @@ def get_dataset_from_atoms_list(
         atoms_list:list,
         element_pool:list,
         condition_keys:list=None,
-        add_active_site_connectivity:bool=False,
-        use_fully_connected_graph:bool=False,
         device:str=None,
         graph_kwargs:dict={}
     ):
@@ -262,8 +248,6 @@ def get_dataset_from_atoms_list(
             atoms=atoms, 
             element_pool=element_pool, 
             condition_keys=condition_keys,
-            add_active_site_connectivity=add_active_site_connectivity,
-            use_fully_connected_graph=use_fully_connected_graph,
             device=device,
             **graph_kwargs
         )
@@ -311,14 +295,13 @@ def get_dataloaders_from_datadicts(
     )
     return train_loader, val_loader
 
+
 def get_dataloaders_from_atoms_list(
         atoms_list:list, 
         element_pool:list,
         batch_size:int=42,
         condition_keys:list=["rate"], 
-        train_val_split:float=0.1,
-        add_active_site_connectivity:bool=False,
-        use_fully_connected_graph:bool=False,
+        train_val_split:float=0.2,
         do_initial_shuffling:bool=True,
         do_train_shuffling:bool=True,
         device:str=None,
@@ -331,13 +314,11 @@ def get_dataloaders_from_atoms_list(
         random.shuffle(atoms_list)
 
     split_index = int((1-train_val_split)*len(atoms_list))
-    
+   
     train_dataset = get_dataset_from_atoms_list(
         atoms_list=atoms_list[:split_index],
         element_pool=element_pool,
         condition_keys=condition_keys,
-        use_fully_connected_graph=use_fully_connected_graph,
-        add_active_site_connectivity=add_active_site_connectivity,
         device=device,
         graph_kwargs=graph_kwargs
     )
@@ -346,8 +327,6 @@ def get_dataloaders_from_atoms_list(
         atoms_list=atoms_list[split_index:],
         element_pool=element_pool,
         condition_keys=condition_keys,
-        use_fully_connected_graph=use_fully_connected_graph,
-        add_active_site_connectivity=add_active_site_connectivity,
         device=device,
         graph_kwargs=graph_kwargs
     )
@@ -364,4 +343,61 @@ def get_dataloaders_from_atoms_list(
         **loader_kwargs
     )
     return train_loader, val_loader
+
+
+def get_train_val_atoms_list(
+        atoms_list:list,
+        train_val_split:float=0.2,
+        do_initial_shuffling:bool=True,
+        random_seed:int=42,
+    ):
+    if do_initial_shuffling:
+        random.seed(random_seed)
+        random.shuffle(atoms_list)
+    split_index = int((1-train_val_split)*len(atoms_list))
+    return atoms_list[:split_index], atoms_list[split_index:]
+    
+
+def get_train_val_dataloaders(
+        train_atoms_list:list,
+        val_atoms_list:list,
+        element_pool:list,
+        condition_keys:list=["rate"],
+        batch_size:int=42,
+        graph_kwargs:dict={},
+        loader_kwargs:dict={},
+        do_shuffling:bool=True,
+        device:str=None,
+    ):
+
+    train_dataset = get_dataset_from_atoms_list(
+        atoms_list=train_atoms_list,
+        element_pool=element_pool,
+        condition_keys=condition_keys,
+        device=device,
+        graph_kwargs=graph_kwargs
+    )
+
+    val_dataset = get_dataset_from_atoms_list(
+        atoms_list=val_atoms_list,
+        element_pool=element_pool,
+        condition_keys=condition_keys,
+        device=device,
+        graph_kwargs=graph_kwargs
+    )
+
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=do_shuffling,
+        **loader_kwargs
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=do_shuffling,
+        **loader_kwargs
+    )
+    return train_loader, val_loader
+
 

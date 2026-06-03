@@ -1,0 +1,30 @@
+g_scale_0.5:
+- {tau: 1, precision: 4.59000000E-01, recall: 2.50000000E-03, novelty: 9.97821351E-01}
+- {tau: 3, precision: 4.59000000E-01, recall: 6.75000000E-02, novelty: 9.38997821E-01}
+- {tau: 5, precision: 4.59000000E-01, recall: 3.10000000E-01, novelty: 6.40522876E-01}
+- {tau: 7, precision: 4.59000000E-01, recall: 7.40000000E-01, novelty: 2.39651416E-01}
+- {tau: 10, precision: 4.59000000E-01, recall: 9.72500000E-01, novelty: 1.08932462E-02}
+g_scale_1.0:
+- {tau: 1, precision: 6.00000000E-01, recall: 1.25000000E-02, novelty: 9.93333333E-01}
+- {tau: 3, precision: 6.00000000E-01, recall: 1.02500000E-01, novelty: 9.16666667E-01}
+- {tau: 5, precision: 6.00000000E-01, recall: 3.95000000E-01, novelty: 5.85000000E-01}
+- {tau: 7, precision: 6.00000000E-01, recall: 8.22500000E-01, novelty: 1.75000000E-01}
+- {tau: 10, precision: 6.00000000E-01, recall: 9.85000000E-01, novelty: 1.66666667E-03}
+g_scale_2.0:
+- {tau: 1, precision: 6.76000000E-01, recall: 7.50000000E-03, novelty: 9.95562130E-01}
+- {tau: 3, precision: 6.76000000E-01, recall: 1.27500000E-01, novelty: 8.92011834E-01}
+- {tau: 5, precision: 6.76000000E-01, recall: 4.40000000E-01, novelty: 5.16272189E-01}
+- {tau: 7, precision: 6.76000000E-01, recall: 8.15000000E-01, novelty: 1.30177515E-01}
+- {tau: 10, precision: 6.76000000E-01, recall: 9.92500000E-01, novelty: 0.00000000E+00}
+g_scale_4.0:
+- {tau: 1, precision: 6.33000000E-01, recall: 7.50000000E-03, novelty: 9.96840442E-01}
+- {tau: 3, precision: 6.33000000E-01, recall: 1.32500000E-01, novelty: 9.06793049E-01}
+- {tau: 5, precision: 6.33000000E-01, recall: 4.47500000E-01, novelty: 5.59241706E-01}
+- {tau: 7, precision: 6.33000000E-01, recall: 8.32500000E-01, novelty: 1.40600316E-01}
+- {tau: 10, precision: 6.33000000E-01, recall: 9.70000000E-01, novelty: 0.00000000E+00}
+g_scale_8.0:
+- {tau: 1, precision: 2.48000000E-01, recall: 0.00000000E+00, novelty: 1.00000000E+00}
+- {tau: 3, precision: 2.48000000E-01, recall: 1.25000000E-02, novelty: 9.91935484E-01}
+- {tau: 5, precision: 2.48000000E-01, recall: 1.07500000E-01, novelty: 9.07258065E-01}
+- {tau: 7, precision: 2.48000000E-01, recall: 4.85000000E-01, novelty: 4.91935484E-01}
+- {tau: 10, precision: 2.48000000E-01, recall: 9.27500000E-01, novelty: 2.01612903E-02}

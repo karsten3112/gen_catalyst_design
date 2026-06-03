@@ -16,15 +16,20 @@ import os
 # -------------------------------------------------------------------------------------
 
 class DumpCheckpointDataCallback(Callback):
-    def __init__(self, dict_key="hyper_params", filename="checkpoint_data.yaml"):
+    def __init__(self, dict_key="hyper_params", filename="checkpoint_data.yaml", ref_callback:Callback = None):
+        self.ref_callback = ref_callback
         self.dict_key = dict_key
         self.filename = filename
 
     def on_train_end(self, trainer, pl_module):
+        if self.ref_callback is not None:
+            callback = self.ref_callback
+        else:
+            callback = trainer.checkpoint_callback
         # Find the best / last checkpoint PL saved
-        ckpt_path = trainer.checkpoint_callback.best_model_path
+        ckpt_path = callback.best_model_path
         if ckpt_path == "":
-            ckpt_path = trainer.checkpoint_callback.last_model_path
+            ckpt_path = callback.last_model_path
 
         if ckpt_path == "":
             print("No checkpoint found to extract custom data.")
@@ -108,15 +113,11 @@ def setup_trainer_and_logger(
         dirpath=os.path.join(save_dir, checkpoint_dir),
         every_n_epochs=save_every_n_epochs,
         save_top_k=-1,   # keep all periodic checkpoints
-        save_last=True,  # always keep last.ckpt too
+        save_last=False,  # always keep last.ckpt too
         filename="logged_epoch={epoch:03d}",
         auto_insert_metric_name=False,
     )
     
-    hyper_params_log = DumpCheckpointDataCallback(
-        dict_key="diffusion_parameters",
-        filename="model_parameters.yaml"
-    )
 
     best_callback = ModelCheckpoint(
             dirpath=os.path.join(save_dir, checkpoint_dir),
@@ -125,7 +126,13 @@ def setup_trainer_and_logger(
             save_top_k=1,      # keep best model
             save_last=True,    # also save last model
             filename="best_epoch={epoch}-val={val_loss:.4f}",
-        )
+    )
+
+    hyper_params_log = DumpCheckpointDataCallback(
+        ref_callback=best_callback,
+        dict_key="diffusion_parameters",
+        filename="model_parameters.yaml"
+    )
 
     callbacks = [periodic_checkpoint_callback, hyper_params_log, best_callback]
 
@@ -242,6 +249,7 @@ def get_periodic_surface(miller_index:str, vacuum:float=10.0, n_layers_z:int=4, 
     elif miller_index == "111":
         from ase.build import fcc111
         atoms_periodic = fcc111(symbol="Au", size=(3, 3, n_layers_z), vacuum=vacuum, a=a_lat)
+        atoms_periodic.wrap()
         indices_site = [27, 28, 30, 31]
     elif miller_index == "211":
         from ase.build import fcc211
@@ -272,6 +280,18 @@ def get_full_element_pool(
             species_exclude=species_exclude
         )
     return result_list
+
+
+def get_full_element_pool_no_saas(
+        species_exclude:list=None
+    ):
+    element_pool = get_full_element_pool(species_exclude=["Zn", "Ga", "Mn", "Mo"])
+    if species_exclude is not None:
+        element_pool = exclude_species(
+            elements=element_pool,
+            species_exclude=species_exclude
+        )
+    return element_pool
 
 
 def filter_dataset(

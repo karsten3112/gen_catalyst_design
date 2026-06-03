@@ -1,0 +1,126 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            runo0vej8sobv1bhnv479qy8340fk0fx:
+                args:
+                    - -data_traj=../datasets/genetic_algorithm_2000.traj
+                    - -m_epochs=1000
+                    - -out=genetic_alg_dataset
+                    - -beta_max=0.05
+                    - -beta_min=0.0001
+                    - -dev=cuda
+                    - -log_proj_name=hyperparams
+                    - -lr=0.0005
+                    - -pat=100
+                    - -m_name=model_19
+                    - -noiser=UniformTransitionsNoiser
+                    - -sched=ExponentialBetaScheduler
+                    - -p_drop=0.1
+                cpu_count: 36
+                cpu_count_logical: 36
+                cudaVersion: "12.9"
+                disk:
+                    /:
+                        total: "78604800000"
+                        used: "34697498624"
+                email: karsten.walz.jensen@gmail.com
+                executable: /home/kwalz/.conda/envs/cat_opt/bin/python3
+                gpu: Tesla V100-PCIE-16GB
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Volta
+                      cudaCores: 5120
+                      memoryTotal: "17179869184"
+                      name: Tesla V100-PCIE-16GB
+                      uuid: GPU-e413c5bf-45d5-a8da-03df-7eaf2874227d
+                host: s32n01.grendel.cscaa.dk
+                memory:
+                    total: "405370277888"
+                os: Linux-4.18.0-513.18.1.el8_9.x86_64-x86_64-with-glibc2.28
+                program: /home/kwalz/speciale_files/diffusion_model_parameters/hyperparam_search/../train_diff_model.py
+                python: CPython 3.10.18
+                root: genetic_alg_dataset/model_19
+                slurm:
+                    array_job_id: "4675651"
+                    array_task_count: "30"
+                    array_task_id: "20"
+                    array_task_max: "30"
+                    array_task_min: "1"
+                    array_task_step: "1"
+                    cluster_name: grendel
+                    conf: /etc/slurm/slurm.conf
+                    cpus_on_node: "1"
+                    cpus_per_task: "1"
+                    gpus_on_node: "1"
+                    gtids: "0"
+                    job_account: fysma
+                    job_cpus_per_node: "1"
+                    job_end_time: "1775786497"
+                    job_gid: "525"
+                    job_gpus: "0"
+                    job_id: "4677276"
+                    job_name: diff_opt
+                    job_nodelist: s32n01
+                    job_num_nodes: "1"
+                    job_partition: qgpu
+                    job_qos: gpulimfysma
+                    job_start_time: "1775764897"
+                    job_uid: "1586"
+                    job_user: kwalz
+                    jobid: "4677276"
+                    localid: "0"
+                    mem_per_cpu: "6144"
+                    nnodes: "1"
+                    nodeid: "0"
+                    nodelist: s32n01
+                    oom_kill_step: "0"
+                    prio_process: "0"
+                    procid: "0"
+                    submit_dir: /home/kwalz/speciale_files/diffusion_model_parameters/hyperparam_search
+                    submit_host: grendel
+                    task_pid: "1800782"
+                    tasks_per_node: "1"
+                    topology_addr: s32n01
+                    topology_addr_pattern: node
+                    tres_per_task: cpu=1
+                startedAt: "2026-04-09T20:01:57.943359Z"
+                writerId: runo0vej8sobv1bhnv479qy8340fk0fx
+        m:
+            - "1": trainer/global_step
+              "6":
+                - 3
+              "7": []
+            - "2": '*'
+              "5": 1
+              "6":
+                - 1
+              "7": []
+        python_version: 3.10.18
+        t:
+            "1":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+                - 105
+            "2":
+                - 1
+                - 5
+                - 9
+                - 53
+                - 77
+                - 103
+                - 105
+            "3":
+                - 2
+                - 3
+                - 7
+                - 13
+                - 66
+            "4": 3.10.18
+            "5": 0.23.1
+            "12": 0.23.1
+            "13": linux-x86_64

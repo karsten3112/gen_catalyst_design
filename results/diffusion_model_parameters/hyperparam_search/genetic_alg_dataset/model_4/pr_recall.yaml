@@ -1,0 +1,25 @@
+g_scale_0.5:
+- {tau: 1, precision: 4.12000000E-01, recall: 7.50000000E-03, novelty: 9.92718447E-01}
+- {tau: 3, precision: 4.12000000E-01, recall: 1.05000000E-01, novelty: 8.78640777E-01}
+- {tau: 5, precision: 4.12000000E-01, recall: 3.77500000E-01, novelty: 6.45631068E-01}
+- {tau: 7, precision: 4.12000000E-01, recall: 7.87500000E-01, novelty: 2.64563107E-01}
+- {tau: 10, precision: 4.12000000E-01, recall: 1.00000000E+00, novelty: 1.45631068E-02}
+g_scale_1.0:
+- {tau: 1, precision: 4.84000000E-01, recall: 1.25000000E-02, novelty: 9.91735537E-01}
+- {tau: 3, precision: 4.84000000E-01, recall: 1.37500000E-01, novelty: 9.00826446E-01}
+- {tau: 5, precision: 4.84000000E-01, recall: 4.60000000E-01, novelty: 6.48760331E-01}
+- {tau: 7, precision: 4.84000000E-01, recall: 8.85000000E-01, novelty: 2.25206612E-01}
+- {tau: 10, precision: 4.84000000E-01, recall: 1.00000000E+00, novelty: 0.00000000E+00}
+g_scale_2.0:
+- {tau: 1, precision: 4.93000000E-01, recall: 7.50000000E-03, novelty: 9.93914807E-01}
+- {tau: 3, precision: 4.93000000E-01, recall: 9.75000000E-02, novelty: 9.18864097E-01}
+- {tau: 5, precision: 4.93000000E-01, recall: 4.07500000E-01, novelty: 6.24746450E-01}
+- {tau: 7, precision: 4.93000000E-01, recall: 8.45000000E-01, novelty: 2.31237323E-01}
+- {tau: 10, precision: 4.93000000E-01, recall: 1.00000000E+00, novelty: 0.00000000E+00}
+g_scale_4.0:
+- {tau: 1, precision: 4.17000000E-01, recall: 5.00000000E-03, novelty: 9.95203837E-01}
+- {tau: 3, precision: 4.17000000E-01, recall: 6.25000000E-02, novelty: 9.59232614E-01}
+- {tau: 5, precision: 4.17000000E-01, recall: 3.15000000E-01, novelty: 7.93764988E-01}
+- {tau: 7, precision: 4.17000000E-01, recall: 7.02500000E-01, novelty: 3.62110312E-01}
+- {tau: 10, precision: 4.17000000E-01, recall: 9.90000000E-01, novelty: 1.67865707E-02}
+g_scale_8.0: null
