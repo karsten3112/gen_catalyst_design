@@ -1,0 +1,15 @@
+========= Job started  at Mon May 25 03:44:12 CEST 2026 ==========
+My jobid: 5191211
+My array id: 2
+======================RUNNNING ANNEALING ALGORITHM======================
+Element pool chosen:
+['Rh', 'Pt', 'Pd', 'Co', 'Cu', 'Au', 'Ag', 'Fe', 'Os', 'Ir', 'Ru', 'Ni']
+facet: fcc-100, template-type: cluster
+objective target: rate, is log(rate) used: False
+Is stability included: False
+-------------------SETTING UP: REACTION-MECHANISM & STABILIZER-------------------
+-------------------SEARCH PARAMETERS-------------------
+total amount of samples: 2000
+search key-word arguments set
+{'visit': 1.1, 'initial_temp': 5230.0, 'restart_temp_ratio': 2e-05, 'accept': -2.5}
+========= Job Finished  at Mon May 25 16:03:44 CEST 2026 ==========
