@@ -45,8 +45,8 @@ def main():
         element_pool=element_pool
     )
 
-    model_pth_header = "trained_models_no_saas"
-    dataset_pth_header = "../../gen_catalyst_design/results/optimization/stability_and_rate"
+    model_pth_header = "trained_models"
+    dataset_pth_header = "../../baseline_search_algs/rate_and_stability" #gen_catalyst_design/results/optimization/stability_and_rate
 
     xlims_dict = {
         "100":[2.05, 2.9],
@@ -80,7 +80,7 @@ def main():
     }
 
 
-    ref_energies_pth_header = "../../gen_catalyst_design/yaml_files/reference_energies"
+    ref_energies_pth_header = "../../../yaml_files/reference_energies"
     with open(os.path.join(ref_energies_pth_header, "chgnet_ref_energies.yaml"), "r") as fileobj:
         ref_energies_old = yaml.safe_load(fileobj)
 
@@ -147,7 +147,7 @@ def main():
             ax.set_xlabel(r"rate [1/s]")
 
         ref_energies_new = {element:ref_energies_new_tot[miller_index][element]["ref_energy"] for element in ref_energies_new_tot[miller_index]}
-        dataset_pth = os.path.join(dataset_pth_header, f"{miller_index}_results", "only_fcc_ni_close")
+        dataset_pth = os.path.join(dataset_pth_header, f"results_{miller_index}", "only_fcc_ni_close")
         model_set_datadicts = {}
         for model_set in model_sets:
             datadicts = []
@@ -383,9 +383,9 @@ def plot_element_occs(
     )
     
     if miller_index == "111":
-        active_site_span = [27,31]
+        active_site_spans = [[27,29],[30,32]]
     if miller_index == "100":
-        active_site_span = [27, 31]
+        active_site_spans = [[27,29],[30,32]]
 
     title_dict = {
         "model_3_ni_close":"Model-3",
@@ -417,33 +417,42 @@ def plot_element_occs(
             )
         ax.text(-1, -i-0.5, f"{i+1}", ha="center", va="center")
     
-    color = "C3"
+    color = "blue"
+    for active_site_span in active_site_spans:
+        ax.vlines(
+            x=active_site_span,
+            ymin=-(i+1)-0.2,
+            ymax=0.0+0.2,
+            colors=color,
+            linewidths=2,
+            zorder=102
+        )
 
-    ax.vlines(
-        x=active_site_span,
-        ymin=-(i+1)-0.2,
-        ymax=0.0+0.2,
-        colors=color,
-        linewidths=2,
-        zorder=102
-    )
+        #ax.fill_between(
+    #    x=active_site_span,
+    #    y1=[0+0.2,0+0.2],
+    #    y2=[-(i+1)-0.2, -(i+1)-0.2],
+    #    color=color,
+    #    alpha=0.5,
+    #    zorder=100
+    #)
 
-    ax.vlines(
-        x=[9,18,27],
-        ymin=-(i+1)-0.2,
-        ymax=0.0+0.2,
-        colors="k",
-        linewidths=2
-    )
-
-    ax.hlines(
-        y=[0.0+0.2, -(i+1)-0.2],
-        xmin=active_site_span[0],
-        xmax=active_site_span[1],
-        colors=color,
-        linewidths=2,
-        zorder=100
-    )
+        ax.vlines(
+            x=[9,18,27],
+            ymin=-(i+1)-0.2,
+            ymax=0.0+0.2,
+            colors="k",
+            linewidths=2
+        )
+    
+        ax.hlines(
+            y=[0.0+0.2, -(i+1)-0.2],
+            xmin=active_site_span[0],
+            xmax=active_site_span[1],
+            colors=color,
+            linewidths=2,
+            zorder=100
+        )
 
     #ax.fill_between(
     #    x=active_site_span,

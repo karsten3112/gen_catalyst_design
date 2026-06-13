@@ -130,6 +130,16 @@ class DiscreteSpaceNoiser(nn.Module):
         noised_x_batch = self.sample_transition(probabilities=probs)
         return noised_x_batch
 
+    def noise_batch_xtm1_xt(self, batch, time_batch, scheduler:DiscreteTimeScheduler):
+        x_t_batch = batch.x*1.0
+        probs = self.get_transition_probabilities(
+            x_t_batch=x_t_batch,
+            time_batch=time_batch,
+            scheduler=scheduler
+        )
+        noised_xs = self.sample_transition(probabilities=probs)
+        batch.x = noised_xs
+
     def noise_step(self, x_t:torch.tensor, time:torch.tensor):
         probs = self.get_transition_probabilities(x_t=x_t, time=time)
         noised_x = self.sample_transition(probabilities=probs)
